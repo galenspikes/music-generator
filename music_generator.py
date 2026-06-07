@@ -2817,6 +2817,19 @@ def main():
     ap.add_argument("--fugue-countersubject", type=str, default=None,
                     help="Optional countersubject (defaults to the inverted "
                     "subject).")
+    ap.add_argument(
+        "--process",
+        choices=["phase", "additive", "augment"],
+        default=None,
+        help="Generate a process-music piece from a melodic cell: phase "
+        "(Reich), additive (Glass), or augment (Four Organs). Cell via "
+        "--process-cell; key via --melody-key/--melody-mode.")
+    ap.add_argument("--process-cell", type=str, default=None,
+                    help="Melodic cell (scale-degree syntax) for --process.")
+    ap.add_argument("--process-reps", type=int, default=4,
+                    help="Repetitions held at each stage of the process.")
+    ap.add_argument("--process-stages", type=int, default=6,
+                    help="Number of stages (for --process augment).")
     ap.add_argument("--keys",
                     type=str,
                     default=None,
@@ -3060,6 +3073,33 @@ def main():
         midi.save()
         log_file_operation(music_generator_logger, "write", fug_out, True)
         print(f"Wrote {fug_out}")
+        return 0
+
+    # ----- process-music path -----
+    if args.process:
+        import process as proc
+        cell = args.process_cell or proc.DEFAULT_CELL
+        key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
+        pmode = args.melody_mode or "major"
+        slug = args.out if args.out and args.out != "out" else f"process_{args.process}"
+        proc_dir = MIDI_DIR / slug
+        proc_dir.mkdir(parents=True, exist_ok=True)
+        proc_out = str(proc_dir / ts_filename(slug))
+
+        proc_events, total = proc.build_process(
+            cell, key_pc, pmode, kind=args.process,
+            reps=args.process_reps, stages=args.process_stages)
+        midi = MidiOut(args.bpm, proc_out,
+                       vel_mode_chords=args.velocity_mode_chords,
+                       vel_mode_drums=args.velocity_mode_drums,
+                       split_stems=True)
+        midi.set_program(resolve_instrument(args.instrument))
+        for voice, when, dur, note in sorted(proc_events, key=lambda e: e[1]):
+            midi.play_voice_note(voice, note, when, dur)
+        midi.flush_to_end(total, 0.0, total)
+        midi.save()
+        log_file_operation(music_generator_logger, "write", proc_out, True)
+        print(f"Wrote {proc_out}")
         return 0
 
     # ----- arrangement (song file) path -----

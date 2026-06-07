@@ -323,6 +323,31 @@ stretto/inversion devices are future work. Built on the melody primitive
 (`melody.py`): the answer is `transpose_diatonic(subject, 4)`, the default
 countersubject is `invert(subject)`.
 
+## 🌀 Process music (experimental)
+
+Minimalist process pieces from a single melodic cell (scale-degree
+[grammar](docs/token-grammar.md)), unfolding by rule:
+
+- **`phase`** (Reich, *Piano Phase*) — two voices loop the cell; the follower
+  advances one note per stage, sweeping every alignment back to unison.
+- **`additive`** (Glass) — the cell grows a note at a time (1, 12, 123, …) then
+  contracts.
+- **`augment`** (Reich, *Four Organs*) — the cell's durations lengthen each stage.
+
+```bash
+# phasing, two marimbas
+./play_music --save-wav --no-play --process phase \
+  --process-cell 's1 s2 s3 s5 s6 s5 s3 s2' --instrument 12 --bpm 160 \
+  --melody-key E --melody-mode minor --sf2 SoundFonts/arachno.sf2 --out phase
+
+# additive build/contract, organ
+python music_generator.py --process additive --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
+  --instrument organ --melody-key C --out additive --no-play
+```
+
+Tunables: `--process-cell`, `--process-reps` (stage length), `--process-stages`
+(augment). Built on the melody primitive (`process.py`).
+
 ## 🧪 Testing
 
 ```bash
