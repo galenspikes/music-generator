@@ -15,7 +15,21 @@
       "Bash(git init *)",
       "Bash(git -c user.name='Galen Spikes' -c user.email='galen@local' add -A)",
       "Bash(git -c user.name='x' -c user.email='x@x' status --short)",
-      "Bash(git -c user.name='Galen Spikes' -c user.email='galen@local' commit -q -m \"Baseline before cleanup \\(includes misc/ scratch + services/ refactor\\)\")"
+      "Bash(git -c user.name='Galen Spikes' -c user.email='galen@local' commit -q -m \"Baseline before cleanup \\(includes misc/ scratch + services/ refactor\\)\")",
+      "Bash(git rm *)",
+      "Bash(git -c user.name='Galen Spikes' -c user.email='galen@local' commit -q -m \"Remove unfinished services/ refactor, music_generator_new.py, and misc/ scratch \\(salvaged to docs/charts.md; full history retained\\)\")",
+      "Bash(rm -f output/audio/*.wav.zip)",
+      "Bash(python3 -m venv venv)",
+      "Bash(venv/bin/pip install *)",
+      "Bash(venv/bin/python -c \"import mido, numpy; print\\('mido', mido.__version__, '| numpy', numpy.__version__\\)\")",
+      "Bash(venv/bin/python music_generator.py --seconds 6 --out _revive_test --no-play)",
+      "Bash(venv/bin/python cook_song.py list)",
+      "Bash(venv/bin/pip show *)",
+      "Bash(venv/bin/python music_generator.py --mode ostinato --keys 'F#m,F#m,F#m,G#m,G#m,G#m,G#m,G#m, A,A,A,G#m,G#m,G#m,G#m,G#m' --chords sevenths ninths sus add6 --chords-order random --bpm 117 --instrument saw --chord-length e --seconds 20 --out _revive_ostinato --no-play)",
+      "Bash(venv/bin/python cook_song.py show rock)",
+      "Bash(venv/bin/python cook_song.py make rock --dry-run)",
+      "Bash(git add *)",
+      "Bash(git -c 'user.name=Galen Spikes' -c user.email=galen@local commit -q -m 'Revive after monorepo extraction: inline logging, drop core.* deps, add requirements *)"
     ]
   }
 }

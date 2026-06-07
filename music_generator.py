@@ -1076,7 +1076,7 @@ def parse_single_token(tok: str,
     Token grammar:
       <len><letters>  e.g., 'qksh' (quarter: kick+snare+hat)
       <len>r          rest (no hits) e.g., 'er' (eighth rest)
-    Letter symbols follow the active drum map (see metadata/percussion_library.json).
+    Letter symbols follow the active drum map (see library/percussion_library.json).
     Modifiers per letter:
       [vel±N] adjust velocity before humanisation
       [probX] plays with probability X (0–1)

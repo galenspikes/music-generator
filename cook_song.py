@@ -10,12 +10,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Import enhanced utilities
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from core.utils.system import run_command_safe, get_system_info
-from core.utils.logging import setup_logger, log_performance, log_function_call, log_file_operation, log_error
+from logging_config import setup_logger, log_performance, log_error
 
-# Setup enhanced logging
+
+def run_command_safe(cmd: list[str], cwd: str | None = None) -> tuple[bool, int]:
+    """Run a subprocess, streaming its output. Returns (success, returncode)."""
+    try:
+        result = subprocess.run(cmd, cwd=cwd, check=False)
+        return result.returncode == 0, result.returncode
+    except OSError as exc:
+        cook_song_logger.error("failed to launch %s: %s", cmd[0] if cmd else "?", exc)
+        return False, -1
+
+
+# Setup logging
 cook_song_logger = setup_logger("cook_song")
 
 
