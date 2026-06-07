@@ -2270,6 +2270,39 @@ class MidiOut:
                 self.active_ch[track_key].discard(n)
             self.voice_positions[track_key] = when_beats + beats
 
+    def dense_block(self,
+                    notes: list[int],
+                    beats: float,
+                    when_beats: float,
+                    base: int = 74) -> None:
+        """Emit an arbitrary-length chord (full dense voicing) on the ensemble
+        channel. Used by --voicing dense to sound every chord tone."""
+        notes = list(dict.fromkeys(int(n) for n in notes))
+        track_key = "ensemble"
+        track = self.chord_tracks[track_key]
+        channel = self.chord_channels[track_key]
+        self._seek_voice(track_key, when_beats)
+        if not notes:
+            self.voice_positions[track_key] = when_beats + beats
+            return
+        vel = self._compute_chord_velocity(when_beats, base)
+        dur_ticks = self.ticks(beats)
+        for note in notes:
+            track.append(
+                Message('note_on', note=note, velocity=vel, channel=channel,
+                        time=0))
+            self.active_ch[track_key].add(note)
+        track.append(
+            Message('note_off', note=notes[0], velocity=0, channel=channel,
+                    time=dur_ticks))
+        self.active_ch[track_key].discard(notes[0])
+        for n in notes[1:]:
+            track.append(
+                Message('note_off', note=n, velocity=0, channel=channel,
+                        time=0))
+            self.active_ch[track_key].discard(n)
+        self.voice_positions[track_key] = when_beats + beats
+
     def drums_block(
             self,
             hits: list[PercHit],
@@ -2640,6 +2673,61 @@ def build_perc_from_args(args) -> PercPlan:
     )
 
 
+def realize_dense(root_pc: int,
+                  pcs: list[int],
+                  bass_pc: int | None = None,
+                  lo: int = 36,
+                  hi: int = 88) -> list[int]:
+    """Voice ALL chord tones as a wide spread stack across [lo,hi].
+
+    Unlike 4-voice SATB (which discards tones), this sounds every pitch class in
+    the chord — full 11ths/13ths, quartal stacks, mystic/messiaen sets, clusters
+    — for dense, colorful harmony. Root (or slash bass) at the bottom, remaining
+    tones stacked strictly upward, with a high doubling for shimmer if there's
+    room.
+    """
+    ordered = sorted({p % 12 for p in pcs}, key=lambda pc: (pc - root_pc) % 12)
+    broot = (bass_pc if bass_pc is not None else root_pc) % 12
+    notes = [clamp_to_range(broot, lo, lo + 11)]
+    cur = notes[0]
+    for pc in ordered:
+        nxt = cur + ((pc - cur) % 12)
+        if nxt <= cur:
+            nxt += 12
+        if nxt > hi:
+            break
+        notes.append(nxt)
+        cur = nxt
+    if ordered and cur + 12 <= hi:
+        notes.append(cur + 12)  # shimmer: double the top tone an octave up
+    return sorted(set(notes))
+
+
+def build_dense_timeline(
+        seq: list[ChordDef],
+        beats_total: float,
+        base_len_beats: float,
+        lo: int = 36,
+        hi: int = 88) -> list[tuple[float, float, list[int]]]:
+    """Like build_chord_timeline but emits full dense voicings (every tone)."""
+    out: list[tuple[float, float, list[int]]] = []
+    if not seq:
+        return out
+    pos = 0.0
+    i = 0
+    while pos < beats_total:
+        entry = seq[i % len(seq)]
+        notes = realize_dense(entry.root_pc, list(entry.pcs), entry.bass_pc,
+                              lo, hi)
+        dur = min(base_len_beats, max(0.0, beats_total - pos))
+        if dur <= 0.0:
+            break
+        out.append((pos, dur, notes))
+        pos += base_len_beats
+        i += 1
+    return out
+
+
 def build_harmony_events(
         chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
         *,
@@ -2912,6 +3000,13 @@ def main():
                     choices=["block", "counterpoint", "arpeggio"],
                     default="block",
                     help="Voicing style for SATB harmony: block chords or counterpoint lines.")
+    ap.add_argument(
+        "--voicing",
+        choices=["satb", "dense"],
+        default="satb",
+        help="satb = 4-voice voicing (default). dense = sound EVERY chord tone "
+        "spread across the register (full 11ths/13ths, quartal, clusters, "
+        "mystic/messiaen) on one timbre — for rich, colorful harmony.")
     ap.add_argument("--counterpoint-step",
                     type=float,
                     default=0.5,
@@ -3042,6 +3137,10 @@ def main():
             0.0, min(1.0, float(args.counterpoint_suspension_prob)))
         args.counterpoint_anticipation_prob = max(
             0.0, min(1.0, float(args.counterpoint_anticipation_prob)))
+
+    # Dense voicing sounds every chord tone on one ensemble channel/timbre.
+    if args.voicing == "dense":
+        args.split_stems = False
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -3250,19 +3349,24 @@ def main():
     midi.set_voice_programs(voice_programs, program)  # one-time, at time 0
 
     # ---- RENDER with independent track cursors ----
-    events, voice_max = build_harmony_events(
-        chord_tl,
-        satb_style=args.satb_style,
-        bass_style=args.bass_style,
-        bass_step=args.bass_step,
-        counterpoint_step=args.counterpoint_step,
-        counterpoint_suspension_prob=args.counterpoint_suspension_prob,
-        counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
-        split_stems=args.split_stems,
-        logger=music_generator_logger,
-    )
+    if args.voicing == "dense":
+        dense_tl = build_dense_timeline(seq, beats_total, chord_len_beats)
+        events = [("densechord", w, d, notes) for (w, d, notes) in dense_tl]
+        voice_max = max((w + d for w, d, _ in dense_tl), default=0.0)
+    else:
+        events, voice_max = build_harmony_events(
+            chord_tl,
+            satb_style=args.satb_style,
+            bass_style=args.bass_style,
+            bass_step=args.bass_step,
+            counterpoint_step=args.counterpoint_step,
+            counterpoint_suspension_prob=args.counterpoint_suspension_prob,
+            counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
+            split_stems=args.split_stems,
+            logger=music_generator_logger,
+        )
 
-    if args.melody:
+    if args.melody and args.voicing != "dense":
         events, voice_max = _apply_melody(args, events, seq, chord_len_beats,
                                           beats_total, voice_max)
 
@@ -3290,6 +3394,14 @@ def main():
                 midi.advance_dr(when - t_dr)
                 t_dr = when
             midi.chord_block(payload, dur, when)
+            t_ch += dur
+            continue
+
+        if kind == "densechord":
+            if when > t_ch:
+                midi.advance_ch(when - t_ch)
+                t_ch = when
+            midi.dense_block(payload, dur, when)
             t_ch += dur
             continue
 

@@ -138,6 +138,20 @@ python music_generator.py \
 --instrument 73  # Flute
 ```
 
+#### Dense voicing (rich, colorful harmony)
+SATB voicing uses 4 voices and discards tones from big chords. `--voicing dense`
+instead sounds **every** chord tone, spread across the register — so full
+11ths/13ths, quartal stacks, clusters, and exotic sets (`mystic`, `messiaen_*`,
+`petrushka`, `whole_tone`…) ring out complete.
+
+```bash
+python music_generator.py --mode ostinato \
+  --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance' \
+  --voicing dense --instrument strings --chord-length w --out colors --no-play
+```
+Dense uses one timbre (`--instrument`); pair it with the rich recipe vocabulary
+in `library/chord_recipes.py`.
+
 #### Per-voice instruments
 By default all four SATB voices share one patch (`--instrument`). With split
 stems (on by default) each voice is on its own channel, so you can give any
