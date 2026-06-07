@@ -889,11 +889,13 @@ def pick_soprano(chord_tones: list[int], prev_sop: int | None, root_pc: int,
 def write_manifest(out_path: str, args_ns) -> str:
     """Create/overwrite the args sidecar JSON and return its path."""
     sidecar = out_path.replace(".mid", ".args.json")
-    
-    # Generate potential file paths
+
+    # Predicted companion paths (mirror the slug subdir layout render.py uses:
+    # output/{midi,audio,metadata}/<slug>/<base>.*)
     base_name = Path(out_path).stem
-    audio_path = str(AUDIO_DIR / f"{base_name}.wav")
-    metadata_path = str(META_DIR / f"{base_name}.json")
+    slug = Path(out_path).parent.name
+    audio_path = str(AUDIO_DIR / slug / f"{base_name}.wav")
+    metadata_path = str(META_DIR / slug / f"{base_name}.json")
     
     data = {
         "generated_utc":

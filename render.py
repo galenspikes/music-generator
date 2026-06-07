@@ -190,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
     slug = Path(midi).parent.name
     base = Path(midi).stem
     audio_dir = Path(args.output_dir) / slug
-    meta_dir = SCRIPT_DIR / "metadata" / slug
+    meta_dir = SCRIPT_DIR / "output" / "metadata" / slug   # unified under output/
     audio_dir.mkdir(parents=True, exist_ok=True)
     meta_dir.mkdir(parents=True, exist_ok=True)
 
