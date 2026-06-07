@@ -627,6 +627,92 @@ def build_arpeggio_events(
     return events
 
 
+BASS_STYLES = ("follow", "root", "octaves", "fifths", "walking", "arp")
+
+
+def _bass_note_for_pc(pc: int, center: int, lo: int, hi: int) -> int:
+    """Pick the octave of pitch-class `pc` in [lo,hi] nearest to `center`."""
+    base = clamp_to_range(pc, lo, hi)
+    cands = [c for c in (base - 12, base, base + 12) if lo <= c <= hi] or [base]
+    return min(cands, key=lambda c: abs(c - center))
+
+
+def _octave_partner(note: int, lo: int, hi: int) -> int:
+    """The same pitch class an octave away, staying in [lo,hi] (for octave
+    bass leaps). Prefers going down when there's no room above."""
+    if note - 12 >= lo:
+        return note - 12
+    if note + 12 <= hi:
+        return note + 12
+    return note
+
+
+def build_bass_line(
+        chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
+        style: str = "root",
+        step: float = 0.5,
+) -> list[tuple[float, float, int]]:
+    """Generate an independent bass line from the realized chord timeline.
+
+    Decouples the bass from the SATB voicing style so it can pulse, leap in
+    octaves, alternate root/fifth, walk, or arpeggiate. Honors the realized
+    bass note (so slash/pedal basses are respected). Returns
+    ``[(when_beats, dur_beats, midi_note)]`` for the bass voice.
+    """
+    if not chord_tl or style in ("follow", None):
+        return []
+
+    lo, hi = BASS_RANGE
+    out: list[tuple[float, float, int]] = []
+    n = len(chord_tl)
+
+    for i, (when, dur, notes) in enumerate(chord_tl):
+        if dur <= 0.0:
+            continue
+        root = notes[3]  # realized bass note (pedal-aware)
+        pcs = sorted({x % 12 for x in notes})
+        nxt = chord_tl[(i + 1) % n][2][3] if n > 1 else root
+
+        steps = max(1, int(round(dur / step))) if step > 0 else 1
+        slen = dur / steps
+
+        # non-root chord tones, voiced near the root register (for walk/arp)
+        color = [
+            _bass_note_for_pc(pc, root + 5, lo, hi) for pc in pcs
+            if pc != root % 12
+        ]
+        color.sort()
+
+        for k in range(steps):
+            t = when + k * slen
+            if style == "root":
+                note = root
+            elif style == "octaves":
+                note = root if k % 2 == 0 else _octave_partner(root, lo, hi)
+            elif style == "fifths":
+                fifth = _bass_note_for_pc((root + 7) % 12, root + 7, lo, hi)
+                note = root if k % 2 == 0 else fifth
+            elif style == "arp":
+                ladder = [root] + color
+                note = ladder[k % len(ladder)]
+            elif style == "walking":
+                if k == 0:
+                    note = root
+                elif k == steps - 1 and nxt != root:
+                    # chromatic approach into the next chord's bass
+                    direction = 1 if nxt > root else -1
+                    note = clamp_to_range(nxt - direction, lo, hi)
+                elif color:
+                    note = color[(k - 1) % len(color)]
+                else:
+                    note = root
+            else:
+                note = root
+            out.append((t, slen, note))
+
+    return out
+
+
 _CHORD_RECIPES_CACHE: dict[str, tuple[int, ...]] | None = None
 
 
@@ -2555,6 +2641,19 @@ def main():
         help="Per-voice instrument override, e.g. --voice-instrument bass=bass "
         "(repeatable). Voices: soprano, alto, tenor, bass. Voices not set use "
         "--instrument. Requires split stems (the default).")
+    ap.add_argument(
+        "--bass-style",
+        choices=list(BASS_STYLES),
+        default="follow",
+        help="Bass line generator: 'follow' (bass tracks the SATB voicing), or "
+        "an independent line: root, octaves, fifths, walking, arp. "
+        "Requires split stems.")
+    ap.add_argument(
+        "--bass-step",
+        type=float,
+        default=0.5,
+        help="Subdivision (in beats) for the bass line when --bass-style is not "
+        "'follow' (0.5 = eighths, 1.0 = quarters).")
     ap.add_argument("--bpm", type=int, default=120)
     ap.add_argument("--chord-length",
                     dest="chord_len",
@@ -2743,6 +2842,8 @@ def main():
             "satb_style": args.satb_style,
             "split_stems": args.split_stems,
             "voice_instruments": args.voice_instrument,
+            "bass_style": args.bass_style,
+            "bass_step": args.bass_step,
             "counterpoint_step": args.counterpoint_step,
             "counterpoint_suspension_prob": args.counterpoint_suspension_prob,
             "counterpoint_anticipation_prob": args.counterpoint_anticipation_prob,
@@ -2834,6 +2935,13 @@ def main():
     events: list[tuple[str, float, float, object]] = []
     voice_max = 0.0
 
+    custom_bass = args.bass_style != "follow"
+    if custom_bass and not args.split_stems:
+        music_generator_logger.warning(
+            "--bass-style needs split stems (bass needs its own channel); "
+            "falling back to 'follow'.")
+        custom_bass = False
+
     if args.satb_style == "counterpoint":
         voice_lines = build_counterpoint_lines(
             chord_tl,
@@ -2853,9 +2961,27 @@ def main():
                 continue
             events.append(("voice", start, dur, (voice, note)))
             voice_max = max(voice_max, start + dur)
+    elif custom_bass:
+        # block upper voices as per-voice events so the SATB bass is omitted
+        for when, dur, notes in chord_tl:
+            s, a, t, _b = notes
+            for vname, vnote in (("soprano", s), ("alto", a), ("tenor", t)):
+                events.append(("voice", when, dur, (vname, vnote)))
+            voice_max = max(voice_max, when + dur)
     else:
         for when, dur, notes in chord_tl:
             events.append(("chord", when, dur, notes))
+            voice_max = max(voice_max, when + dur)
+
+    if custom_bass:
+        # drop any SATB-generated bass, then lay down the independent bass line
+        events = [
+            e for e in events
+            if not (e[0] == "voice" and e[3][0] == "bass")
+        ]
+        for when, dur, note in build_bass_line(chord_tl, args.bass_style,
+                                               args.bass_step):
+            events.append(("voice", when, dur, ("bass", note)))
             voice_max = max(voice_max, when + dur)
 
     for when, dur, hits in drum_tl:

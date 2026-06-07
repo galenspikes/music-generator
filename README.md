@@ -153,6 +153,18 @@ voice its own instrument — most usefully a real **bass** patch:
 Voices: `soprano`, `alto`, `tenor`, `bass`. Names accept aliases or GM numbers.
 Requires split stems (disabled by `--no-split-stems`).
 
+#### Bass lines
+By default the bass voice tracks the SATB voicing (`--bass-style follow`). Switch
+it to an **independent bass line** generated from the chord roots:
+
+```bash
+--bass-style octaves --bass-step 0.5   # root/octave bounce in eighths (pop/disco)
+--bass-style walking --bass-step 1.0   # quarter-note walking line w/ approach tones
+```
+Styles: `follow`, `root`, `octaves`, `fifths`, `walking`, `arp`. `--bass-step` is
+the subdivision in beats. Honors slash/pedal basses, and pairs well with a
+dedicated bass patch (`--voice-instrument bass=33`). Requires split stems.
+
 ### **Velocity Modes**
 ```bash
 # Humanized performance
