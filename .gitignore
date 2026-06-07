@@ -17,3 +17,6 @@ __pycache__/
 .DS_Store
 *.swp
 log/
+
+# Local Claude Code settings (personal)
+.claude/settings.local.json
