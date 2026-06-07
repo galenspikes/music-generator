@@ -105,3 +105,29 @@ low tom, and pedal hat.
 
 These let you write long charts compactly, e.g. a 32-bar pedal section as
 `G:1:sus2add6*32`.
+
+---
+
+## 4. Melody tokens (`--melody`)
+
+A monophonic line written as **scale degrees** (relative to a key+mode), used by
+`--melody` today and the future fugue/lead generators. Whitespace-separated;
+`|` barlines are ignored.
+
+Form: **`<duration>[.] ( [#|b]<1-7>['|,]* | r )`**
+- **duration**: `w h q e s t` (as above); trailing `.` = dotted (×1.5).
+- **degree**: `1`–`7` in the active key/mode.
+- **accidental** (before the degree): `#` / `b` — e.g. `#4`, `b7`.
+- **octave marks** (after): `'` up, `,` down (repeatable). *(Note: `,` is the
+  octave-down mark, so melodies are space-separated, not comma-separated.)*
+- **rest**: `r` (e.g. `qr`).
+- operators `*N` and `[ ... ]*N` work here too.
+
+Example: `q1 e2 e3 q5 q3 | h2 q1 qr`
+
+The key/mode is **inferred from the chords** (override with `--melody-key` /
+`--melody-mode`). Degrees resolve either against the section key
+(`--melody-relative key`) or anchored to the current chord's root
+(`--melody-relative chord`, so a motif fits each chord). `--melody-transform`
+can `invert`/`retrograde`/`augment` the line (the fugal operations).
+See docs/melody-primitive-plan.md.

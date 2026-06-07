@@ -1,7 +1,12 @@
 # Melody primitive — design plan
 
-Planning doc (not yet implemented). A small **melody mini-language** + parsed
-model + transforms that serves as shared foundation for:
+Status: **v1 shipped** — `melody.py` (parser, scales, `infer_key`,
+`realize_melody` key+chord-relative, transforms) with `tests/test_melody.py`,
+auditionable via `--melody` on the soprano voice. v2 (tonal answer, chord-tone
+anchoring, ties) and the generators (fugue/lead) build on it.
+
+A small **melody mini-language** + parsed model + transforms that serves as
+shared foundation for:
 - **fugue subjects** (a theme that gets answered, inverted, stretto'd), and
 - the **lead/hook generator** (state a motif, then develop it).
 

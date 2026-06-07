@@ -2711,6 +2711,83 @@ def build_harmony_events(
     return events, voice_max
 
 
+def _apply_melody(args, events, seq, chord_len, beats_total, voice_max):
+    """Replace the generated soprano voice with a hand-written melody line
+    (audition path for the melody primitive). Key/mode inferred from `seq`
+    unless overridden. Requires split stems."""
+    import melody as mel
+
+    if not args.split_stems:
+        music_generator_logger.warning(
+            "--melody needs split stems (the melody rides the soprano channel); "
+            "ignoring melody.")
+        return events, voice_max
+
+    if args.melody_key:
+        key_pc, _ = parse_key_name(args.melody_key)
+        mode = args.melody_mode or "major"
+    else:
+        key_pc, mode = mel.infer_key(seq)
+        if args.melody_mode:
+            mode = args.melody_mode
+
+    notes = mel.parse_melody(args.melody)
+    if args.melody_transform == "invert":
+        notes = mel.invert(notes)
+    elif args.melody_transform == "retrograde":
+        notes = mel.retrograde(notes)
+    elif args.melody_transform == "augment":
+        notes = mel.augment(notes, 2.0)
+
+    mlen = sum(n.beats for n in notes)
+    if mlen <= 0:
+        return events, voice_max
+
+    looped: list = []
+    t = 0.0
+    while t < beats_total:
+        looped.extend(notes)
+        t += mlen
+
+    spans = None
+    if args.melody_relative == "chord":
+        spans, tt, i = [], 0.0, 0
+        while tt < beats_total:
+            spans.append((tt, tt + chord_len, seq[i % len(seq)].root_pc))
+            tt += chord_len
+            i += 1
+
+    lo, hi = SOP_RANGE
+    realized = mel.realize_melody(looped, key_pc, mode,
+                                  base_octave=args.melody_octave, lo=lo, hi=hi,
+                                  relative=args.melody_relative,
+                                  chord_roots=spans)
+
+    # strip the generated soprano; expand any block 'chord' events into a/t/b
+    new_events: list = []
+    for e in events:
+        if e[0] == "voice" and e[3][0] == "soprano":
+            continue
+        if e[0] == "chord":
+            when, dur, (_s, a, ten, b) = e[1], e[2], e[3]
+            new_events.append(("voice", when, dur, ("alto", a)))
+            new_events.append(("voice", when, dur, ("tenor", ten)))
+            new_events.append(("voice", when, dur, ("bass", b)))
+            continue
+        new_events.append(e)
+
+    for when, dur, note in realized:
+        if when >= beats_total:
+            break
+        new_events.append(("voice", when, dur, ("soprano", note)))
+        voice_max = max(voice_max, when + dur)
+
+    music_generator_logger.info(
+        "melody: key_pc=%s mode=%s relative=%s transform=%s notes=%d",
+        key_pc, mode, args.melody_relative, args.melody_transform, len(notes))
+    return new_events, voice_max
+
+
 def main():
     start_time = datetime.now()
     music_generator_logger.info("Starting music generation")
@@ -2775,6 +2852,28 @@ def main():
         default=0.5,
         help="Subdivision (in beats) for the bass line when --bass-style is not "
         "'follow' (0.5 = eighths, 1.0 = quarters).")
+    # --- melody primitive (audition a hand-written line on the soprano voice) ---
+    ap.add_argument(
+        "--melody",
+        type=str,
+        default=None,
+        help="Scale-degree melody on the soprano voice, e.g. \"q1 q3 q5 h1\". "
+        "Loops to fill the piece; key/mode inferred from the chords. "
+        "See docs/melody-grammar / docs/melody-primitive-plan.md.")
+    ap.add_argument("--melody-relative", choices=["key", "chord"], default="key",
+                    help="Degrees resolve against the section key, or anchor to "
+                    "the current chord's root (motif fits each chord).")
+    ap.add_argument("--melody-octave", type=int, default=5,
+                    help="Register anchor for the melody.")
+    ap.add_argument(
+        "--melody-transform",
+        choices=["none", "invert", "retrograde", "augment"],
+        default="none",
+        help="Apply a transform to the melody (demo the fugal operations).")
+    ap.add_argument("--melody-key", type=str, default=None,
+                    help="Override inferred key root (e.g. C, Eb, F#).")
+    ap.add_argument("--melody-mode", type=str, default=None,
+                    help="Override inferred mode (e.g. major, minor, dorian).")
     ap.add_argument("--bpm", type=int, default=120)
     ap.add_argument("--chord-length",
                     dest="chord_len",
@@ -3081,6 +3180,10 @@ def main():
         split_stems=args.split_stems,
         logger=music_generator_logger,
     )
+
+    if args.melody:
+        events, voice_max = _apply_melody(args, events, seq, chord_len_beats,
+                                          beats_total, voice_max)
 
     for when, dur, hits in drum_tl:
         events.append(("drum", when, dur, hits))
