@@ -9,6 +9,7 @@ A sophisticated Python-based music generation system that creates MIDI files wit
 - **SATB voicing styles**: Block chords, counterpoint lines, arpeggiated patterns
 - **Advanced voice leading**: Suspensions, anticipations, intelligent part writing
 - **Custom chord recipes**: Colon notation (e.g., `C:maj7:1` for C major 7th in 1st inversion)
+- **Slash / pedal bass**: append `/bass` to a colon token (e.g., `G::maj/C` for G major over a C bass); the bass can be any note, enabling pedals like `E/A`
 
 ### **Percussion System**
 - **Pattern-based drums**: Complex percussion patterns with fills and interrupters

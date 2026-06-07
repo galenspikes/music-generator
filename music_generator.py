@@ -696,7 +696,13 @@ def get_chord_recipe(name: str) -> list[int] | None:
 
 
 def parse_colon_key_token(token: str) -> ChordDef | None:
-    """Parse root[:inv][:recipe] tokens into a chord definition."""
+    """Parse root[:inv][:recipe][/bass] tokens into a chord definition.
+
+    The optional ``/bass`` suffix sets an explicit bass pitch class (a slash
+    chord / pedal), e.g. ``G::maj/C`` is a G major triad voiced over C. The
+    bass note need not be a chord tone, so pedals like ``E/A`` are supported.
+    An explicit ``/bass`` overrides any inversion-derived bass.
+    """
 
     if ":" not in token:
         return None
@@ -704,6 +710,20 @@ def parse_colon_key_token(token: str) -> ChordDef | None:
     raw = token.strip()
     if not raw:
         raise ValueError("Empty colon chord token")
+
+    # Optional slash-bass suffix.
+    slash_bass_pc: int | None = None
+    if "/" in raw:
+        raw, bass_part = raw.rsplit("/", 1)
+        raw = raw.strip()
+        bass_part = bass_part.strip()
+        if not bass_part:
+            raise ValueError(f"Missing bass note after '/' in token '{token}'")
+        try:
+            slash_bass_pc, _ = parse_key_name(bass_part)
+        except Exception as exc:
+            raise ValueError(
+                f"Bad slash bass '{bass_part}' in token '{token}'") from exc
 
     parts = raw.split(":")
     if len(parts) > 3:
@@ -741,8 +761,10 @@ def parse_colon_key_token(token: str) -> ChordDef | None:
     if inversion is not None:
         idx = inversion % len(recipe)
         bass_pc = (root_pc + recipe[idx]) % 12
+    if slash_bass_pc is not None:
+        bass_pc = slash_bass_pc  # explicit slash bass overrides inversion
 
-    return ChordDef(root_pc=root_pc, pcs=pcs, bass_pc=bass_pc, label=raw)
+    return ChordDef(root_pc=root_pc, pcs=pcs, bass_pc=bass_pc, label=token.strip())
 
 
 _last_sop = None
