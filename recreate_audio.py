@@ -21,9 +21,9 @@ def find_fluidsynth():
         result = subprocess.run(["which", "fluidsynth"], capture_output=True, text=True)
         if result.returncode == 0:
             return result.stdout.strip()
-    except:
+    except OSError:
         pass
-    
+
     return None
 
 def recreate_audio(midi_file, output_file, sf2_file="SoundFonts/arachno.sf2"):

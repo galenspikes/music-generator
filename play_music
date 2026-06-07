@@ -268,7 +268,7 @@ fi
 #   NO_PLAY=1
 # fi
 
-/bin/mkdir -p "$OUTPUT_DIR" output/metadata output/library
+/bin/mkdir -p "$OUTPUT_DIR" output/metadata
 
 echo "🐍 Using Python: $PYTHON"
 # Capture the output from the generator to get the specific MIDI filename

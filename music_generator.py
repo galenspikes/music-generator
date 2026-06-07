@@ -1403,123 +1403,68 @@ def parse_chain_repetition(token: str) -> tuple[list[str], int]:
     return chain_tokens, count
 
 
+_KEY_SHARP_TO_FLAT = {"C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab", "A#": "Bb"}
+
+
+def _normalize_key_token(base_token: str) -> str:
+    """Validate one key token and return its canonical form.
+
+    Colon tokens (e.g. ``C::maj7``) are validated and returned as-is. Bare roots
+    are unicode-normalized, have minor markers stripped, and sharps folded to the
+    project's flat spelling. Raises ValueError on an unknown key.
+    """
+    if ":" in base_token:
+        parse_colon_key_token(base_token)  # validate early; keep original token
+        return base_token
+    t = base_token.replace("♭", "b").replace("♯", "#")
+    low = t.lower()
+    if low.endswith("min"):
+        t = t[:-3]
+    elif low.endswith("m"):
+        t = t[:-1]
+    t = (t[0].upper() + t[1:]) if t else t
+    t = _KEY_SHARP_TO_FLAT.get(t, t)
+    if t not in NOTE_TO_PC:
+        raise ValueError(f"Bad key '{base_token}'")
+    return t
+
+
+def _emit_key_token(tok: str, out: list[str]) -> None:
+    """Expand one comma token (with optional ``*N``) into normalized keys."""
+    base_token, count = parse_repetition_token(tok)
+    out.extend([_normalize_key_token(base_token)] * count)
+
+
+def _emit_key_chain(chain_token: str, out: list[str]) -> None:
+    """Expand a ``[a,b,...]*N`` chain into normalized keys."""
+    chain_tokens, chain_count = parse_chain_repetition(chain_token)
+    for _ in range(chain_count):
+        for chain_tok in chain_tokens:
+            _emit_key_token(chain_tok, out)
+
+
 def key_roots(mode: str, keys_csv: str | None) -> list[str]:
     if mode == "ostinato" and keys_csv:
-        # First, handle chain repetitions by finding them and replacing with placeholders
+        # Pull [..]*N chains out to placeholders so the comma-split won't break
+        # them, then expand each token through a single shared code path.
         import re
-        chain_pattern = r'\[[^\]]+\]\*\d+'
-        chains = re.findall(chain_pattern, keys_csv)
-        placeholder_map = {}
-        processed_csv = keys_csv
-        
-        for i, chain in enumerate(chains):
-            placeholder = f"__CHAIN_{i}__"
-            placeholder_map[placeholder] = chain
-            processed_csv = processed_csv.replace(chain, placeholder)
-        
-        # Now split by commas, but preserve chain placeholders
-        toks = [t.strip() for t in processed_csv.split(",") if t.strip()]
-        VALID = set(NOTE_TO_PC.keys())
-        out = []
-        for tok in toks:
-            # Check for chain repetition placeholder first
-            if tok.startswith("__CHAIN_") and tok.endswith("__"):
-                chain_token = placeholder_map[tok]
+        placeholder_map: dict[str, str] = {}
+        processed = keys_csv
+        for i, chain in enumerate(re.findall(r'\[[^\]]+\]\*\d+', keys_csv)):
+            ph = f"__CHAIN_{i}__"
+            placeholder_map[ph] = chain
+            processed = processed.replace(chain, ph)
+
+        out: list[str] = []
+        for tok in (t.strip() for t in processed.split(",") if t.strip()):
+            chain = placeholder_map.get(tok) or (tok if tok.startswith("[") else None)
+            if chain is not None:
                 try:
-                    chain_tokens, chain_count = parse_chain_repetition(chain_token)
-                    # Repeat the entire chain
-                    for _ in range(chain_count):
-                        for chain_tok in chain_tokens:
-                            # Parse each token in the chain
-                            base_token, count = parse_repetition_token(chain_tok)
-                            
-                            if ":" in base_token:
-                                parse_colon_key_token(base_token)  # validate early
-                                for _ in range(count):
-                                    out.append(base_token)
-                            else:
-                                # normalize accidental unicode
-                                t = base_token.replace("♭", "b").replace("♯", "#")
-                                # strip minor markers if user typed 'm'/'min'
-                                if t.lower().endswith("min"):
-                                    t = t[:-3]
-                                elif t.lower().endswith("m"):
-                                    t = t[:-1]
-                                # enharmonic normalize sharps to our flats set
-                                SHARP = {"C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab", "A#": "Bb"}
-                                t = t[0].upper() + t[1:] if len(t) >= 1 else t
-                                if t in SHARP:
-                                    t = SHARP[t]
-                                if t not in VALID:
-                                    raise ValueError(f"Bad key '{base_token}'")
-                                for _ in range(count):
-                                    out.append(t)
+                    _emit_key_chain(chain, out)
                 except ValueError as e:
-                    raise ValueError(f"Invalid chain repetition '{chain_token}': {e}")
-                continue
-            
-            # Check for chain repetition first (fallback for direct bracket syntax)
-            if tok.startswith("[") and tok.endswith("]") and tok.count("*") >= 2:
-                try:
-                    chain_tokens, chain_count = parse_chain_repetition(tok)
-                    # Repeat the entire chain
-                    for _ in range(chain_count):
-                        for chain_tok in chain_tokens:
-                            # Parse each token in the chain
-                            base_token, count = parse_repetition_token(chain_tok)
-                            
-                            if ":" in base_token:
-                                parse_colon_key_token(base_token)  # validate early
-                                for _ in range(count):
-                                    out.append(base_token)
-                            else:
-                                # normalize accidental unicode
-                                t = base_token.replace("♭", "b").replace("♯", "#")
-                                # strip minor markers if user typed 'm'/'min'
-                                if t.lower().endswith("min"):
-                                    t = t[:-3]
-                                elif t.lower().endswith("m"):
-                                    t = t[:-1]
-                                # enharmonic normalize sharps to our flats set
-                                SHARP = {"C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab", "A#": "Bb"}
-                                t = t[0].upper() + t[1:] if len(t) >= 1 else t
-                                if t in SHARP:
-                                    t = SHARP[t]
-                                if t not in VALID:
-                                    raise ValueError(f"Bad key '{base_token}'")
-                                for _ in range(count):
-                                    out.append(t)
-                except ValueError as e:
-                    raise ValueError(f"Invalid chain repetition '{tok}': {e}")
-                continue
-            
-            # Regular token parsing (existing logic)
-            base_token, count = parse_repetition_token(tok)
-            
-            if ":" in base_token:
-                parse_colon_key_token(
-                    base_token)  # validate early; keep original token
-                # Add the base token repeated 'count' times
-                for _ in range(count):
-                    out.append(base_token)
-                continue
-            # normalize accidental unicode
-            t = base_token.replace("♭", "b").replace("♯", "#")
-            # strip minor markers if user typed 'm'/'min'
-            if t.lower().endswith("min"):
-                t = t[:-3]
-            elif t.lower().endswith("m"):
-                t = t[:-1]
-            # enharmonic normalize sharps to our flats set
-            SHARP = {"C#": "Db", "D#": "Eb", "F#": "Gb", "G#": "Ab", "A#": "Bb"}
-            t = t[0].upper() + t[1:] if len(t) >= 1 else t
-            if t in SHARP:
-                t = SHARP[t]
-            if t not in VALID:
-                raise ValueError(f"Bad key '{base_token}'")
-            # Add the base token repeated 'count' times
-            for _ in range(count):
-                out.append(t)
+                    raise ValueError(f"Invalid chain repetition '{chain}': {e}")
+            else:
+                _emit_key_token(tok, out)
         return out
     # default: stroll through a circle-ish order for 'mixed'/'complete'
     return ["C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"]
