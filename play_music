@@ -241,13 +241,22 @@ for path in "/opt/homebrew/bin/fluidsynth" "/usr/local/bin/fluidsynth" "$(/usr/b
   fi
 done
 
+# Find ffmpeg in common locations (PATH-independent, mirrors fluidsynth lookup)
+FFMPEG_CMD=""
+for path in "/opt/homebrew/bin/ffmpeg" "/usr/local/bin/ffmpeg" "$(/usr/bin/which ffmpeg 2>/dev/null)"; do
+  if [[ -x "$path" ]]; then
+    FFMPEG_CMD="$path"
+    break
+  fi
+done
+
 if [[ -n "$SF2_ARG" ]] && [[ -z "$FLUIDSYNTH_CMD" ]]; then
   echo "❌ --sf2 provided but fluidsynth is not available."
   exit 1
 fi
 
 if (( DO_NORMALIZE )) || [[ -n "$BOOST_DB" || -n "$BOOST_AFTER_NORM" ]]; then
-  if ! /usr/bin/which ffmpeg >/dev/null 2>&1; then
+  if [[ -z "$FFMPEG_CMD" ]]; then
     echo "❌ ffmpeg is required for normalize/boost options."
     exit 1
   fi
@@ -357,7 +366,7 @@ if (( SAVE_WAV )); then
       if (( norm_needed )); then
         norm_path="${current_path%.wav}_norm.wav"
         typeset -a norm_cmd
-        norm_cmd=(ffmpeg -y -hide_banner -loglevel error -i "$current_path" -af "loudnorm=I=-14:TP=-1.0:LRA=11" "$norm_path")
+        norm_cmd=("$FFMPEG_CMD" -y -hide_banner -loglevel error -i "$current_path" -af "loudnorm=I=-14:TP=-1.0:LRA=11" "$norm_path")
         run_with_spinner "Normalizing audio" "${norm_cmd[@]}"
         _prev_paths+=("$current_path")
         current_path="$norm_path"
@@ -366,7 +375,7 @@ if (( SAVE_WAV )); then
       if [[ -n "$BOOST_DB" ]]; then
         boost_path="${current_path%.wav}_+${BOOST_DB}dB.wav"
         typeset -a boost_cmd
-        boost_cmd=(ffmpeg -y -hide_banner -loglevel error -i "$current_path" -af "volume=${BOOST_DB}dB" "$boost_path")
+        boost_cmd=("$FFMPEG_CMD" -y -hide_banner -loglevel error -i "$current_path" -af "volume=${BOOST_DB}dB" "$boost_path")
         run_with_spinner "Boosting audio by ${BOOST_DB} dB" "${boost_cmd[@]}"
         _prev_paths+=("$current_path")
         current_path="$boost_path"
@@ -375,7 +384,7 @@ if (( SAVE_WAV )); then
       if [[ -n "$BOOST_AFTER_NORM" ]]; then
         combo_path="${current_path%.wav}_+${BOOST_AFTER_NORM}dB.wav"
         typeset -a combo_cmd
-        combo_cmd=(ffmpeg -y -hide_banner -loglevel error -i "$current_path" -af "volume=${BOOST_AFTER_NORM}dB" "$combo_path")
+        combo_cmd=("$FFMPEG_CMD" -y -hide_banner -loglevel error -i "$current_path" -af "volume=${BOOST_AFTER_NORM}dB" "$combo_path")
         run_with_spinner "Boosting post-normalize by ${BOOST_AFTER_NORM} dB" "${combo_cmd[@]}"
         _prev_paths+=("$current_path")
         current_path="$combo_path"
