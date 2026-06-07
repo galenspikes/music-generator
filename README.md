@@ -283,6 +283,24 @@ python music_generator.py --seconds 60 --out my_song --no-play
 - Circle of fifths sequences
 - Modal progressions
 
+## 🎬 Arrangements (song files)
+
+For long-form pieces that *evolve* instead of looping, describe a song as a YAML
+file: global `defaults` plus an ordered list of `sections`. Each section
+overrides only what changes — chords, length (`repeat` or `bars`), tempo,
+instruments, bass style, and percussion density — and the sections play
+end-to-end with per-section tempo and instrument changes.
+
+```bash
+python music_generator.py --song songs/kiss.yml --out kiss --no-play
+# or render to audio via the wrapper:
+./play_music --save-wav --no-play --song songs/kiss.yml --out kiss \
+  --sf2 SoundFonts/arachno.sf2 --fx lush --normalize --boost-normalize 2
+```
+
+See [songs/kiss.yml](songs/kiss.yml) for a worked example and
+[docs/arrangement-plan.md](docs/arrangement-plan.md) for the design.
+
 ## 🧪 Testing
 
 ```bash

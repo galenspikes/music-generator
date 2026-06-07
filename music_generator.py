@@ -2033,6 +2033,14 @@ class MidiOut:
         self.tr_dr.append(
             Message('program_change', program=0, channel=DRUM_CH, time=0))
 
+        # Dedicated conductor track for a tempo map (set_tempo changes mid-piece,
+        # e.g. per-section tempo in arrangements). Kept separate from note tracks
+        # so it never interferes with their cursors.
+        self.tr_meta = MidiTrack()
+        self.mid.tracks.insert(0, self.tr_meta)
+        self.meta_pos = 0.0
+        self.tr_meta.append(MetaMessage('set_tempo', tempo=tempo, time=0))
+
     def _chord_track_items(self) -> list[tuple[str, MidiTrack]]:
         return list(self.chord_tracks.items())
 
@@ -2078,6 +2086,42 @@ class MidiOut:
 
     def ticks(self, beats: float) -> int:
         return int(round(beats * self.tpb))
+
+    def _seek_meta(self, when_beats: float) -> None:
+        delta = when_beats - self.meta_pos
+        if delta > 0:
+            self.tr_meta.append(
+                MetaMessage('text', text='', time=self.ticks(delta)))
+            self.meta_pos = when_beats
+
+    def set_tempo_at(self, bpm: float, when_beats: float = 0.0) -> None:
+        """Insert a tempo change at a beat offset (builds a tempo map)."""
+        self._seek_meta(when_beats)
+        self.tr_meta.append(
+            MetaMessage('set_tempo', tempo=bpm2tempo(int(round(bpm))), time=0))
+
+    def program_change_at(self,
+                          voice: str,
+                          program: int,
+                          when_beats: float,
+                          bank_msb: int = 0,
+                          bank_lsb: int = 0) -> None:
+        """Change a voice's program mid-track at a beat offset (re-orchestrate
+        at section boundaries). Requires split stems (per-voice channels)."""
+        if voice not in self.chord_tracks:
+            return
+        track = self.chord_tracks[voice]
+        channel = self.chord_channels[voice]
+        self._seek_voice(voice, when_beats)
+        track.append(
+            Message('control_change', control=0, value=bank_msb,
+                    channel=channel, time=0))
+        track.append(
+            Message('control_change', control=32, value=bank_lsb,
+                    channel=channel, time=0))
+        track.append(
+            Message('program_change', program=program, channel=channel,
+                    time=0))
 
     def _seek_voice(self, voice: str, target_beats: float) -> None:
         current = self.voice_positions.get(voice, 0.0)
@@ -2596,6 +2640,77 @@ def build_perc_from_args(args) -> PercPlan:
     )
 
 
+def build_harmony_events(
+        chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
+        *,
+        satb_style: str,
+        bass_style: str = "follow",
+        bass_step: float = 0.5,
+        counterpoint_step: float = 0.25,
+        counterpoint_suspension_prob: float = 0.0,
+        counterpoint_anticipation_prob: float = 0.0,
+        split_stems: bool = True,
+        when_offset: float = 0.0,
+        logger=None,
+) -> tuple[list[tuple[str, float, float, object]], float]:
+    """Turn a chord timeline into playable harmony + bass events.
+
+    Shared by the flat single-render path and the arrangement orchestrator.
+    `when_offset` shifts every event in time so a section can be placed on a
+    global timeline. Returns ``(events, end_beats)``.
+    """
+    events: list[tuple[str, float, float, object]] = []
+    voice_max = when_offset
+
+    custom_bass = bass_style not in ("follow", None)
+    if custom_bass and not split_stems:
+        if logger:
+            logger.warning(
+                "--bass-style needs split stems (bass needs its own channel); "
+                "falling back to 'follow'.")
+        custom_bass = False
+
+    if satb_style == "counterpoint":
+        voice_lines = build_counterpoint_lines(chord_tl, counterpoint_step,
+                                               counterpoint_suspension_prob,
+                                               counterpoint_anticipation_prob)
+        for voice, parts in voice_lines.items():
+            for when, dur, note in parts:
+                if dur <= 0.0:
+                    continue
+                events.append(("voice", when + when_offset, dur, (voice, note)))
+                voice_max = max(voice_max, when + when_offset + dur)
+    elif satb_style == "arpeggio":
+        for voice, start, dur, note in build_arpeggio_events(
+                chord_tl, counterpoint_step):
+            if dur <= 0.0:
+                continue
+            events.append(("voice", start + when_offset, dur, (voice, note)))
+            voice_max = max(voice_max, start + when_offset + dur)
+    elif custom_bass:
+        # block upper voices as per-voice events so the SATB bass is omitted
+        for when, dur, notes in chord_tl:
+            s, a, t, _b = notes
+            for vname, vnote in (("soprano", s), ("alto", a), ("tenor", t)):
+                events.append(("voice", when + when_offset, dur, (vname, vnote)))
+            voice_max = max(voice_max, when + when_offset + dur)
+    else:
+        for when, dur, notes in chord_tl:
+            events.append(("chord", when + when_offset, dur, notes))
+            voice_max = max(voice_max, when + when_offset + dur)
+
+    if custom_bass:
+        # drop any SATB-generated bass, then lay down the independent bass line
+        events = [
+            e for e in events if not (e[0] == "voice" and e[3][0] == "bass")
+        ]
+        for when, dur, note in build_bass_line(chord_tl, bass_style, bass_step):
+            events.append(("voice", when + when_offset, dur, ("bass", note)))
+            voice_max = max(voice_max, when + when_offset + dur)
+
+    return events, voice_max
+
+
 def main():
     start_time = datetime.now()
     music_generator_logger.info("Starting music generation")
@@ -2607,6 +2722,12 @@ def main():
     ap.add_argument("--mode",
                     choices=["complete", "mixed", "ostinato"],
                     default="mixed")
+    ap.add_argument(
+        "--song",
+        type=str,
+        default=None,
+        help="Path to a YAML song file (arrangement of sections). When set, "
+        "section-based rendering is used and most other flags are ignored.")
     ap.add_argument("--keys",
                     type=str,
                     default=None,
@@ -2801,6 +2922,23 @@ def main():
     if args.seed is not None:
         random.seed(args.seed)
 
+    # ----- arrangement (song file) path -----
+    if args.song:
+        import arrangement
+        song_slug = args.out if args.out and args.out != "out" else Path(
+            args.song).stem
+        song_dir = MIDI_DIR / song_slug
+        song_dir.mkdir(parents=True, exist_ok=True)
+        song_out = str(song_dir / ts_filename(song_slug))
+        spec = arrangement.load_spec(
+            args.song,
+            vel_mode_chords=args.velocity_mode_chords,
+            vel_mode_drums=args.velocity_mode_drums)
+        arrangement.render(spec, song_out)
+        log_file_operation(music_generator_logger, "write", song_out, True)
+        print(f"Wrote {song_out}")
+        return 0
+
     # ----- output path + sidecar JSON -----
     slug = args.out or "misc"
     mid_subdir = MIDI_DIR / slug
@@ -2932,57 +3070,17 @@ def main():
     midi.set_voice_programs(voice_programs, program)  # one-time, at time 0
 
     # ---- RENDER with independent track cursors ----
-    events: list[tuple[str, float, float, object]] = []
-    voice_max = 0.0
-
-    custom_bass = args.bass_style != "follow"
-    if custom_bass and not args.split_stems:
-        music_generator_logger.warning(
-            "--bass-style needs split stems (bass needs its own channel); "
-            "falling back to 'follow'.")
-        custom_bass = False
-
-    if args.satb_style == "counterpoint":
-        voice_lines = build_counterpoint_lines(
-            chord_tl,
-            args.counterpoint_step,
-            args.counterpoint_suspension_prob,
-            args.counterpoint_anticipation_prob)
-        for voice, parts in voice_lines.items():
-            for when, dur, note in parts:
-                if dur <= 0.0:
-                    continue
-                events.append(("voice", when, dur, (voice, note)))
-                voice_max = max(voice_max, when + dur)
-    elif args.satb_style == "arpeggio":
-        arp_events = build_arpeggio_events(chord_tl, args.counterpoint_step)
-        for voice, start, dur, note in arp_events:
-            if dur <= 0.0:
-                continue
-            events.append(("voice", start, dur, (voice, note)))
-            voice_max = max(voice_max, start + dur)
-    elif custom_bass:
-        # block upper voices as per-voice events so the SATB bass is omitted
-        for when, dur, notes in chord_tl:
-            s, a, t, _b = notes
-            for vname, vnote in (("soprano", s), ("alto", a), ("tenor", t)):
-                events.append(("voice", when, dur, (vname, vnote)))
-            voice_max = max(voice_max, when + dur)
-    else:
-        for when, dur, notes in chord_tl:
-            events.append(("chord", when, dur, notes))
-            voice_max = max(voice_max, when + dur)
-
-    if custom_bass:
-        # drop any SATB-generated bass, then lay down the independent bass line
-        events = [
-            e for e in events
-            if not (e[0] == "voice" and e[3][0] == "bass")
-        ]
-        for when, dur, note in build_bass_line(chord_tl, args.bass_style,
-                                               args.bass_step):
-            events.append(("voice", when, dur, ("bass", note)))
-            voice_max = max(voice_max, when + dur)
+    events, voice_max = build_harmony_events(
+        chord_tl,
+        satb_style=args.satb_style,
+        bass_style=args.bass_style,
+        bass_step=args.bass_step,
+        counterpoint_step=args.counterpoint_step,
+        counterpoint_suspension_prob=args.counterpoint_suspension_prob,
+        counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
+        split_stems=args.split_stems,
+        logger=music_generator_logger,
+    )
 
     for when, dur, hits in drum_tl:
         events.append(("drum", when, dur, hits))

@@ -1,0 +1,58 @@
+title: Kiss On My List (arrangement)
+tempo: 148
+soundfont: SoundFonts/arachno.sf2
+
+# Concert pitch (capo-3 shapes + 3 semitones); chorus rides a C pedal.
+defaults:
+  instrument: epiano
+  voices: { bass: 33 }          # electric bass (finger)
+  bass: { style: octaves, step: 0.5 }
+  satb: arpeggio
+  chord_length: h
+  perc:
+    main: "ebg,eg,ecg,eg, ebg,eg,ecg,eg"
+    interrupters:
+      - "ebg,eg,ecg,eg, ebg,eg,ecg,ei"
+      - "sb,sc,sb,sc,sg,sg,sj"
+    fill_rate: 0.18
+
+sections:
+  - name: intro
+    tempo: 140
+    repeat: 2
+    satb: block
+    bass: { style: root }
+    perc: { fill_rate: 0.0 }
+    keys: "G::maj, C::maj, G::maj, Eb::maj, F::maj, C::maj"
+
+  - name: verse
+    tempo: 148
+    repeat: 2
+    bass: { style: root }
+    keys: "C::min, F::min7, Ab::maj, Ab::maj/Bb, C::maj, C::min, F::min9, F::min, Ab::maj, Ab::maj/Bb, C::maj"
+
+  - name: prechorus
+    tempo: 148
+    repeat: 1
+    keys: "F::min7, G::sus4/D, F::min7, G::sus4/D, F::min7, G::sus4/D, F::min7, F::maj/G, G::7"
+
+  - name: chorus
+    tempo: 150
+    repeat: 2
+    bass: { style: octaves }
+    voices: { bass: 33, soprano: saw }   # bring a lead in over the chorus
+    perc: { fill_rate: 0.30 }
+    keys: "G::maj, C::maj, G::maj/C, F::maj/C, G::maj/C, C::min, Bb::maj/C, C::min, F::maj, G::maj/C, C::maj, G::maj/C, C::maj"
+
+  - name: solo
+    tempo: 152
+    repeat: 1
+    instrument: saw
+    bass: { style: walking, step: 1.0 }
+    keys: "C::maj7, C::maj7, F::maj7, F::maj7, F::7/Eb, F::7/Eb, G::sus4/D, G::sus4add7, C::maj7, C::maj7, F::maj7, F::maj7, F::7/Eb, F::7/Eb, D::min7, G::sus4add7"
+
+  - name: outro
+    tempo: 146
+    repeat: 2
+    perc: { fill_rate: 0.05 }
+    keys: "G::maj, C::maj, G::maj/C, F::maj/C, G::maj/C, C::min, Bb::maj/C, C::min, F::maj, G::maj/C, C::maj, G::maj/C, C::maj"

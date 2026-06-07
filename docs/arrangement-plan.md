@@ -1,6 +1,10 @@
 # Arrangement layer — design plan (#5)
 
-Status: **proposal / not yet implemented.**
+Status: **Phase 1 shipped.** YAML song files with sections, `repeat`/`bars`
+lengths, per-section tempo (tempo map), and per-section instruments/bass/
+percussion render end-to-end via `--song` (see `arrangement.py`,
+`songs/kiss.yml`, `tests/test_arrangement.py`). Hard cuts between sections;
+Phase 2 (transitions/fills, dynamics arc, `seconds:` target) is next.
 
 ## Goal
 Turn long-form output from a *loop* into a *piece*. Today `--mode ostinato`
