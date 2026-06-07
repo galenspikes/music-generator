@@ -256,6 +256,17 @@ python music_generator.py --seconds 60 --out my_song --no-play
 - Circle of fifths sequences
 - Modal progressions
 
+## 🧪 Testing
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest          # runs tests/ (token-grammar golden tests)
+```
+
+The token DSL (chord + percussion tokens) is the core of the engine; see the
+full **[token grammar reference](docs/token-grammar.md)**. Its behavior is
+pinned by `tests/test_tokens.py` — run the tests before/after editing any parser.
+
 ## 🛠 Development
 
 ### **Adding New Patterns**
