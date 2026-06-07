@@ -1,0 +1,44 @@
+# Auto-transcribed from a "Yesterday" (Lennon/McCartney) Real Book lead sheet.
+# Key: F major. Chords read from the chart; harmonic rhythm approximated at the
+# half-note (chord_length: h). REVIEW/EDIT — this is a first-pass import.
+title: Yesterday (import)
+tempo: 96
+soundfont: SoundFonts/arachno.sf2
+
+defaults:
+  instrument: 24            # nylon guitar
+  voices: { bass: 32 }      # acoustic bass
+  bass: { style: root, step: 1.0 }
+  satb: arpeggio
+  chord_length: h
+  perc:
+    main: "er,eg,er,eg, er,eg,er,eg"   # gentle hats
+    fill_rate: 0.05
+
+sections:
+  - name: intro
+    repeat: 1
+    satb: block
+    perc: { fill_rate: 0.0 }
+    keys: "F::maj*4"
+
+  - name: verse
+    repeat: 2
+    # F | E-7 A7 | D- | D-/C Bb | C7 | Bb/F F | C/E D- | G | Bb F
+    keys: "F::maj, E::min7, A::7, D::min, D::min/C, Bb::maj, C::7, Bb::maj/F, F::maj, C::maj/E, D::min, G::maj, Bb::maj, F::maj"
+
+  - name: bridge
+    repeat: 2
+    voices: { bass: 32, soprano: 73 }   # flute joins on the bridge
+    # E-7 A7 | D- D-/C Bb D-/A | G-6 | C7 | F
+    keys: "E::min7, A::7, D::min, D::min/C, Bb::maj, D::min/A, G::minadd6, C::7, F::maj"
+
+  - name: verse_out
+    repeat: 1
+    keys: "F::maj, E::min7, A::7, D::min, D::min/C, Bb::maj, C::7, Bb::maj/F, F::maj, C::maj/E, D::min, G::maj, Bb::maj, F::maj"
+
+  - name: coda
+    repeat: 2
+    perc: { fill_rate: 0.0 }
+    # Bb F | G | Bb F
+    keys: "Bb::maj, F::maj, G::maj, Bb::maj, F::maj"
