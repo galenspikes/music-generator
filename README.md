@@ -138,6 +138,21 @@ python music_generator.py \
 --instrument 73  # Flute
 ```
 
+#### Per-voice instruments
+By default all four SATB voices share one patch (`--instrument`). With split
+stems (on by default) each voice is on its own channel, so you can give any
+voice its own instrument — most usefully a real **bass** patch:
+
+```bash
+# epiano chords with a dedicated electric-bass voice
+--instrument epiano --voice-instrument bass=33
+
+# multiple overrides (repeatable); unset voices use --instrument
+--instrument strings --voice-instrument bass=bass --voice-instrument soprano=saw
+```
+Voices: `soprano`, `alto`, `tenor`, `bass`. Names accept aliases or GM numbers.
+Requires split stems (disabled by `--no-split-stems`).
+
 ### **Velocity Modes**
 ```bash
 # Humanized performance

@@ -50,7 +50,8 @@ G::maj, C::maj, G::maj/C, F::maj/C, G::maj/C, C::min, Bb::maj/C, C::min, F::maj,
 ./play_music --save-wav --no-play \
   --mode ostinato --keys "$KEYS" \
   --chords triads sevenths ninths sus add6 --chords-order roundrobin \
-  --bpm 148 --instrument epiano --chord-length h \
+  --bpm 148 --instrument epiano --voice-instrument bass=33 \
+  --chord-length h \
   --satb-style arpeggio --counterpoint-step 0.25 \
   --perc-main 'ebg,eg,ecg,eg, ebg,eg,ecg,eg' \
   --perc-interrupters 'ebg,eg,ecg,eg, ebg,eg,ecg,ei' 'sb,sc,sb,sc,sg,sg,sj' \
@@ -68,6 +69,8 @@ For the 20-minute version: change `--seconds 90` to `--seconds 1200`.
 ## TODO / ideas
 - Tempo: used 148 bpm (record is ~150-ish). Tune to taste.
 - Try `--instrument piano` or `saw` vs `epiano`; try `--satb-style block`.
+- Bass now has its own patch via `--voice-instrument bass=33` (electric bass).
+  Try `bass`, `pickbass`, `synthbass`, or a GM number.
 - ~~Add pedal-bass for the chorus slash chords~~ ✅ done (`/bass` suffix).
 - Add the pre-chorus #2 variant with `D::min11`.
 - Vary sections over the 20 min (chord-interrupters, fill-rate curve) so it

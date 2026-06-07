@@ -1951,9 +1951,27 @@ class MidiOut:
         return list(self.chord_tracks.items())
 
     def set_program(self, program: int, bank_msb: int = 0, bank_lsb: int = 0):
-        # Optional bank select (helps with some SF2 layouts)
+        """Set one program for every chord track (back-compat)."""
+        self.set_voice_programs(None, program, bank_msb=bank_msb,
+                                bank_lsb=bank_lsb)
+
+    def set_voice_programs(self,
+                           programs: dict[str, int] | None,
+                           default_program: int,
+                           bank_msb: int = 0,
+                           bank_lsb: int = 0):
+        """Assign a GM program per chord track.
+
+        `programs` maps a voice name (soprano/alto/tenor/bass) to a GM program
+        number. Voices not listed — and the single 'ensemble' track when stems
+        are disabled — fall back to `default_program`. Per-voice instruments
+        therefore only take effect with split stems (the default).
+        """
+        programs = programs or {}
         for key, track in self._chord_track_items():
             channel = self.chord_channels[key]
+            program = programs.get(key, default_program)
+            # Optional bank select (helps with some SF2 layouts)
             track.append(
                 Message('control_change',
                         control=0,
@@ -2529,6 +2547,14 @@ def main():
         type=str,
         default="piano",
         help="GM program: name alias (e.g., 'strings', 'flute') or 0–127")
+    ap.add_argument(
+        "--voice-instrument",
+        action="append",
+        default=[],
+        metavar="VOICE=NAME",
+        help="Per-voice instrument override, e.g. --voice-instrument bass=bass "
+        "(repeatable). Voices: soprano, alto, tenor, bass. Voices not set use "
+        "--instrument. Requires split stems (the default).")
     ap.add_argument("--bpm", type=int, default=120)
     ap.add_argument("--chord-length",
                     dest="chord_len",
@@ -2716,6 +2742,7 @@ def main():
             "keys_preset": preset_used,
             "satb_style": args.satb_style,
             "split_stems": args.split_stems,
+            "voice_instruments": args.voice_instrument,
             "counterpoint_step": args.counterpoint_step,
             "counterpoint_suspension_prob": args.counterpoint_suspension_prob,
             "counterpoint_anticipation_prob": args.counterpoint_anticipation_prob,
@@ -2778,7 +2805,30 @@ def main():
 
     program = resolve_instrument(
         args.instrument)  # 'trumpet'->56, 'trombone'->57, etc.
-    midi.set_program(program)  # one-time, at time 0
+
+    # Per-voice instrument overrides: --voice-instrument VOICE=NAME
+    voice_programs: dict[str, int] = {}
+    for spec in args.voice_instrument:
+        if "=" not in spec:
+            raise SystemExit(
+                f"--voice-instrument expects VOICE=NAME, got '{spec}'")
+        voice, name = (part.strip() for part in spec.split("=", 1))
+        voice = voice.lower()
+        if voice not in VOICE_ORDER:
+            raise SystemExit(
+                f"--voice-instrument unknown voice '{voice}'; "
+                f"choose from {', '.join(VOICE_ORDER)}")
+        if not name:
+            raise SystemExit(
+                f"--voice-instrument missing instrument name in '{spec}'")
+        voice_programs[voice] = resolve_instrument(name)
+    if voice_programs and not args.split_stems:
+        music_generator_logger.warning(
+            "--voice-instrument has no effect without split stems "
+            "(all voices share one channel); ignoring per-voice instruments.")
+        voice_programs = {}
+
+    midi.set_voice_programs(voice_programs, program)  # one-time, at time 0
 
     # ---- RENDER with independent track cursors ----
     events: list[tuple[str, float, float, object]] = []
