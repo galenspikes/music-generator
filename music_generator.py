@@ -2821,6 +2821,82 @@ def _apply_melody(args, events, seq, chord_len, beats_total, voice_max):
     return new_events, voice_max
 
 
+_EVENT_PRIORITY = {
+    "tempo": 0, "program": 1, "voice": 2, "chord": 3, "densechord": 3, "drum": 4,
+}
+
+
+def resolve_out_path(out_arg: str | None, default_slug: str) -> str:
+    """Build output/midi/<slug>/<timestamp>.mid, making the dir. <slug> is the
+    --out value (unless it's empty/the default 'out'), else default_slug."""
+    slug = out_arg if (out_arg and out_arg != "out") else default_slug
+    subdir = MIDI_DIR / slug
+    subdir.mkdir(parents=True, exist_ok=True)
+    return str(subdir / ts_filename(slug))
+
+
+def render_events(midi: "MidiOut",
+                  events: list) -> tuple[float, float, float]:
+    """Dispatch a time-sorted event stream onto a MidiOut. Handles every event
+    kind (tempo, program, voice, chord, densechord, drum). Returns the final
+    (chord_cursor, drum_cursor, voice_max) so the caller can flush to the end.
+
+    Shared by the flat render, the arrangement renderer, and the fugue/process
+    modes — one dispatch loop instead of several copies.
+    """
+    t_ch = 0.0
+    t_dr = 0.0
+    voice_max = 0.0
+    for kind, when, dur, payload in sorted(
+            events, key=lambda e: (e[1], _EVENT_PRIORITY.get(e[0], 9))):
+        if kind == "voice":
+            voice, note = payload
+            midi.play_voice_note(voice, note, when, dur)
+            voice_max = max(voice_max, when + dur)
+        elif kind == "chord":
+            if when > t_ch:
+                midi.advance_ch(when - t_ch)
+                t_ch = when
+            if when > t_dr:
+                midi.advance_dr(when - t_dr)
+                t_dr = when
+            midi.chord_block(payload, dur, when)
+            t_ch += dur
+        elif kind == "densechord":
+            if when > t_ch:
+                midi.advance_ch(when - t_ch)
+                t_ch = when
+            midi.dense_block(payload, dur, when)
+            t_ch += dur
+        elif kind == "drum":
+            if when > t_dr:
+                midi.advance_dr(when - t_dr)
+                t_dr = when
+            midi.drums_block(payload, dur, when)
+            t_dr += dur
+        elif kind == "tempo":
+            midi.set_tempo_at(payload, when)
+        elif kind == "program":
+            voice, prog = payload
+            midi.program_change_at(voice, prog, when)
+    return t_ch, t_dr, voice_max
+
+
+def _render_generated(out_path: str, bpm: int, voice_events: list, total: float,
+                      instrument: str, vel_chords: str, vel_drums: str) -> None:
+    """Create a single-timbre MidiOut, dispatch, flush, save. Used by the
+    fugue/process modes, which emit raw (voice, when, dur, note) tuples — wrap
+    them into the standard ('voice', when, dur, (voice, note)) event form."""
+    midi = MidiOut(bpm, out_path, vel_mode_chords=vel_chords,
+                   vel_mode_drums=vel_drums, split_stems=True)
+    midi.set_program(resolve_instrument(instrument))
+    events = [("voice", when, dur, (voice, note))
+              for (voice, when, dur, note) in voice_events]
+    render_events(midi, events)
+    midi.flush_to_end(total, 0.0, total)
+    midi.save()
+
+
 def main():
     start_time = datetime.now()
     music_generator_logger.info("Starting music generation")
@@ -3099,22 +3175,11 @@ def main():
         else:
             key_pc = 0
         fmode = args.melody_mode or "major"
-        slug = args.out if args.out and args.out != "out" else "fugue"
-        fug_dir = MIDI_DIR / slug
-        fug_dir.mkdir(parents=True, exist_ok=True)
-        fug_out = str(fug_dir / ts_filename(slug))
-
+        fug_out = resolve_out_path(args.out, "fugue")
         fug_events, total = fug.build_fugue(subject, key_pc, fmode,
                                             countersubject=args.fugue_countersubject)
-        midi = MidiOut(args.bpm, fug_out,
-                       vel_mode_chords=args.velocity_mode_chords,
-                       vel_mode_drums=args.velocity_mode_drums,
-                       split_stems=True)
-        midi.set_program(resolve_instrument(args.instrument))
-        for voice, when, dur, note in sorted(fug_events, key=lambda e: e[1]):
-            midi.play_voice_note(voice, note, when, dur)
-        midi.flush_to_end(total, 0.0, total)
-        midi.save()
+        _render_generated(fug_out, args.bpm, fug_events, total, args.instrument,
+                          args.velocity_mode_chords, args.velocity_mode_drums)
         log_file_operation(music_generator_logger, "write", fug_out, True)
         print(f"Wrote {fug_out}")
         return 0
@@ -3125,23 +3190,13 @@ def main():
         cell = args.process_cell or proc.DEFAULT_CELL
         key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
         pmode = args.melody_mode or "major"
-        slug = args.out if args.out and args.out != "out" else f"process_{args.process}"
-        proc_dir = MIDI_DIR / slug
-        proc_dir.mkdir(parents=True, exist_ok=True)
-        proc_out = str(proc_dir / ts_filename(slug))
-
+        proc_out = resolve_out_path(args.out, f"process_{args.process}")
         proc_events, total = proc.build_process(
             cell, key_pc, pmode, kind=args.process,
             reps=args.process_reps, stages=args.process_stages)
-        midi = MidiOut(args.bpm, proc_out,
-                       vel_mode_chords=args.velocity_mode_chords,
-                       vel_mode_drums=args.velocity_mode_drums,
-                       split_stems=True)
-        midi.set_program(resolve_instrument(args.instrument))
-        for voice, when, dur, note in sorted(proc_events, key=lambda e: e[1]):
-            midi.play_voice_note(voice, note, when, dur)
-        midi.flush_to_end(total, 0.0, total)
-        midi.save()
+        _render_generated(proc_out, args.bpm, proc_events, total,
+                          args.instrument, args.velocity_mode_chords,
+                          args.velocity_mode_drums)
         log_file_operation(music_generator_logger, "write", proc_out, True)
         print(f"Wrote {proc_out}")
         return 0
@@ -3149,11 +3204,8 @@ def main():
     # ----- arrangement (song file) path -----
     if args.song:
         import arrangement
-        song_slug = args.out if args.out and args.out != "out" else Path(
-            args.song).stem
-        song_dir = MIDI_DIR / song_slug
-        song_dir.mkdir(parents=True, exist_ok=True)
-        song_out = str(song_dir / ts_filename(song_slug))
+        default_slug = Path(args.song).stem
+        song_out = resolve_out_path(args.out, default_slug)
         spec = arrangement.load_spec(
             args.song,
             vel_mode_chords=args.velocity_mode_chords,
@@ -3318,48 +3370,10 @@ def main():
     for when, dur, hits in drum_tl:
         events.append(("drum", when, dur, hits))
 
-    kind_priority = {"voice": 0, "chord": 1, "drum": 2}
-    events.sort(key=lambda item: (item[1], kind_priority.get(item[0], 9)))
+    t_ch, t_dr, vmax = render_events(midi, events)
+    voice_max = max(voice_max, vmax)
 
-    t_ch = 0.0
-    t_dr = 0.0
-
-    for kind, when, dur, payload in events:
-        if kind == "voice":
-            voice, note = payload  # type: ignore[misc]
-            midi.play_voice_note(voice, note, when, dur)
-            voice_max = max(voice_max, when + dur)
-            continue
-
-        if kind == "chord":
-            if when > t_ch:
-                midi.advance_ch(when - t_ch)
-                t_ch = when
-            if when > t_dr:
-                midi.advance_dr(when - t_dr)
-                t_dr = when
-            midi.chord_block(payload, dur, when)
-            t_ch += dur
-            continue
-
-        if kind == "densechord":
-            if when > t_ch:
-                midi.advance_ch(when - t_ch)
-                t_ch = when
-            midi.dense_block(payload, dur, when)
-            t_ch += dur
-            continue
-
-        if when > t_dr:
-            midi.advance_dr(when - t_dr)
-            t_dr = when
-        midi.drums_block(payload, dur, when)
-        t_dr += dur
-
-    if args.satb_style in ("counterpoint", "arpeggio"):
-        t_ch = max(t_ch, voice_max)
-
-    midi.flush_to_end(t_ch, t_dr, beats_total)
+    midi.flush_to_end(max(t_ch, voice_max), t_dr, beats_total)
     midi.save()
 
     # NOTE:

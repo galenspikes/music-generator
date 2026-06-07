@@ -192,23 +192,7 @@ def render(spec: SongSpec, out_path: str) -> str:
                       vel_mode_drums=spec.vel_mode_drums,
                       split_stems=True)
 
-    t_dr = 0.0
-    for kind, when, dur, payload in events:
-        if kind == "tempo":
-            midi.set_tempo_at(payload, when)
-        elif kind == "program":
-            voice, prog = payload
-            midi.program_change_at(voice, prog, when)
-        elif kind == "voice":
-            voice, note = payload
-            midi.play_voice_note(voice, note, when, dur)
-        elif kind == "drum":
-            if when > t_dr:
-                midi.advance_dr(when - t_dr)
-                t_dr = when
-            midi.drums_block(payload, dur, when)
-            t_dr += dur
-
+    _t_ch, t_dr, _vmax = mg.render_events(midi, events)
     midi.flush_to_end(total, t_dr, total)
     midi.save()
     return out_path
