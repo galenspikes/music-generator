@@ -86,16 +86,45 @@ functions). Working tree clean.
 - **2.3 Consolidate output layout** — one convention: `output/{midi,audio,metadata}/<slug>/`.
   Migrate `play_music`'s top-level `metadata/` into it.
 
-### Tier 3 — Break up the monolith (incremental, test-guarded)
-Extract pure, already-tested pieces out of `music_generator.py`, following the
-pattern already set by `melody/fugue/process.py`:
-- **3.1 `tokens.py`** — the chord/percussion/repetition parsers (+ their tests).
-- **3.2 `theory.py`** — scales, chord recipes loader, voicing (`realize_SATB`,
-  `realize_dense`, bass).
-- **3.3 `midiout.py`** — the `MidiOut` writer.
-- **3.4 `render.py`** — timelines + event dispatch (from 2.1).
-- `music_generator.py` becomes a thin CLI over these. Each step: move, fix
-  imports, run the (now-comprehensive) test suite.
+### Tier 3 — Break up the monolith (FINALIZED PLAN, not yet executed)
+
+Status: Tier 1 ✅ and Tier 2 ✅ are done. Tier 3 below is the agreed plan.
+
+Decisions (locked): **re-export for backward compat** (slim `music_generator.py`
+does `from <mod> import *` so the sibling modules keep using `mg.X` unchanged —
+migrate their imports in a later optional pass); **~7 modules**; docs =
+**module docstrings + `docs/architecture.md`** (see Documentation pass below).
+
+**Target module map** (dependency-layered; a module only imports ones above it):
+
+| Module | Responsibility | Depends on |
+|---|---|---|
+| `mtheory.py` | `NOTE_TO_PC`, `DUR_MAP`, `GM_ALIASES`, voice ranges + channel consts, `ChordDef`, `parse_key_name`, `pc`, `clamp_to_range`, `nearest_in_register`, `resolve_instrument`, `load/get_chord_recipe` | (none internal) |
+| `percussion.py` | drum map (`load/set/get_drum_map`), perc-token parsing (`parse_single_token`/`parse_pattern`), `PercHit/PercStage/PercPlan`, drum timelines, `make_percussion_plan` | mtheory |
+| `tokens.py` | chord DSL: `parse_colon_key_token`, `key_roots` (+ `_normalize_key_token`/`_emit_*`), `parse_repetition_token`, `parse_chain_repetition` | mtheory |
+| `voicing.py` | `realize_SATB` (+`pick_soprano`/helpers), `realize_dense`, `build_bass_line`, `build_arpeggio_events`, `build_counterpoint_lines` | mtheory |
+| `midiout.py` | the `MidiOut` writer class | mtheory |
+| `composition.py` | `build_progression` + chord-family pickers, `build_chord_timeline`, `build_dense_timeline`, `build_harmony_events` | mtheory, tokens, voicing, percussion |
+| `music_generator.py` (slim) | CLI/`main`, manifest+catalog, `render_events`/`resolve_out_path`/`_render_generated`/`_apply_melody`, project paths; re-exports all the above | everything |
+
+**Execution sequence** (one module per commit; after each: run all 116 tests +
+a functional render, then commit):
+1. extract `mtheory.py`  2. `percussion.py`  3. `tokens.py`  4. `voicing.py`
+5. `midiout.py`  6. `composition.py`  7. slim `music_generator.py` + module
+docstrings  8. Documentation pass (below).
+
+**Invariants / gotchas:** bottom-up order ⇒ no circular imports; perc-token
+parsing stays *with* the drum map in `percussion.py` so `tokens.py` needn't
+depend on it; the two module-level caches (`_CHORD_RECIPES_CACHE`,
+`_ACTIVE_DRUM_MAP`) move with their functions and must exist in exactly one
+place; `import *` re-exports only public names (verified the siblings only use
+public `mg.*`).
+
+**Documentation pass (Step 8):** a module docstring on each new module
+(responsibility + deps); a keystone **`docs/architecture.md`** (this module map,
+the dependency layering, and the data-flow pipeline CLI → tokens → composition →
+voicing → MidiOut → render); a README architecture section; and a docstring
+sweep on public functions that still lack one.
 
 ### Tier 4 — Decide & document
 - **4.1 Catalog:** finish (`query_catalog` robust + documented, surfaced in
