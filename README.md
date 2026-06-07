@@ -301,6 +301,28 @@ python music_generator.py --song songs/kiss.yml --out kiss --no-play
 See [songs/kiss.yml](songs/kiss.yml) for a worked example and
 [docs/arrangement-plan.md](docs/arrangement-plan.md) for the design.
 
+## 🎹 Fugue (experimental)
+
+Generate a fugal **exposition** from a melodic subject (in the scale-degree
+[melody grammar](docs/token-grammar.md)). Voices enter one at a time with the
+subject (tonic) and answer (dominant, = subject up a fifth), the prior voice
+continues with the countersubject, and a cadence closes it.
+
+```bash
+# built-in subject, organ, D minor
+python music_generator.py --fugue --instrument organ --melody-key D --melody-mode minor --out fugue --no-play
+
+# your own subject, harpsichord
+./play_music --save-wav --no-play --fugue 'q1 q5 e4 e3 e2 e1 q7, q2 h1' \
+  --instrument harpsi --melody-key C --melody-mode major \
+  --sf2 SoundFonts/arachno.sf2 --fx lush --normalize --boost-normalize 2 --out fugue
+```
+
+This is an *exposition* (v1) — episodes, middle entries in related keys, and
+stretto/inversion devices are future work. Built on the melody primitive
+(`melody.py`): the answer is `transpose_diatonic(subject, 4)`, the default
+countersubject is `invert(subject)`.
+
 ## 🧪 Testing
 
 ```bash

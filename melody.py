@@ -242,7 +242,8 @@ def realize_melody(notes: list[MelodyNote],
                 shift = _root_degree_in_scale(root, key_pc, scale)
                 eff = _shift_degree(note, shift)
         target = _degree_pc(eff, key_pc, scale) + 12 * base_octave
-        out.append((when, dur, mg.nearest_in_register(target, lo, hi)))
+        note = mg.clamp_to_range(mg.nearest_in_register(target, lo, hi), lo, hi)
+        out.append((when, dur, note))
         when += dur
     return out
 

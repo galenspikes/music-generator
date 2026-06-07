@@ -2805,6 +2805,18 @@ def main():
         default=None,
         help="Path to a YAML song file (arrangement of sections). When set, "
         "section-based rendering is used and most other flags are ignored.")
+    ap.add_argument(
+        "--fugue",
+        type=str,
+        default=None,
+        nargs="?",
+        const="__default__",
+        help="Generate a fugal exposition from a melody subject (scale-degree "
+        "syntax). Bare --fugue uses a built-in subject. Key via --melody-key/"
+        "--melody-mode (default C major); voice timbre via --instrument.")
+    ap.add_argument("--fugue-countersubject", type=str, default=None,
+                    help="Optional countersubject (defaults to the inverted "
+                    "subject).")
     ap.add_argument("--keys",
                     type=str,
                     default=None,
@@ -3020,6 +3032,35 @@ def main():
 
     if args.seed is not None:
         random.seed(args.seed)
+
+    # ----- fugue path -----
+    if args.fugue:
+        import fugue as fug
+        subject = fug.DEFAULT_SUBJECT if args.fugue == "__default__" else args.fugue
+        if args.melody_key:
+            key_pc, _ = parse_key_name(args.melody_key)
+        else:
+            key_pc = 0
+        fmode = args.melody_mode or "major"
+        slug = args.out if args.out and args.out != "out" else "fugue"
+        fug_dir = MIDI_DIR / slug
+        fug_dir.mkdir(parents=True, exist_ok=True)
+        fug_out = str(fug_dir / ts_filename(slug))
+
+        fug_events, total = fug.build_fugue(subject, key_pc, fmode,
+                                            countersubject=args.fugue_countersubject)
+        midi = MidiOut(args.bpm, fug_out,
+                       vel_mode_chords=args.velocity_mode_chords,
+                       vel_mode_drums=args.velocity_mode_drums,
+                       split_stems=True)
+        midi.set_program(resolve_instrument(args.instrument))
+        for voice, when, dur, note in sorted(fug_events, key=lambda e: e[1]):
+            midi.play_voice_note(voice, note, when, dur)
+        midi.flush_to_end(total, 0.0, total)
+        midi.save()
+        log_file_operation(music_generator_logger, "write", fug_out, True)
+        print(f"Wrote {fug_out}")
+        return 0
 
     # ----- arrangement (song file) path -----
     if args.song:
