@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./venv/bin/python --version)",
+      "Bash(./venv/bin/python -c \"import mido, numpy; print\\('mido', mido.__version__, 'numpy', numpy.__version__\\)\")",
+      "Bash(./venv/bin/python music_generator.py --seconds 4 --out _assess_test --no-play)",
+      "Bash(grep -in \"def \\\\|return \\\\|pass$\\\\|NotImplemented\\\\|TODO\" services/harmony.py)",
+      "Bash(python3 -c \"import mido, numpy; print\\('ok', mido.__version__, numpy.__version__\\)\")",
+      "Bash(venv/bin/python3 --version)",
+      "Read(//opt/homebrew/opt/python@3.13/**)",
+      "Bash(python3 -m venv venv_new)",
+      "Bash(venv_new/bin/pip install *)",
+      "Bash(venv_new/bin/python music_generator.py --seconds 4 --out _assess_test --no-play)",
+      "Bash(xargs -n1 basename)",
+      "Bash(git init *)",
+      "Bash(git -c user.name='Galen Spikes' -c user.email='galen@local' add -A)",
+      "Bash(git -c user.name='x' -c user.email='x@x' status --short)",
+      "Bash(git -c user.name='Galen Spikes' -c user.email='galen@local' commit -q -m \"Baseline before cleanup \\(includes misc/ scratch + services/ refactor\\)\")"
+    ]
+  }
+}

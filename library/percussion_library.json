@@ -1,0 +1,316 @@
+{
+  "schema_version": 1,
+  "notes": "Groups addressed as <style>:<meter>:<tempo>. Each group has 'main' (loop choices) and 'interrupters' (motifs). Token letters map to GM percussion via 'drum_map'. Lengths: w,h,q,e,s,t.",
+  "drum_map": {
+    "a": {
+      "note": 35,
+      "label": "Acoustic Bass Drum"
+    },
+    "b": {
+      "note": 36,
+      "label": "Bass Drum 1"
+    },
+    "c": {
+      "note": 38,
+      "label": "Acoustic Snare"
+    },
+    "d": {
+      "note": 40,
+      "label": "Electric Snare"
+    },
+    "e": {
+      "note": 37,
+      "label": "Side Stick / Rimshot"
+    },
+    "f": {
+      "note": 39,
+      "label": "Hand Clap"
+    },
+    "g": {
+      "note": 42,
+      "label": "Closed Hi-Hat"
+    },
+    "h": {
+      "note": 44,
+      "label": "Pedal Hi-Hat"
+    },
+    "i": {
+      "note": 46,
+      "label": "Open Hi-Hat"
+    },
+    "j": {
+      "note": 49,
+      "label": "Crash Cymbal 1"
+    },
+    "k": {
+      "note": 51,
+      "label": "Ride Cymbal 1"
+    },
+    "l": {
+      "note": 53,
+      "label": "Ride Bell"
+    },
+    "m": {
+      "note": 57,
+      "label": "Crash Cymbal 2"
+    },
+    "n": {
+      "note": 59,
+      "label": "Ride Cymbal 2"
+    },
+    "o": {
+      "note": 55,
+      "label": "Splash Cymbal"
+    },
+    "p": {
+      "note": 52,
+      "label": "Chinese Cymbal"
+    },
+    "q": {
+      "note": 41,
+      "label": "Low Floor Tom"
+    },
+    "s": {
+      "note": 45,
+      "label": "Low Tom"
+    },
+    "t": {
+      "note": 47,
+      "label": "Low-Mid Tom"
+    },
+    "u": {
+      "note": 48,
+      "label": "Hi-Mid Tom"
+    },
+    "v": {
+      "note": 50,
+      "label": "High Tom"
+    },
+    "w": {
+      "note": 54,
+      "label": "Tambourine"
+    },
+    "x": {
+      "note": 56,
+      "label": "Cowbell"
+    },
+    "y": {
+      "note": 69,
+      "label": "Cabasa"
+    },
+    "z": {
+      "note": 70,
+      "label": "Maracas"
+    }
+  },
+  "groups": {
+    "rock:4/4:med": {
+      "bpm_hint": [
+        108,
+        126
+      ],
+      "main": [
+        "ekh,eh,esh,eh,ekh,eh,esh,eh",
+        "qk,eh,esh,eh,qk,eh,esh,eh",
+        "ekh,eh,eh,eh,ekh,eh,esh,eh"
+      ],
+      "interrupters": [
+        "sh,sh,skh,sh,ssh,sh,sh,sh",
+        "sh,skh,sh,sh,ssh,sh,skh,sh",
+        "ek,er,ek,esh",
+        "qsh,er,ek"
+      ]
+    },
+    "rock:4/4:fast": {
+      "bpm_hint": [
+        126,
+        150
+      ],
+      "main": [
+        "ekh,ekh,esh,eh,ekh,eh,esh,ekh",
+        "eh,eh,esh,eh,ekh,eh,esh,eh"
+      ],
+      "interrupters": [
+        "sh,sh,sh,skh,sh,sh,ssh,sh,sh,skh,sh,sh",
+        "skh,sh,sh,skh,sh,ssh,sh,sh",
+        "tsh,tsh,skh,er,ek"
+      ]
+    },
+    "rock:4/4:halftime": {
+      "bpm_hint": [
+        96,
+        116
+      ],
+      "main": [
+        "eh,esh,eh,eh,ekh,eh,esh,eh",
+        "eh,er,esh,eh,ekh,eh,eh,eh"
+      ],
+      "interrupters": [
+        "sh,sh,sh,ssh,sh,sh,skh,sh",
+        "qsh,er,ek"
+      ]
+    },
+    "blues:4/4:shuffle": {
+      "bpm_hint": [
+        90,
+        120
+      ],
+      "main": [
+        "eh,sh,eh,sh,eh,sh,eh,sh",
+        "eh,eh,sh,eh,eh,sh,eh,eh"
+      ],
+      "interrupters": [
+        "sh,er,sh,er,skh",
+        "er,ek,er,esh"
+      ]
+    },
+    "jazz:4/4:swing": {
+      "bpm_hint": [
+        140,
+        200
+      ],
+      "main": [
+        "qh,er,eh,er,qh,er,eh,er",
+        "qh,er,er,eh,qh,er,eh,er"
+      ],
+      "interrupters": [
+        "sh,er,sh,er,skh,er,sh",
+        "er,skh,er,sh,er,sh"
+      ]
+    },
+    "funk:4/4:med": {
+      "bpm_hint": [
+        96,
+        110
+      ],
+      "main": [
+        "ekh,er,skh,er,ekh,er,skh,er",
+        "ekh,er,esh,er,ekh,er,esh,er"
+      ],
+      "interrupters": [
+        "sh,er,skh,sh,er,skh",
+        "skh,er,sh,er,sh"
+      ]
+    },
+    "salsa:4/4:clave-3-2": {
+      "bpm_hint": [
+        92,
+        120
+      ],
+      "main": [
+        "qw,ew,er,qw,er,ew,qw,er",
+        "eh,er,eh,er,eh,er,eh,er"
+      ],
+      "interrupters": [
+        "sh,sh,er,sh,sh,er,qw",
+        "er,w,er,sh,er,w"
+      ]
+    },
+    "bossa:4/4:med": {
+      "bpm_hint": [
+        120,
+        140
+      ],
+      "main": [
+        "eh,er,eh,er,eh,er,eh,er",
+        "eh,er,ekh,er,eh,er,ekh,er"
+      ],
+      "interrupters": [
+        "sh,er,sh,er",
+        "qsh"
+      ]
+    },
+    "afro:12/8:med": {
+      "bpm_hint": [
+        96,
+        120
+      ],
+      "main": [
+        "sh,th,th,sh,th,th,sh,th,th,sh,th,th"
+      ],
+      "interrupters": [
+        "sh,sh,sh,er,sh,sh,sh",
+        "skh,er,sh,sh,skh"
+      ]
+    },
+    "metal:4/4:blast-lite": {
+      "bpm_hint": [
+        160,
+        190
+      ],
+      "main": [
+        "sh,sh,sh,sh,skh,sh,sh,sh,sh,ssh,sh,sh,sh,skh,sh,sh",
+        "sh,sh,skh,sh,sh,ssh,sh,sh,sh,skh,sh,sh"
+      ],
+      "interrupters": [
+        "qc,er,sh,sh,skh,sh,ssh",
+        "sh,skh,sh,sh,ssh"
+      ]
+    },
+    "accents:4/4:openhat": {
+      "bpm_hint": [
+        100,
+        160
+      ],
+      "main": [],
+      "interrupters": [
+        "so,so,er,so",
+        "qo,er,so,so",
+        "so,er,so,er,qo"
+      ]
+    },
+    "accents:4/4:cowbell": {
+      "bpm_hint": [
+        90,
+        160
+      ],
+      "main": [],
+      "interrupters": [
+        "qw,er,sw,sw",
+        "sw,sw,sw,sw",
+        "ew,er,ew,er"
+      ]
+    },
+    "fills:4/4:tomrim": {
+      "bpm_hint": [
+        100,
+        160
+      ],
+      "main": [],
+      "interrupters": [
+        "sm,sm,st,st",
+        "em,em,et,et",
+        "tm,tm,tm,er,st,st"
+      ]
+    },
+    "accents:4/4:clap": {
+      "bpm_hint": [
+        100,
+        160
+      ],
+      "main": [],
+      "interrupters": [
+        "sp,sp,sp,sp",
+        "qp,er,sp,sp",
+        "ep,ep,er,sp"
+      ]
+    },
+    "jazz:5/4:takefive": {
+      "bpm_hint": [
+        160,
+        180
+      ],
+      "main": [
+        "qh,eh,eh,eh,eh",
+        "qk,er,er,er,ek",
+        "qr,qs,qr,qr,qr"
+      ],
+      "interrupters": [
+        "sh,sh,sh,sh,sh",
+        "qk,qs,qh,qr,ek",
+        "eh,er,eh,er,eh",
+        "ek,er,es,es,eq"
+      ]
+    }
+  }
+}

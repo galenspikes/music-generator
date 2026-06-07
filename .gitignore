@@ -1,0 +1,19 @@
+# --- Generated audio/MIDI output (regenerable) ---
+output/
+metadata/
+
+# --- Large binary assets (not tracked; keep locally / download separately) ---
+SoundFonts/
+
+# --- Python ---
+venv/
+venv_new/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# --- OS / editor cruft ---
+.DS_Store
+*.swp
+log/

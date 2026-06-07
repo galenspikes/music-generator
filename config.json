@@ -1,0 +1,7 @@
+{
+  "default_sf2": "SoundFonts/arachno.sf2",
+  "default_wrapper_flags": [
+    ["--output-dir", "output/audio"]
+  ],
+  "default_generator_flags": []
+}

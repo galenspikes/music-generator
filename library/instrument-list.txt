@@ -1,0 +1,143 @@
+0: piano
+1: brightpiano
+2: electricgrand
+3: honkytonk
+4: electricpiano1
+5: electricpiano2
+6: harpsichord
+7: clav
+
+8: celesta
+9: glock
+10: musicbox
+11: vibes
+12: marimba
+13: xylophone
+14: tubebell
+15: dulcimer
+
+16: drawbarorgan
+17: percussiveorgan
+18: rockorgan
+19: organ
+20: reedorgan
+21: accordion
+22: harmonica
+23: bandoneon
+
+24: guitar
+25: steelguitar
+26: jazzguitar
+27: cleaneguitar
+28: mutedguitar
+29: overdriveguitar
+30: distguitar
+31: guitarnharmonics
+
+32: acousticbass
+33: fingerbass
+34: pickbass
+35: fretlessbass
+36: slapbass1
+37: slapbass2
+38: synthbass1
+39: synthbass2
+
+40: violin
+41: viola
+42: cello
+43: contrabass
+44: tremstrings
+45: pizzicato
+46: harp
+47: timpani
+
+48: strings
+49: slowstrings
+50: synthstrings
+51: synthstrings2
+52: choir
+53: soprano
+54: voice
+55: synthchoir
+
+56: trumpet
+57: trombone
+58: tuba
+59: mutedtrumpet
+60: horn
+61: brass
+62: synthbrass1
+63: synthbrass2
+
+64: soprano_sax
+65: sax
+66: altosax
+67: tenorsax
+68: oboe
+69: englishhorn
+70: bassoon
+71: clarinet
+
+72: piccolo
+73: flute
+74: recorder
+75: panflute
+76: blownbottle
+77: shakuhachi
+78: whistle
+79: ocarina
+
+80: squarelead
+81: sawlead
+82: calliopelead
+83: chifflead
+84: charang
+85: voicinglead
+86: fifthslead
+87: basslead
+
+88: padnewage
+89: padwarm
+90: padpolysynth
+91: padchoir
+92: padbowed
+93: padmetallic
+94: padhalo
+95: padfx
+
+96: icefx
+97: soundtrackfx
+98: crystalfx
+99: atmospherefx
+100: brightnessfx
+101: goblinsfx
+102: echoesfx
+103: scififx
+
+104: sitar
+105: banjo
+106: shamisen
+107: koto
+108: kalimba
+109: bagpipe
+110: fiddle
+111: shanai
+
+112: tinkerbell
+113: agogo
+114: steel_drums
+115: woodblock
+116: taiko
+117: melodic_tom
+118: synthdrum
+119: reversedcymbal
+
+120: guitrefx
+121: breathnoise
+122: seashore
+123: birdtweet
+124: telephone
+125: helicopt
+126: applause
+127: gunshot

@@ -1,0 +1,798 @@
+{
+  "schema_version": 1,
+  "notes": "Keys presets for --keys-preset option.",
+  "presets": {
+    "modal_g_eb_gm_long": {
+      "description": "10-minute modal journey (G maj \u2192 Eb maj \u2192 G min).",
+      "sections": {
+        "intro_cycle": 48,
+        "g_major_hold": 32,
+        "eb_major_hold": 32,
+        "g_minor_hold": 356
+      },
+      "blocks": [
+        {
+          "sequence": [
+            "G::maj9",
+            "G:1:maj7add9",
+            "G:2:majadd6",
+            "G:1:sus2add6",
+            "D:2:sus4add7",
+            "G::maj9",
+            "Em::min11",
+            "B:1:min9"
+          ],
+          "repeat": 6
+        },
+        {
+          "sequence": [
+            "G:1:sus2add6"
+          ],
+          "repeat": 32
+        },
+        {
+          "sequence": [
+            "D:1:sus4add7"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Em::min11"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "C:1:majadd6"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Bm::min9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "D::9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "G:2:maj7add9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Ebm::min9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "F:1:sus4add7"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Eb::maj9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Ab:1:sus2add6"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Bb::9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Gb::maj9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Ab:2:sus4add7"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Gm::min9"
+          ],
+          "repeat": 24
+        },
+        {
+          "sequence": [
+            "Gm:2:min11"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Bb:1:majadd6"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Eb::maj9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Cm::sus2add6"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "F:1:9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "D::9"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Gm:1:sus4add7"
+          ],
+          "repeat": 16
+        },
+        {
+          "sequence": [
+            "Eb:2:maj7add9"
+          ],
+          "repeat": 12
+        },
+        {
+          "sequence": [
+            "Cm::min11"
+          ],
+          "repeat": 12
+        },
+        {
+          "sequence": [
+            "Bb::sus4add7"
+          ],
+          "repeat": 12
+        },
+        {
+          "sequence": [
+            "D:2:9"
+          ],
+          "repeat": 8
+        }
+      ],
+      "preview": [
+        "G::maj9",
+        "G:1:maj7add9",
+        "G:2:majadd6",
+        "G:1:sus2add6",
+        "D:2:sus4add7",
+        "G::maj9",
+        "Em::min11",
+        "B:1:min9",
+        "G::maj9",
+        "G:1:maj7add9",
+        "G:2:majadd6",
+        "G:1:sus2add6",
+        "D:2:sus4add7",
+        "G::maj9",
+        "Em::min11",
+        "B:1:min9"
+      ]
+    },
+    "twelve_bar_blues_g": {
+      "description": "Classic 12-bar blues in G, repeated four times.",
+      "bars": 48,
+      "blocks": [
+        {
+          "sequence": [
+            "G::7",
+            "C::7",
+            "G::7",
+            "G::7",
+            "C::7",
+            "C::7",
+            "G::7",
+            "G::7",
+            "D::7",
+            "C::7",
+            "G::7",
+            "D::7"
+          ],
+          "repeat": 4
+        }
+      ],
+      "preview": [
+        "G::7",
+        "C::7",
+        "G::7",
+        "G::7",
+        "C::7",
+        "C::7",
+        "G::7",
+        "G::7",
+        "D::7",
+        "C::7",
+        "G::7",
+        "D::7",
+        "G::7",
+        "C::7",
+        "G::7",
+        "G::7"
+      ]
+    },
+    "bebop_f_turnaround": {
+      "description": "Bebop rhythm-change cycle in F major (64 bars).",
+      "bars": 64,
+      "blocks": [
+        {
+          "sequence": [
+            "F",
+            "Gm7",
+            "C7",
+            "F6",
+            "D7",
+            "G7",
+            "C7",
+            "F6",
+            "A7",
+            "Dm7",
+            "G7",
+            "C7",
+            "F6",
+            "Am7",
+            "D7",
+            "G7"
+          ],
+          "repeat": 4
+        }
+      ],
+      "preview": [
+        "F",
+        "Gm7",
+        "C7",
+        "F6",
+        "D7",
+        "G7",
+        "C7",
+        "F6",
+        "A7",
+        "Dm7",
+        "G7",
+        "C7",
+        "F6",
+        "Am7",
+        "D7",
+        "G7"
+      ]
+    },
+    "mathrock_circle": {
+      "description": "Math-rock inspired circle of fourths with chromatic sidesteps.",
+      "bars": 32,
+      "blocks": [
+        {
+          "sequence": [
+            "D"
+          ]
+        },
+        {
+          "sequence": [
+            "G"
+          ]
+        },
+        {
+          "sequence": [
+            "C"
+          ]
+        },
+        {
+          "sequence": [
+            "F"
+          ]
+        },
+        {
+          "sequence": [
+            "Bb"
+          ]
+        },
+        {
+          "sequence": [
+            "Eb"
+          ]
+        },
+        {
+          "sequence": [
+            "Ab"
+          ]
+        },
+        {
+          "sequence": [
+            "Db"
+          ]
+        },
+        {
+          "sequence": [
+            "Gb"
+          ]
+        },
+        {
+          "sequence": [
+            "B"
+          ]
+        },
+        {
+          "sequence": [
+            "E"
+          ]
+        },
+        {
+          "sequence": [
+            "A"
+          ]
+        },
+        {
+          "sequence": [
+            "D"
+          ]
+        },
+        {
+          "sequence": [
+            "F#"
+          ]
+        },
+        {
+          "sequence": [
+            "B"
+          ]
+        },
+        {
+          "sequence": [
+            "D#"
+          ]
+        },
+        {
+          "sequence": [
+            "G"
+          ]
+        },
+        {
+          "sequence": [
+            "C"
+          ]
+        },
+        {
+          "sequence": [
+            "F"
+          ]
+        },
+        {
+          "sequence": [
+            "Bb"
+          ]
+        },
+        {
+          "sequence": [
+            "Eb"
+          ]
+        },
+        {
+          "sequence": [
+            "G#"
+          ]
+        },
+        {
+          "sequence": [
+            "B"
+          ]
+        },
+        {
+          "sequence": [
+            "E"
+          ]
+        },
+        {
+          "sequence": [
+            "A"
+          ]
+        },
+        {
+          "sequence": [
+            "C#"
+          ]
+        },
+        {
+          "sequence": [
+            "F#"
+          ]
+        },
+        {
+          "sequence": [
+            "B"
+          ]
+        },
+        {
+          "sequence": [
+            "E"
+          ]
+        },
+        {
+          "sequence": [
+            "A"
+          ]
+        },
+        {
+          "sequence": [
+            "D"
+          ]
+        },
+        {
+          "sequence": [
+            "G"
+          ]
+        }
+      ],
+      "preview": [
+        "D",
+        "G",
+        "C",
+        "F",
+        "Bb",
+        "Eb",
+        "Ab",
+        "Db",
+        "Gb",
+        "B",
+        "E",
+        "A",
+        "D",
+        "F#",
+        "B",
+        "D#"
+      ]
+    },
+    "yacht_smooth": {
+      "description": "Soft-rock cadence cycling through extended diatonic colors in F.",
+      "bars": 32,
+      "blocks": [
+        {
+          "sequence": [
+            "F"
+          ]
+        },
+        {
+          "sequence": [
+            "Am"
+          ]
+        },
+        {
+          "sequence": [
+            "Dm"
+          ]
+        },
+        {
+          "sequence": [
+            "Gm"
+          ]
+        },
+        {
+          "sequence": [
+            "C7"
+          ]
+        },
+        {
+          "sequence": [
+            "F"
+          ]
+        },
+        {
+          "sequence": [
+            "Am"
+          ]
+        },
+        {
+          "sequence": [
+            "Bbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gm7"
+          ]
+        },
+        {
+          "sequence": [
+            "C9"
+          ]
+        },
+        {
+          "sequence": [
+            "Fmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Am7"
+          ]
+        },
+        {
+          "sequence": [
+            "Bbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "C13"
+          ]
+        },
+        {
+          "sequence": [
+            "Fmaj9"
+          ]
+        },
+        {
+          "sequence": [
+            "Gm9"
+          ]
+        },
+        {
+          "sequence": [
+            "F"
+          ]
+        },
+        {
+          "sequence": [
+            "Am"
+          ]
+        },
+        {
+          "sequence": [
+            "Bbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "C7"
+          ]
+        },
+        {
+          "sequence": [
+            "Fmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Am7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gm7"
+          ]
+        },
+        {
+          "sequence": [
+            "C7"
+          ]
+        },
+        {
+          "sequence": [
+            "Fmaj9"
+          ]
+        },
+        {
+          "sequence": [
+            "Bbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gm7"
+          ]
+        },
+        {
+          "sequence": [
+            "C9"
+          ]
+        },
+        {
+          "sequence": [
+            "Fmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gm9"
+          ]
+        },
+        {
+          "sequence": [
+            "Am7"
+          ]
+        },
+        {
+          "sequence": [
+            "C7"
+          ]
+        }
+      ],
+      "preview": [
+        "F",
+        "Am",
+        "Dm",
+        "Gm",
+        "C7",
+        "F",
+        "Am",
+        "Bbmaj7",
+        "Gm7",
+        "C9",
+        "Fmaj7",
+        "Am7",
+        "Bbmaj7",
+        "C13",
+        "Fmaj9",
+        "Gm9"
+      ]
+    },
+    "afro_cuban_cycle": {
+      "description": "12/8 Afro-Cuban modal vamp cycling Ab \u2192 Db \u2192 Bbm with turnarounds.",
+      "bars": 36,
+      "blocks": [
+        {
+          "sequence": [
+            "Abm7",
+            "Db7",
+            "Gbmaj7",
+            "Bbm7"
+          ],
+          "repeat": 3
+        },
+        {
+          "sequence": [
+            "Ebm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Ab7"
+          ]
+        },
+        {
+          "sequence": [
+            "Dbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gb7"
+          ]
+        },
+        {
+          "sequence": [
+            "Abm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Db7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Bbm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Fm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Bb7"
+          ]
+        },
+        {
+          "sequence": [
+            "Ebmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Ab7"
+          ]
+        },
+        {
+          "sequence": [
+            "Abm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Db7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gbmaj7",
+            "Bbm7"
+          ],
+          "repeat": 2
+        },
+        {
+          "sequence": [
+            "Ebm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Ab7"
+          ]
+        },
+        {
+          "sequence": [
+            "Dbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Gbmaj7"
+          ]
+        },
+        {
+          "sequence": [
+            "Bbm7"
+          ]
+        },
+        {
+          "sequence": [
+            "Ebm7"
+          ]
+        }
+      ],
+      "preview": [
+        "Abm7",
+        "Db7",
+        "Gbmaj7",
+        "Bbm7",
+        "Abm7",
+        "Db7",
+        "Gbmaj7",
+        "Bbm7",
+        "Abm7",
+        "Db7",
+        "Gbmaj7",
+        "Bbm7",
+        "Ebm7",
+        "Ab7",
+        "Dbmaj7",
+        "Gb7"
+      ]
+    }
+  }
+}

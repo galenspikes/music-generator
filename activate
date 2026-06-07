@@ -1,0 +1,46 @@
+#!/bin/bash
+# Fluidsynth Music Generator - Virtual Environment Activation Script
+# Usage: source activate
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/venv"
+
+# Check if virtual environment exists
+if [ ! -d "$VENV_DIR" ]; then
+    echo "❌ Virtual environment not found at $VENV_DIR"
+    echo "   Please run: python -m venv venv"
+    return 1
+fi
+
+# Check if activation script exists
+if [ ! -f "$VENV_DIR/bin/activate" ]; then
+    echo "❌ Virtual environment activation script not found"
+    echo "   Please recreate the virtual environment"
+    return 1
+fi
+
+# Activate the virtual environment
+echo "🎵 Activating Fluidsynth Music Generator environment..."
+source "$VENV_DIR/bin/activate"
+
+# Verify activation
+if [ "$VIRTUAL_ENV" = "$VENV_DIR" ]; then
+    echo "✅ Virtual environment activated successfully!"
+    echo "   Python: $(which python)"
+    echo "   Pip: $(which pip)"
+    echo ""
+    echo "🎼 Available commands:"
+    echo "   python music_generator.py --help"
+    echo "   python cook_song.py --help"
+    echo "   python cook_song.py list"
+    echo ""
+    echo "💡 Quick start:"
+    echo "   python music_generator.py --seconds 30 --out my_song"
+    echo "   python cook_song.py make bebop"
+else
+    echo "❌ Failed to activate virtual environment"
+    return 1
+fi
+
+

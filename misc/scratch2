@@ -1,0 +1,414 @@
+generative music...
+i would like to release some of these in an album or EP
+
+def want 
+billie jean, mathrock_blues_A (name tbd), superstition,
+mathrock_blues_A_2025-09-15_211955.wav
+
+
+# THIS WAS GREAT
+# MAKE A SHORTER VERSION AND WE ARE GOOD
+./play_music \
+  --seconds 1200 \
+  --bpm 176 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'A,A,A,A,D,D,A,A,E,D,A,E' \
+  --chords triads sevenths ninths quartal sus add6 \
+  --chords-order roundrobin \
+  --chord-len e \
+  --perc-main 'sbg,sr,sg,sb,scg,sr,sg,sb,sg,sr,sbg,sr,scg,sr,sg,sb' \
+  --perc-interrupters 'sq,ss,st,su,sv,sv,su,st,ss,sq,scg,sg,sg,sj,sg,sg' \
+  --perc-fill-rate 0.28 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.7 --reverb 1 --chorus 1 --poly 768 \
+  --chorus-super \
+  --normalize --boost-normalize 2 \
+  --out mathrock_blues_A
+
+./play_music \
+  --seconds 300 \
+  --bpm 176 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'A,A,A,A,D,D,A,A,E,D,A,E' \
+  --chords triads sevenths ninths quartal sus add6 \
+  --chords-order roundrobin \
+  --chord-len e \
+  --perc-main 'sbg,sr,sg,sb,scg,sr,sg,sb,sg,sr,sbg,sr,scg,sr,sg,sb' \
+  --perc-interrupters 'sq,ss,st,su,sv,sv,su,st,ss,sq,scg,sg,sg,sj,sg,sg' \
+  --perc-fill-rate 0.28 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.7 --reverb 1 --chorus 1 --poly 768 \
+  --chorus-super \
+  --normalize --boost-normalize 2 \
+  --out mathrock_blues_A
+
+play_music \
+  --seconds 1200 \
+  --bpm 180 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'A,A,A,A,D,D,A,A,E,D,A,E' \
+  --chords triads sevenths ninths quartal sus add6 \
+  --chords-order roundrobin \
+  --chord-len e \
+  --perc-main 'sbg,sr,sg,sb,scg,sr,sg,sb,sg,sr,sbg,sr,scg,sr,sg,sb' \
+  --perc-interrupters 'sq,ss,st,su,sv,sv,su,st,ss,sq,scg,sg,sg,sj,sg,sg' \
+  --perc-fill-rate 0.28 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --poly 768 \
+  --out mathrock_blues_A
+
+  ## superstition
+ ./play_music \
+  --seconds 60 \
+  --bpm 104 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,B,B,C,C,B,B,Bb,Bb,A,A,A,A,B,B,B,B' \
+  --chords sevenths ninths extended-chords lyd-dom sus \
+  --chords-order roundrobin \
+  --chord-len q \
+  --chord-fill-rate 0.18 \
+  --perc-main 'qb,qg,qc,qg' \
+  --perc-interrupters 'sb,sg,scg,sg' \
+  --perc-fill-rate 0.16 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.50 --reverb 0 --chorus 0 --poly 512 \
+  --out superstition_fullform_dry
+
+  ./play_music \
+  --seconds 120 \
+  --bpm 116 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb, Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb, B,B,B,B,C,C,C,C,B,B,B,B,Bb,Bb,Bb,Bb, A,A,A,A,A,A,A,A, B,B,B,B,B,B,B,B' \
+  --chords sevenths ninths extended-chords lyd-dom sus \
+  --chords-order roundrobin \
+  --chord-len e \
+  --chord-fill-rate 0.20 \
+  --perc-main 'eg,eg,qb,eg,qc,eg,qb,eg, eg,eg,qc,eg,eg,eg,qb,eg,  eg,eg,qb,eg,qc,eg,qb,eg, eg,eg,qc,eg,eg,eg,qb,eg' \
+  --perc-interrupters 'sb,sg,scg,ss,st,su,sv,sj, sb,sg,scg,ss,st,su,sv,sj' \
+  --perc-fill-rate 0.16 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.45 --reverb 0 --chorus 0 --poly 512 \
+  --out superstition_hybrid_drive_dry
+
+  # billie jean
+  # this is the one
+./play_music \
+  --seconds 300 \
+  --bpm 117 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'F#m,F#m,F#m,G#m,G#m,G#m,G#m,G#m, A,A,A,G#m,G#m,G#m,G#m,G#m' \
+  --chords sevenths sevenths sevenths ninths sus add6 \
+  --chords-order random \
+  --chord-len e \
+  --chord-fill-rate 0.06 \
+  --perc-main 'ebg,eg,ecg,ebg,eg,eg,ecg,eg, ebg,eg,ecg,ebg,eg,ei,ecg,eg' \
+  --perc-interrupters \
+    'eg,eg,ecg,eg,eg,eg,ecg,eg' \
+    'eg,ec,ecg,eg,ec,eg,ecg,eg' \
+    'es,eg,et,ecg,eu,eg,ev,ecg' \
+  --perc-fill-rate 0.1 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.45 --reverb 0 --chorus 0 --poly 512 \
+  --out billiejean_vamp_dry
+
+
+./play_music \
+  --seconds 300 \
+  --bpm 320 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'Bb,Bb,G,G,C,C,F,F, Bb,Bb,G,G,C,C,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Ab,Ab,Bb,Bb,G,G,C,C,F,F, D,D,D,D,G,G,G,G,C,C,C,C,F,F,F,F, Bb,Bb,G,G,C,C,F,F, Bb,Bb,G,G,C,C,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Ab,Ab,Bb,Bb,G,G,C,C,F,F' \
+  --chords sevenths ninths \
+  --chords-order roundrobin \
+  --chord-len e \
+  --chord-fill-rate 0.12 \
+  --perc-main 'qj,eg,qc,eg' \
+  --perc-interrupters 'ss,st,su,sv,sc' \
+  --perc-fill-rate 0.10 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.45 --reverb 0 --chorus 0 --poly 512 \
+  --out rhythm_changes_bb_fast
+
+# I GOT RHYTHM
+./play_music \
+  --seconds 200 \
+  --bpm 200 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'Bb,Bb,Gm,Gm,Cm,Cm,F,F, Dm,Dm,Gm,Gm,Cm,Cm,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Em,Em, Bb,Bb,F,F,Bb,Bb,F,F,  Bb,Bb,Gm,Gm,Cm,Cm,F,F, Dm,Dm,Gm,Gm,Cm,Cm,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Em,Em, Bb,Bb,F,F,Bb,Bb,F,F,  D,D,D,D,D,D,D,D, G,G,G,G,G,G,G,G, C,C,C,C,C,C,C,C, F,F,F,F,F,F,F,F,  D,D,D,D,D,D,D,D, G,G,G,G,G,G,G,G, C,C,C,C,C,C,C,C, F,F,F,F,F,F,F,F,  Bb,Bb,Gm,Gm,Cm,Cm,F,F, Dm,Dm,Gm,Gm,Cm,Cm,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Em,Em, Bb,Bb,F,F,Bb,Bb,F,F' \
+  --chords sevenths sevenths sevenths sevenths triads ninths add6 \
+  --chord-interrupters \
+    'er,ec,er,ec, ec,er,ec,er' \
+    'ec,er,ec,er, er,ec,er,ec' \
+    'er,er,ec,er, ec,er,er,ec' \
+    'ec,er,er,ec, er,ec,er,er' \
+    'er,ec,er,er, ec,ec,er,ec' \
+    'ec,er,ec,er, ec,er,er,er' \
+    'er,ec,er,ec, ec,er,er,ec' \
+    'ec,er,er,er, ec,er,ec,ec' \
+  --chords-order roundrobin \
+  --chord-len q \
+  --chord-fill-rate 0.30 \
+  --perc-main 'ek,eg,ekh,ec, ek,eg,ekh,eg' \
+  --perc-interrupters \
+    'eg,eg,ecg,eg,eg,eg,ecg,eg' \
+    'eg,ec,eg,ec,eg,ec,ecg,eg' \
+    'eb,eg,ecg,eg,eb,eg,ecg,eg' \
+    'es,et,eu,ev,es,et,eu,ev' \
+    'ecg,es,ecg,et,ecg,eu,ecg,ev' \
+    'eg,eg,ecg,eg,eg,eg,ecg,eh' \
+    'eb,ecg,eg,eb,eg,ecg,eg,eg' \
+    'eg,ecl,eg,ecg,eg,eg,ecg,eg' \
+  --perc-fill-rate 0.09 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.40 --reverb 0 --chorus 0 --poly 768 \
+  --out rhythm_changes_bb_cherokee_dry
+
+# ALL THE THINGS YOU ARE
+./play_music \
+  --seconds 120 \
+  --bpm 160 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  E,E,E,E, A,A,A,A, D,D,D,D, G,G,G,G, C,C,C,C, F#,F#,F#,F#, B,B,B,B, B,B,B,B,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab' \
+  --chords sevenths ninths \
+  --chords-order roundrobin \
+  --chord-len q \
+  --chord-fill-rate 0.25 \
+  --chord-interrupters \
+    'er,ec,er,ec, ec,er,ec,er' \
+    'ec,er,ec,er, er,ec,er,ec' \
+    'er,er,ec,er, ec,er,er,ec' \
+    'ec,er,er,ec, er,ec,er,er' \
+    'er,ec,er,er, ec,ec,er,ec' \
+  --perc-main 'ek,eg,ekh,ec, ek,eg,ekh,eg' \
+  --perc-interrupters \
+    'eg,eg,ecg,eg,eg,eg,ecg,eg' \
+    'eg,ec,eg,ec,eg,ec,ecg,eg' \
+    'eb,eg,ecg,eg,eb,eg,ecg,eg' \
+    'es,et,eu,ev,es,et,eu,ev' \
+    'ecg,es,ecg,et,ecg,eu,ecg,ev' \
+  --perc-fill-rate 0.12 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.40 --reverb 0 --chorus 0 --poly 768 \
+  --out allthethings_ab_dry
+
+  ./play_music \
+  --seconds 120 \
+  --bpm 160 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  E,E,E,E, A,A,A,A, D,D,D,D, G,G,G,G, C,C,C,C, F#,F#,F#,F#, B,B,B,B, B,B,B,B,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab' \
+  --chords sevenths sevenths ninths add6 sus extended-chords \
+  --chords-order random \
+  --chord-len q \
+  --chord-fill-rate 0.25 \
+  --chord-interrupters \
+    'er,ec,er,ec, ec,er,ec,er' \
+    'ec,er,ec,er, er,ec,er,ec' \
+    'er,er,ec,er, ec,er,er,ec' \
+    'ec,er,er,ec, er,ec,er,er' \
+    'er,ec,er,er, ec,ec,er,ec' \
+    'er,ec,er,ec, er,er,ec,er' \
+    'ec,er,er,er, ec,er,ec,ec' \
+    'er,ec,er,ec, ec,er,er,er' \
+    'ec,er,er,ec, er,er,ec,ec' \
+    'er,er,ec,er, er,ec,er,ec' \
+    'ec,er,ec,er, ec,er,er,er' \
+    'er,ec,er,er, ec,er,ec,er' \
+    'er,ec,er,ec, er,ec,er,er' \
+    'ec,er,er,er, ec,ec,er,ec' \
+    'er,er,ec,er, ec,er,ec,er' \
+    'er,ec,er,ec, er,ec,er,ec' \
+    'ec,ec,er,ec, er,ec,ec,er' \
+    'er,ec,ec,er, ec,er,ec,er' \
+    'er,er,ec,ec, er,ec,er,er' \
+    'ec,er,er,ec, ec,er,er,ec' \
+    'er,ec,er,ec, ec,ec,er,er' \
+    'ec,er,ec,ec, er,ec,er,er' \
+    'er,ec,er,er, er,ec,er,ec' \
+    'er,er,er,ec, ec,er,er,ec' \
+  --perc-main 'ek,eg,ekh,ec, ek,eg,ekh,eg' \
+  --perc-interrupters \
+    'eg,eg,ecg,eg,eg,eg,ecg,eg' \
+    'eg,ec,eg,ec,eg,ec,ecg,eg' \
+    'eb,eg,ecg,eg,eb,eg,ecg,eg' \
+    'es,et,eu,ev,es,et,eu,ev' \
+    'ecg,es,ecg,et,ecg,eu,ecg,ev' \
+  --perc-fill-rate 0.12 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.40 --reverb 0 --chorus 0 --poly 768 \
+  --out allthethings_ab_dry_plus
+
+# rite of spring
+# doesnt work this sucks
+  ./play_music \
+  --seconds 300 \
+  --bpm 150 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'E,Eb,E,Eb,E,Eb,E,Eb, E,Eb,E,Eb,E,Eb,E,Eb, E,Eb,E,Eb,E,Eb,E,Eb' \
+  --chords triads sevenths \
+  --chords-order roundrobin \
+  --chord-len e \
+  --chord-fill-rate 0.22 \
+  --chord-interrupters \
+    'er,ec,er,ec,sc' \
+    'er,ec,ec,ec,sc' \
+    'ec,er,ec,ec,sc' \
+  --perc-main 'ebg,eg,eg,eg,eg,ebg,ebg,ecg' \
+  --perc-fill-rate 0.00 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.45 --reverb 0 --chorus 0 --poly 768 \
+  --out augurs_punishing_ostinato_dry
+
+# when i asked for "the most complex thing you can do"
+# now its good after tweaking a lot
+./play_music \
+    --seconds 200 \
+    --bpm 220 \
+    --instrument saw \
+    --mode ostinato \
+    --keys 'Abm,G,F#m,Gm,G, Ab,G,Gm,F#m,G, Abm,G,  Ebm,D,C#m,Dm,D, Eb,D,Dm,C#m,D,Ebm,D,  E,Eb,D,Ebm,Eb, E,Eb,Db,Ebm,Eb,  G,Abm,G,F#m,Gm,G,  C,Bbm,Bb,Ebm,Ab,D,G,  Bbm,Bb,Bbm,Bb,  Ebm,Eb,Ebm,Eb,Ebm,Eb,  G,Abm,G,F#m,Gm,G' \
+    --chords sevenths sevenths sevenths ninths ninths extended-chords extended-chords lyd-dom sus add6 \
+    --chords-order random \
+    --chord-len e \
+    --chord-fill-rate 0.01 \
+    --chord-interrupters \
+        'er,ec,er,ec' \
+        'ec,er,ec,er' \
+        'er,er,ec,er' \
+        'ec,er,ec,ec' \
+        'ec,ec,ec,er,ec' \
+        'ec,ec,ec,ec,ec,er,er' \
+        'ec,er,ec,ec,ec,er,ec,ec,er' \
+        'ec,er,ec,ec,er,ec,ec,ec,er,ec,er' \
+        'ec,ec,er,ec,ec,er,ec,ec,ec,er,ec,er' \
+        'ec,ec,ec,ec,ec,er,ec,er,ec,ec,er,ec,er' \
+        'ec,er,ec,ec,er,ec,ec,ec,ec,ec,er,er,ec,er,ec' \
+        'ec,ec,ec,er,ec,er,ec,ec,ec,ec,er,ec,er,ec,ec,er,ec' \
+        'ec,er,ec,ec,ec,ec,ec,er,ec,er,ec,ec,er,ec,er,ec,ec,er,ec' \
+        'ec,er,ec,er,ec' \
+        'ec,er,ec,er,ec,ec,er' \
+        'ec,er,ec,er,ec,ec,er,ec,er' \
+        'ec,er,ec,er,ec,er,ec,ec,er,ec,er' \
+        'ec,er,ec,er,ec,er,ec,ec,er,ec,er,ec' \
+        'ec,er,ec,ec,er,ec,er,ec,er,ec,ec,er,ec' \
+        'ec,er,ec,er,ec,ec,er,ec,er,ec,er,ec,er,ec,er' \
+        'ec,er,ec,er,ec,ec,er,ec,er,ec,er,ec,ec,er,ec,er,ec' \
+        'ec,er,ec,er,ec,er,ec,er,ec,er,ec,ec,er,ec,er,ec,er,ec,er' \
+    --perc-main 'ebg,eg,eg,ecg,ebg,ecg, ebg,eg,ecg,eg,ebg,eg' \
+    --perc-interrupters \
+        'qbg,qcg' \
+        'qak' \
+        'ebg,eg,ecg' \
+        'ebg,eg,es,et,ecg' \
+        'ebg,eg,es,et,eu,ecg' \
+        'ebg,eg,es,et,eu,ev,ecg' \
+        'ebg,eg,es,et,eu,ev,eg,ecg,eg' \
+        'ebg,eg,es,et,eu,ev,eg,es,et,eu,ecg' \
+        'ebg,eg,ek,eg,es,et,eu,eg,ek,eg,ev,ecg' \
+        'ebg,eg,es,et,eu,ev,eg,es,et,eu,ev,eg,ecg' \
+        'ebg,eg,es,et,eu,ev,eg,es,et,eu,ev,eg,ek,eg,ecg' \
+        'ebg,eg,es,et,eu,ev,eg,es,et,eu,ev,eg,es,et,eu,ev,ecg' \
+        'sbg,sg,scg' \
+        'sbg,sg,st,scg' \
+        'sbg,sg,st,su,scg' \
+        'sbg,sg,st,su,sv,scg' \
+        'sbg,sg,st,su,sv,sg,scg' \
+        'sbg,sg,st,su,sv,sg,st,scg' \
+        'sbg,sg,st,su,sv,sg,st,su,scg' \
+        'sbg,sg,st,su,sv,sg,st,su,sv,scg' \
+        'tbg' \
+        'tbg,tcg' \
+        'tbg,tg,tcg' \
+        'tbg,tg,tk,tcg' \
+        'tbg,tg,tk,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tx,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tx,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tx,tg,ty,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tx,tg,ty,tg,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tx,tg,ty,tg,tz,tcg' \
+        'tbg,tg,tk,tg,tl,tg,tn,tg,ti,tg,tw,tg,tx,tg,ty,tg,tz,tg,tcg' \
+        'qcg,qbg' \
+        'qak' \
+        'ecg,eg,ebg' \
+        'ecg,et,es,eg,ebg' \
+        'ecg,eu,et,es,eg,ebg' \
+        'ecg,ev,eu,et,es,eg,ebg' \
+        'eg,ecg,eg,ev,eu,et,es,eg,ebg' \
+        'ecg,eu,et,es,eg,ev,eu,et,es,eg,ebg' \
+        'ecg,ev,eg,ek,eg,eu,et,es,eg,ek,eg,ebg' \
+        'ecg,eg,ev,eu,et,es,eg,ev,eu,et,es,eg,ebg' \
+        'ecg,eg,ek,eg,ev,eu,et,es,eg,ev,eu,et,es,eg,ebg' \
+        'ecg,ev,eu,et,es,eg,ev,eu,et,es,eg,ev,eu,et,es,eg,ebg' \
+        'scg,sg,sbg' \
+        'scg,st,sg,sbg' \
+        'scg,su,st,sg,sbg' \
+        'scg,sv,su,st,sg,sbg' \
+        'scg,sg,sv,su,st,sg,sbg' \
+        'scg,st,sg,sv,su,st,sg,sbg' \
+        'scg,su,st,sg,sv,su,st,sg,sbg' \
+        'scg,sv,su,st,sg,sv,su,st,sg,sbg' \
+        'tbg' \
+        'tcg,tbg' \
+        'tcg,tg,tbg' \
+        'tcg,tk,tg,tbg' \
+        'tcg,tg,tk,tg,tbg' \
+        'tcg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tx,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,tx,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,ty,tg,tx,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,ty,tg,tx,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tz,tg,ty,tg,tx,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+        'tcg,tg,tz,tg,ty,tg,tx,tg,tw,tg,ti,tg,tn,tg,tl,tg,tk,tg,tbg' \
+    --perc-fill-rate 0.38 \
+    --sf2 ~/SoundFonts/Arachno.sf2 \
+    --gain 0.45 --reverb 0 --chorus 0 --poly 1024 \
+    --out insane_interrupters_allmeters_dry
+
+./play_music \
+  --seconds 600 \
+  --bpm 132 \
+  --instrument saw \
+  --mode ostinato \
+  --keys 'G,Gm,F#m,G,F,Gb,Fm,E, Eb,Ebm,D,Db,Dm,C, B,Bbm,B, Bb,Abm,Ab,A,Bb,B, C,C#,D,Eb,E,Ebm,F, G,Gm,Em,Eb,Ebm,Cm,C, Ab,Abm,Fm,F,E,Eb, Db,Dbm,Bbm,Bb,Bm,B, Gm,G,Am,A,Bb,Bbm,Abm,Ab, G,Cm,F,Bbm,Eb,Abm,Db,Gb,B,E,Am,D,Gm,C,Fm,Bb,Ebm,Ab,Dbm,Gbm,Bm,Em,A,Dm,G,Cm' \
+  --chords sevenths ninths extended-chords lyd-dom sus add6 \
+  --chords-order random \
+  --chord-len e \
+  --chord-fill-rate 0.30 \
+  --chord-interrupters \
+    'er,ec,er,ec,er,ec' \
+    'ec,er,ec,er,ec,er' \
+    'er,er,ec,er,ec,er' \
+    'ec,er,ec,ec,er,ec' \
+  --perc-main 'ebg,eg,ecg,eg,ebg,eg,ecg,eg,ebg,eg,ekh,eg' \
+  --perc-interrupters \
+    'eg,ecg,eg,ec,eg,ecg' \
+    'eb,eg,es,et,eu,eg' \
+    'ek,eg,ek,eg,ek,eg' \
+  --perc-fill-rate 0.15 \
+  --sf2 ~/SoundFonts/Arachno.sf2 \
+  --gain 0.42 --reverb 0 --chorus 0 --poly 1024 \
+  --out evolving_three_act_dry
