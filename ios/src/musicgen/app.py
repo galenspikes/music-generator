@@ -25,6 +25,27 @@ SOUNDFONT = _USER_SOUNDFONT if _USER_SOUNDFONT.exists() else _DEFAULT_SOUNDFONT
 # A few sensible custom-mode defaults for when no preset is chosen.
 DEFAULT_KEYS = "C::maj7, A::min9, D::min7, G::13"
 
+# Curated instrument choices (label -> engine alias from GM_ALIASES).
+INSTRUMENTS: list[tuple[str, str]] = [
+    ("Piano", "piano"),
+    ("Electric Piano", "epiano"),
+    ("Organ", "organ"),
+    ("Nylon Guitar", "nylongt"),
+    ("Jazz Guitar", "jazzguitar"),
+    ("Strings", "strings"),
+    ("Choir", "choir"),
+    ("Flute", "flute"),
+    ("Saxophone", "sax"),
+    ("Trumpet", "trumpet"),
+    ("Vibraphone", "vibes"),
+    ("Marimba", "marimba"),
+    ("Harpsichord", "harpsi"),
+    ("Synth Lead", "lead"),
+    ("Warm Pad", "pad"),
+]
+# A simple default groove used when the Drums switch is on (Custom mode).
+DRUMS_MAIN_KEY = "rock:4/4:med"
+
 
 class MusicGenerator(toga.App):
     def startup(self):
@@ -63,6 +84,16 @@ class MusicGenerator(toga.App):
         self._seconds_label = toga.Label("Length: 45s", style=Pack(width=110))
         self._seconds.on_change = self._on_seconds_change
 
+        # ----- instrument / tempo / drums (Custom mode) -----
+        self._instrument_by_label = {lbl: alias for lbl, alias in INSTRUMENTS}
+        self._instrument_select = toga.Selection(
+            items=[lbl for lbl, _ in INSTRUMENTS], style=Pack(flex=1))
+        self._bpm = toga.Slider(
+            min=60, max=200, value=120, tick_count=29, style=Pack(flex=1))
+        self._bpm_label = toga.Label("Tempo: 120 BPM", style=Pack(width=130))
+        self._bpm.on_change = self._on_bpm_change
+        self._drums_switch = toga.Switch("Drums", value=True)
+
         # ----- transport -----
         self._generate_btn = toga.Button(
             "Generate", on_press=self._on_generate, style=Pack(flex=1))
@@ -84,10 +115,17 @@ class MusicGenerator(toga.App):
                 self._desc,
                 toga.Label("Chord keys (Custom)", style=Pack(padding_top=8)),
                 self._keys_input,
+                toga.Label("Instrument (Custom)", style=Pack(padding_top=8)),
+                self._instrument_select,
+                toga.Box(
+                    children=[self._bpm_label, self._bpm],
+                    style=Pack(direction=ROW, padding_top=8),
+                ),
                 toga.Box(
                     children=[self._seconds_label, self._seconds],
                     style=Pack(direction=ROW, padding_top=8),
                 ),
+                self._drums_switch,
                 self._generate_btn,
                 toga.Box(
                     children=[self._play_btn, self._stop_btn],
@@ -121,25 +159,38 @@ class MusicGenerator(toga.App):
             args = list(recipe.get("args", []))
             return args, preset
         keys = self._keys_input.value.strip() or DEFAULT_KEYS
-        args = ["--mode", "ostinato", "--keys", keys, "--seconds", seconds]
+        instrument = self._instrument_by_label.get(
+            self._instrument_select.value, "piano")
+        bpm = str(int(self._bpm.value))
+        args = ["--mode", "ostinato", "--keys", keys, "--seconds", seconds,
+                "--instrument", instrument, "--bpm", bpm]
+        if self._drums_switch.value:
+            args += ["--perc-lib", "library/percussion_library.json",
+                     "--perc-main-key", DRUMS_MAIN_KEY]
         return args, "custom"
+
+    def _set_custom_enabled(self, enabled: bool) -> None:
+        for widget in (self._keys_input, self._instrument_select, self._bpm,
+                       self._seconds, self._drums_switch):
+            widget.enabled = enabled
 
     # ----- event handlers -----
     def _on_preset_change(self, widget):
         preset = self._selected_preset()
         if preset is None:
             self._desc.text = "Type a chord progression and tap Generate."
-            self._keys_input.enabled = True
-            self._seconds.enabled = True
+            self._set_custom_enabled(True)
         else:
             recipe = self._presets[preset]
             self._desc.text = recipe.get("description", "")
-            # Presets carry their own length/keys; dim the custom controls.
-            self._keys_input.enabled = False
-            self._seconds.enabled = False
+            # Presets carry their own settings; dim the custom controls.
+            self._set_custom_enabled(False)
 
     def _on_seconds_change(self, widget):
         self._seconds_label.text = f"Length: {int(self._seconds.value)}s"
+
+    def _on_bpm_change(self, widget):
+        self._bpm_label.text = f"Tempo: {int(self._bpm.value)} BPM"
 
     def _on_generate(self, widget):
         self._on_stop(widget)

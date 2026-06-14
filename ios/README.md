@@ -82,7 +82,8 @@ Xcode project; no extra setup is normally required.
 - [x] Bundle a default SoundFont (plays out of the box).
 - [x] App icon (`tools/make_icon.py` → `resources/musicgen.png`).
 - [x] Share/export the generated `.mid` via the native iOS share sheet.
-- [ ] Expose more engine controls (tempo, instrument, percussion, arrangements).
+- [x] Custom-mode controls: instrument, tempo (BPM), and a drums toggle.
+- [ ] More engine controls (chord families, SATB style, arrangements/song files).
 - [ ] Optional rendered-audio export (offline render to WAV/AAC).
 - [ ] Optional native SwiftUI shell over the embedded engine for a richer UI.
 ```
