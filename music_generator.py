@@ -3,6 +3,7 @@ import argparse
 import importlib.util
 import json
 import math
+import os
 import random
 import subprocess
 import shlex
@@ -16,7 +17,13 @@ from logging_config import music_generator_logger, log_function_call, log_perfor
 
 # --- project folders (relative to the script location) ---
 SCRIPT_DIR = Path(__file__).resolve().parent
-OUTPUT_DIR = SCRIPT_DIR / "output"
+# The output root is overridable via MUSICGEN_OUTPUT_DIR so the engine can run
+# in read-only / embedded environments (e.g. a packaged iOS app) where it must
+# write to an app-provided writable directory. Unset, it defaults to
+# <repo>/output for normal CLI use.
+_OUTPUT_DIR_ENV = os.environ.get("MUSICGEN_OUTPUT_DIR")
+OUTPUT_DIR = (Path(_OUTPUT_DIR_ENV).expanduser()
+              if _OUTPUT_DIR_ENV else SCRIPT_DIR / "output")
 AUDIO_DIR = OUTPUT_DIR / "audio"
 META_DIR = OUTPUT_DIR / "metadata"
 LIB_DIR = SCRIPT_DIR / "library"
@@ -3215,7 +3222,7 @@ def main():
         arrangement.render(spec, song_out)
         log_file_operation(music_generator_logger, "write", song_out, True)
         print(f"Wrote {song_out}")
-        return 0
+        return song_out
 
     # ----- output path + sidecar JSON -----
     slug = args.out or "misc"
@@ -3408,6 +3415,8 @@ def main():
     log_music_generation(music_generator_logger, args.out or "misc", args.seconds, args.bpm, args.keys or "default")
     log_file_operation(music_generator_logger, "write", out_path, True)
     music_generator_logger.info(f"Music generation completed successfully in {duration:.3f}s")
+
+    return out_path
 
 
 if __name__ == "__main__":
