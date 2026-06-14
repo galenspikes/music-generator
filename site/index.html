@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Music Generator — a token DSL for generative music</title>
+  <meta name="description" content="A Python music-generation system. A compact token DSL describes chords, percussion, and melodies; the engine realizes them into harmony, voices, and percussion, and writes MIDI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Generative music · Python · MIDI</p>
+      <h1>Music Generator</h1>
+      <p class="lede">
+        A compact token language describes chords, percussion, and melodies.
+        The engine realizes them into harmony, voices, and percussion, writes a
+        MIDI file, and optionally renders audio through FluidSynth.
+      </p>
+      <p class="actions">
+        <a class="btn" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live</a>
+        <a class="btn btn-ghost" href="https://github.com/galenspikes/music-generator">View on GitHub</a>
+        <a class="btn btn-ghost" href="#examples">Hear examples</a>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="dsl">
+      <h2>The token DSL</h2>
+      <p>
+        The core of the project is a small mini-language. A chord is a colon
+        token, <code>root[:inversion][:recipe][/bass]</code>; percussion and
+        melody have their own grammars. A whole progression is just a sequence of
+        tokens.
+      </p>
+      <div class="cards">
+        <article class="card">
+          <h3>Chords</h3>
+          <pre><code>C::maj7      C major seventh
+A:1:min9     A minor ninth, 1st inv.
+G::13        G dominant thirteenth
+G::maj/C     G major over a C pedal</code></pre>
+        </article>
+        <article class="card">
+          <h3>Melody</h3>
+          <pre><code>q1 q5 e4 e3 e2 e1 q7
+# scale degrees with
+# durations; transform
+# via invert / transpose</code></pre>
+        </article>
+        <article class="card">
+          <h3>Percussion</h3>
+          <pre><code>qk,eh,esh,eh
+# kicks, hats, snares as
+# duration+instrument
+# tokens, with fills</code></pre>
+        </article>
+      </div>
+      <p class="muted">
+        Full reference:
+        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/token-grammar.md">docs/token-grammar.md</a>.
+      </p>
+    </section>
+
+    <section id="examples">
+      <h2>Examples</h2>
+      <p class="muted">
+        Played in your browser from the generated MIDI. Press play on any one.
+      </p>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Jazz progression</h3>
+          <span class="tag">sevenths · ninths</span>
+        </div>
+        <p>An electric-piano ostinato over a ii–V coloured progression.</p>
+        <pre><code>--mode ostinato --keys 'C::maj7, A::min9, D::min7, G::13' \
+  --chords sevenths ninths --instrument epiano</code></pre>
+        <midi-player src="assets/midi/jazz.mid" sound-font visualizer="#vis-jazz"></midi-player>
+        <midi-visualizer id="vis-jazz" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Dense colour voicing</h3>
+          <span class="tag">every chord tone</span>
+        </div>
+        <p>Full extended and exotic sets sounded complete across the register.</p>
+        <pre><code>--voicing dense --instrument strings --chord-length w \
+  --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance'</code></pre>
+        <midi-player src="assets/midi/colors.mid" sound-font visualizer="#vis-colors"></midi-player>
+        <midi-visualizer id="vis-colors" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Process music</h3>
+          <span class="tag">additive, after Glass</span>
+        </div>
+        <p>A single cell grows a note at a time, then contracts.</p>
+        <pre><code>--process additive --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
+  --instrument organ --melody-key C</code></pre>
+        <midi-player src="assets/midi/process.mid" sound-font visualizer="#vis-process"></midi-player>
+        <midi-visualizer id="vis-process" type="piano-roll"></midi-visualizer>
+      </article>
+    </section>
+
+    <section id="run">
+      <h2>Run it yourself</h2>
+      <pre><code>git clone https://github.com/galenspikes/music-generator
+cd music-generator
+python3 -m venv venv && venv/bin/pip install -r requirements.txt
+
+venv/bin/python music_generator.py --mode ostinato \
+  --keys 'C::maj7, A::min9, D::min7, G::13' --out my_song --no-play</code></pre>
+      <p class="muted">
+        Audio rendering additionally needs <code>fluidsynth</code> and
+        <code>ffmpeg</code>. See the
+        <a href="https://github.com/galenspikes/music-generator#readme">README</a>
+        for the full command surface.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>Music Generator · MIT licensed · built by Galen Spikes</p>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,207 @@
+:root {
+  --bg: #14110f;
+  --bg-soft: #1c1916;
+  --panel: #211d1a;
+  --ink: #ede6dc;
+  --ink-soft: #b3a99b;
+  --muted: #8a7f70;
+  --line: #34302b;
+  --accent: #c9a25e;
+  --accent-soft: #e0c48d;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --serif: "EB Garamond", Georgia, "Times New Roman", serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 20px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+a { color: var(--accent-soft); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+code, pre { font-family: var(--mono); font-size: 0.82em; }
+
+pre {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 18px;
+  overflow-x: auto;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+p code {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--accent-soft);
+}
+
+/* Hero */
+.hero {
+  border-bottom: 1px solid var(--line);
+  background: radial-gradient(120% 140% at 50% -20%, #2a2420 0%, var(--bg) 60%);
+  padding: 96px 0 72px;
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 18px;
+}
+
+h1 {
+  font-size: clamp(3rem, 9vw, 5rem);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin: 0 0 18px;
+  line-height: 1.02;
+}
+
+.lede {
+  font-size: 1.2rem;
+  color: var(--ink-soft);
+  max-width: 620px;
+  margin: 0 auto 32px;
+}
+
+.actions { margin: 0; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+.btn {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  padding: 12px 22px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #1a1510;
+  border: 1px solid var(--accent);
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.btn:hover { background: var(--accent-soft); text-decoration: none; transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn-ghost:hover { background: var(--bg-soft); border-color: var(--accent); }
+
+/* Sections */
+main { padding: 24px 0 40px; }
+
+section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+section:last-child { border-bottom: none; }
+
+h2 {
+  font-size: 2rem;
+  font-weight: 400;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-soft);
+  margin: 0 0 10px;
+}
+
+.muted { color: var(--muted); font-size: 0.95rem; }
+
+/* DSL cards */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 28px 0 18px;
+}
+.card {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px;
+}
+.card pre { background: transparent; border: none; padding: 0; }
+
+/* Examples */
+.example {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+}
+.example-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.example p { color: var(--ink-soft); font-size: 1rem; margin: 4px 0 14px; }
+.tag {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+/* MIDI player theming */
+midi-player {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  --md-sys-color-primary: var(--accent);
+  --md-sys-color-on-primary: #1a1510;
+  --md-sys-color-surface: var(--panel);
+  --md-sys-color-on-surface: var(--ink-soft);
+  --md-sys-color-surface-variant: var(--line);
+}
+midi-player::part(control-panel) {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+midi-visualizer {
+  display: block;
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+midi-visualizer svg rect { fill: var(--accent); }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 32px 0;
+  text-align: center;
+}
+footer p { color: var(--muted); font-size: 0.85rem; font-family: var(--mono); margin: 0; }
+
+@media (max-width: 560px) {
+  body { font-size: 18px; }
+  .hero { padding: 64px 0 48px; }
+  section { padding: 40px 0; }
+}
