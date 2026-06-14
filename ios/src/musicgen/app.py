@@ -70,6 +70,9 @@ class MusicGenerator(toga.App):
             "Play", on_press=self._on_play, enabled=False, style=Pack(flex=1))
         self._stop_btn = toga.Button(
             "Stop", on_press=self._on_stop, enabled=False, style=Pack(flex=1))
+        self._share_btn = toga.Button(
+            "Share MIDI", on_press=self._on_share, enabled=False,
+            style=Pack(flex=1))
 
         self._status = toga.Label("Ready.", style=Pack(padding_top=8))
 
@@ -90,6 +93,7 @@ class MusicGenerator(toga.App):
                     children=[self._play_btn, self._stop_btn],
                     style=Pack(direction=ROW, padding_top=8),
                 ),
+                self._share_btn,
                 self._status,
             ],
             style=Pack(direction=COLUMN, padding=16),
@@ -148,9 +152,13 @@ class MusicGenerator(toga.App):
         except Exception as exc:  # surface failures rather than crash
             self._status.text = f"Generation failed: {exc}"
             self._play_btn.enabled = False
+            self._share_btn.enabled = False
             return
         finally:
             self._generate_btn.enabled = True
+
+        # MIDI exists now — it can be shared/exported regardless of playback.
+        self._share_btn.enabled = True
 
         if not SOUNDFONT.exists():
             self._status.text = (
@@ -178,6 +186,16 @@ class MusicGenerator(toga.App):
             self._player.stop()
         self._stop_btn.enabled = False
         self._status.text = "Stopped."
+
+    def _on_share(self, widget):
+        if not self._midi_path:
+            return
+        from . import share  # imported lazily (needs the ObjC runtime)
+        try:
+            if not share.share_file(self._midi_path):
+                self._status.text = "Couldn't open the share sheet."
+        except Exception as exc:
+            self._status.text = f"Share failed: {exc}"
 
 
 def main():

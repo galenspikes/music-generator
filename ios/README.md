@@ -80,8 +80,9 @@ Xcode project; no extra setup is normally required.
 - [x] Native offline playback via `AVMIDIPlayer` + bundled SoundFont.
 - [x] Toga UI: style presets (from the song cookbook) + custom chord keys.
 - [x] Bundle a default SoundFont (plays out of the box).
-- [ ] Add an app icon.
+- [x] App icon (`tools/make_icon.py` → `resources/musicgen.png`).
+- [x] Share/export the generated `.mid` via the native iOS share sheet.
 - [ ] Expose more engine controls (tempo, instrument, percussion, arrangements).
-- [ ] Share/export the generated `.mid` (and optional rendered audio).
+- [ ] Optional rendered-audio export (offline render to WAV/AAC).
 - [ ] Optional native SwiftUI shell over the embedded engine for a richer UI.
 ```
