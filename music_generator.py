@@ -3191,7 +3191,7 @@ def main():
                           args.velocity_mode_chords, args.velocity_mode_drums)
         log_file_operation(music_generator_logger, "write", fug_out, True)
         print(f"Wrote {fug_out}")
-        return 0
+        return fug_out
 
     # ----- process-music path -----
     if args.process:
@@ -3208,7 +3208,7 @@ def main():
                           args.velocity_mode_drums)
         log_file_operation(music_generator_logger, "write", proc_out, True)
         print(f"Wrote {proc_out}")
-        return 0
+        return proc_out
 
     # ----- arrangement (song file) path -----
     if args.song:
