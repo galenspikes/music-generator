@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Music Generator</title>
+  <meta name="description" content="Offline generative MIDI music — runs entirely in your browser." />
+
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#1a1640" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Music Generator" />
+
+  <link rel="stylesheet" href="styles.css" />
+  <!-- In-browser MIDI playback + piano-roll (cached by the service worker for offline use). -->
+  <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
+</head>
+<body>
+  <header>
+    <img src="icons/icon-192.png" alt="" class="logo" />
+    <div>
+      <h1>Music Generator</h1>
+      <p class="tagline">Generative MIDI — 100% in your browser, offline.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label class="field">
+        <span>Mode</span>
+        <select id="mode">
+          <option value="ostinato" selected>Ostinato (loop a progression)</option>
+          <option value="complete">Complete (longer form)</option>
+          <option value="process: additive">Process · additive (Glass)</option>
+          <option value="process: phase">Process · phase (Reich)</option>
+          <option value="process: augment">Process · augment</option>
+          <option value="fugue">Fugue</option>
+        </select>
+      </label>
+
+      <label class="field" id="keys-field">
+        <span>Chord keys</span>
+        <input id="keys" type="text" value="C::maj9, A::min11, F::maj7, G::13"
+               placeholder="e.g. C::maj7, A:1:min9, G::maj/C" />
+        <small>root[:inversion][:recipe][/bass] — see the token grammar.</small>
+      </label>
+
+      <div class="field">
+        <span>Instrument</span>
+        <select id="instrument"></select>
+      </div>
+
+      <div class="row">
+        <label class="field grow">
+          <span>Tempo: <b id="bpm-val">96</b> BPM</span>
+          <input id="bpm" type="range" min="60" max="200" value="96" />
+        </label>
+        <label class="field grow">
+          <span>Length: <b id="sec-val">30</b> s</span>
+          <input id="seconds" type="range" min="10" max="180" step="5" value="30" />
+        </label>
+      </div>
+
+      <label class="check"><input id="drums" type="checkbox" checked /> Drums</label>
+
+      <details id="advanced">
+        <summary>Process / fugue inputs</summary>
+        <label class="field">
+          <span>Process cell (scale degrees)</span>
+          <input id="cell" type="text" value="e1 e2 e3 e5 e7 e5 e3 e2" />
+        </label>
+        <label class="field">
+          <span>Fugue subject (blank = built-in)</span>
+          <input id="subject" type="text" value="q1 q5 e4 e3 e2 e1 q7" />
+        </label>
+        <div class="row">
+          <label class="field grow"><span>Melody key</span>
+            <input id="melkey" type="text" value="C" /></label>
+          <label class="field grow"><span>Melody mode</span>
+            <select id="melmode"><option>major</option><option>minor</option></select>
+          </label>
+        </div>
+      </details>
+
+      <button id="go" disabled>Loading engine…</button>
+      <p id="status" class="status">Booting Python in your browser…</p>
+    </section>
+
+    <section class="card" id="output" hidden>
+      <midi-player id="player" sound-font visualizer="#viz"></midi-player>
+      <midi-visualizer id="viz" type="piano-roll"></midi-visualizer>
+      <a id="download" class="download" download="music.mid">⬇ Download MIDI</a>
+    </section>
+  </main>
+
+  <footer>
+    Built from
+    <a href="https://github.com/galenspikes/music-generator">galenspikes/music-generator</a>
+    · MIT
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

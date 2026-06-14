@@ -1,0 +1,42 @@
+name: Deploy web app (PWA) to GitHub Pages
+
+# Manual only: a repo serves a single Pages site, and pages.yml already
+# publishes the `site/` showcase. Run this when you want the PWA to be the
+# published site instead. (It will replace whatever Pages currently serves.)
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build deps
+        run: pip install mido
+      - name: Assemble engine, Pyodide runtime, and icons
+        working-directory: web
+        run: |
+          python tools/build_engine.py
+          python tools/fetch_pyodide.py
+          python tools/make_icons.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4
