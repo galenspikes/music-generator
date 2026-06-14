@@ -1,0 +1,44 @@
+name: Deploy web app (PWA) to GitHub Pages
+
+# Manual only. Builds the offline PWA (from the feature branch) and publishes it
+# to Pages. A repo serves a single Pages site, so running this replaces whatever
+# Pages currently serves; re-run the showcase workflow to switch back.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/ios-app-feasibility-yozsr3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build deps
+        run: pip install mido
+      - name: Assemble engine, Pyodide runtime, and icons
+        working-directory: web
+        run: |
+          python tools/build_engine.py
+          python tools/fetch_pyodide.py
+          python tools/make_icons.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4
