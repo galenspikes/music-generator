@@ -17,7 +17,8 @@ ios/
     generate.py             runs the engine on-device, returns the MIDI path
     playback.py             AVMIDIPlayer bridge (rubicon-objc) for native playback
     _engine/                vendored engine (created by sync_engine.py; not in git)
-    resources/soundfont.sf2 SoundFont for playback (you provide it; not in git)
+    resources/default_gm.sf2  bundled GM SoundFont (~300 KB; plays out of the box)
+    resources/soundfont.sf2   optional higher-quality font you supply (not in git)
 ```
 
 **Single source of truth:** the engine is *not* duplicated in git. The repo root
@@ -37,16 +38,16 @@ Briefcase can only build iOS apps on macOS. From `ios/`:
 python3 -m venv .venv && source .venv/bin/activate
 pip install briefcase
 
-# 1. Add a SoundFont (see src/musicgen/resources/README.md)
-#    -> src/musicgen/resources/soundfont.sf2
-
-# 2. Vendor the engine
+# 1. Vendor the engine (a GM SoundFont is already bundled — see below)
 python tools/sync_engine.py
 
-# 3. Create / build / run
+# 2. Create / build / run
 briefcase create iOS
 briefcase build iOS
 briefcase run iOS            # boots the Simulator
+
+# Optional: install a higher-quality font (app prefers it over the default)
+python tools/fetch_soundfont.py
 ```
 
 To iterate after editing engine or app code, re-run `sync_engine.py` then
@@ -78,7 +79,8 @@ Xcode project; no extra setup is normally required.
 - [x] Engine runs on-device, writing to an app-writable directory.
 - [x] Native offline playback via `AVMIDIPlayer` + bundled SoundFont.
 - [x] Toga UI: style presets (from the song cookbook) + custom chord keys.
-- [ ] Bundle a default SoundFont and an app icon.
+- [x] Bundle a default SoundFont (plays out of the box).
+- [ ] Add an app icon.
 - [ ] Expose more engine controls (tempo, instrument, percussion, arrangements).
 - [ ] Share/export the generated `.mid` (and optional rendered audio).
 - [ ] Optional native SwiftUI shell over the embedded engine for a richer UI.

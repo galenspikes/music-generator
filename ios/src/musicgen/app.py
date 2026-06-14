@@ -15,7 +15,12 @@ from toga.style.pack import COLUMN, ROW
 
 from . import generate
 
-SOUNDFONT = Path(__file__).resolve().parent / "resources" / "soundfont.sf2"
+_RESOURCES = Path(__file__).resolve().parent / "resources"
+# Prefer a user-supplied font (drop in resources/soundfont.sf2); otherwise fall
+# back to the small General MIDI font bundled with the app.
+_USER_SOUNDFONT = _RESOURCES / "soundfont.sf2"
+_DEFAULT_SOUNDFONT = _RESOURCES / "default_gm.sf2"
+SOUNDFONT = _USER_SOUNDFONT if _USER_SOUNDFONT.exists() else _DEFAULT_SOUNDFONT
 
 # A few sensible custom-mode defaults for when no preset is chosen.
 DEFAULT_KEYS = "C::maj7, A::min9, D::min7, G::13"

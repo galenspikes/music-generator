@@ -6,6 +6,8 @@ metadata/
 SoundFonts/
 ios/src/musicgen/resources/*.sf2
 ios/src/musicgen/resources/*.dls
+# ...except the tiny (~300 KB) GM font bundled as the playback default.
+!ios/src/musicgen/resources/default_gm.sf2
 
 # --- iOS app (BeeWare/Briefcase) ---
 # Vendored engine (single source of truth is the repo root; see ios/README.md)
