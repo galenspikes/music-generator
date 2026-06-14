@@ -1,313 +1,199 @@
-# Fluidsynth Music Generator
+# Music Generator
 
-A sophisticated Python-based music generation system that creates MIDI files with advanced harmony, percussion, and SATB (Soprano, Alto, Tenor, Bass) voicing capabilities.
+A Python music-generation system. A compact token DSL describes chords,
+percussion, and melodies; the engine realizes them into harmony, voices, and
+percussion, writes a MIDI file, and optionally renders audio through FluidSynth.
+It supports ostinato grooves, evolving long-form arrangements, fugal
+expositions, and minimalist process music.
 
-## 🎵 Features
+The token DSL is the core of the project; the
+[token grammar reference](docs/token-grammar.md) documents it in full.
 
-### **Harmony Generation**
-- **Multiple chord families**: Triads, sevenths, ninths, extended chords, chromatic mediants, quartal harmony, sus chords, lydian dominant
-- **SATB voicing styles**: Block chords, counterpoint lines, arpeggiated patterns
-- **Advanced voice leading**: Suspensions, anticipations, intelligent part writing
-- **Custom chord recipes**: Colon notation (e.g., `C:maj7:1` for C major 7th in 1st inversion)
-- **Slash / pedal bass**: append `/bass` to a colon token (e.g., `G::maj/C` for G major over a C bass); the bass can be any note, enabling pedals like `E/A`
+**Live demo:** a hosted web UI for generating and hearing pieces lives in
+[`space/`](space/) (a Gradio app for Hugging Face Spaces). A static project
+showcase lives in [`site/`](site/) (served via GitHub Pages).
 
-### **Percussion System**
-- **Pattern-based drums**: Complex percussion patterns with fills and interrupters
-- **Staged evolution**: Percussion that evolves over time with fill rate curves
-- **Humanized timing**: Velocity and timing variations for realistic performance
-- **Library system**: Pre-configured patterns for different musical styles
+## Features
 
-### **Musical Styles**
-- **Classical**: Counterpoint with suspensions and anticipations
-- **Jazz**: Extended chords, chromatic mediants, complex progressions
-- **Rock/Metal**: Driving rhythms with blast beats and fills
-- **Funk**: Pocket grooves with syncopated patterns
-- **Latin**: Salsa, bossa nova with clave patterns
-- **Ambient**: Arpeggiated patterns with reverb
+### Harmony generation
+- Multiple chord families: triads, sevenths, ninths, extended chords, chromatic
+  mediants, quartal harmony, suspended chords, lydian dominant.
+- SATB voicing styles: block chords, counterpoint lines, arpeggiated patterns.
+- Voice leading with suspensions, anticipations, and intelligent part writing.
+- Custom chord recipes via colon notation: `root[:inversion][:recipe]`
+  (e.g. `C::maj7` for C major seventh, or `C:1:maj7` in first inversion).
+- Slash and pedal bass: append `/bass` to a colon token (e.g. `G::maj/C` for G
+  major over a C bass), enabling pedals such as `E/A`.
 
-## 🚀 Quick Start
+### Percussion system
+- Pattern-based drums with fills and interrupters.
+- Staged evolution: percussion that develops over time along a fill-rate curve.
+- Humanized velocity and timing for a more natural performance.
+- A library of pre-configured patterns for common styles.
 
-### **1. Setup Environment**
+### Musical styles
+- Classical counterpoint with suspensions and anticipations.
+- Jazz with extended chords, chromatic mediants, and complex progressions.
+- Rock and metal driving rhythms with blast beats and fills.
+- Funk pocket grooves with syncopation.
+- Latin patterns including salsa and bossa nova clave.
+- Ambient arpeggiated textures.
+
+## Quick start
+
+### 1. Set up the environment
 ```bash
-# Activate virtual environment
-source activate
-
-# Or manually activate
-source venv/bin/activate
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+# development extras (tests, linting):
+venv/bin/pip install -r requirements-dev.txt
 ```
-
-### **2. Generate Music**
+Audio rendering additionally requires FluidSynth and ffmpeg:
 ```bash
-# Simple generation
-python music_generator.py --seconds 30 --out my_song
-
-# With percussion
-python music_generator.py --seconds 60 --out rock_song \
-  --perc-lib library/percussion_library.json \
-  --perc-main-key rock:4/4:fast
-
-# Counterpoint style
-python music_generator.py --seconds 120 --out classical \
-  --satb-style counterpoint --counterpoint-step 0.25
+brew install fluidsynth ffmpeg   # macOS
 ```
 
-### **3. Use Recipe System**
+### 2. Generate music (MIDI only)
 ```bash
-# List available recipes
-python cook_song.py list
-
-# Show recipe details
-python cook_song.py show rock
-
-# Generate a pre-configured song
-python cook_song.py make rock
+venv/bin/python music_generator.py --mode ostinato \
+  --keys 'C::maj7, A::min9, D::min7, G::13' \
+  --out my_song --no-play
 ```
 
-## 📁 Project Structure
-
-```
-fluidsynth/
-├── output/                    # Generated content
-│   ├── audio/                # WAV files (after FluidSynth rendering)
-│   ├── metadata/             # JSON metadata files
-│   └── midi/                 # MIDI files
-├── library/                  # Library files
-│   ├── percussion_library.json  # Drum patterns and mappings
-│   ├── chord_recipes.py      # Custom chord definitions
-│   ├── keys_presets.json     # Key progression presets
-│   └── song_cookbook.py      # Pre-configured song recipes
-├── SoundFonts/               # SoundFont files
-│   ├── arachno.sf2
-│   └── Timbres_of_Heaven.sf2
-├── music_generator.py         # Main generation engine
-├── cook_song.py              # Recipe system
-├── play_music                # Audio rendering wrapper
-├── activate                  # Environment activation script
-└── config.json              # Default settings
-```
-
-## 🎼 Usage Examples
-
-### **Basic Generation**
+### 3. Render audio
 ```bash
-# 2-minute jazz piece with counterpoint
-python music_generator.py \
+./play_music --save-wav --sf2 SoundFonts/arachno.sf2 \
+  --keys 'C::maj7, A::min7, F::maj9, G::13' --out my_song
+```
+
+Output is written to `output/midi/<slug>/`, `output/audio/<slug>/`, and
+`output/metadata/<slug>/`.
+
+## Usage examples
+
+### Basic generation
+```bash
+venv/bin/python music_generator.py \
   --mode complete \
   --chords sevenths \
   --satb-style counterpoint \
   --seconds 120 \
   --instrument jazzguitar \
-  --out jazz_counterpoint
+  --out jazz_counterpoint --no-play
 ```
 
-### **Advanced Percussion**
+### Staged percussion
 ```bash
-# Rock with staged percussion evolution
-python music_generator.py \
+venv/bin/python music_generator.py \
   --seconds 180 \
   --perc-lib library/percussion_library.json \
   --perc-stages "32:rock:4/4:fast" "32:rock:4/4:halftime" \
   --perc-fill-curve "0.1:0.4" \
-  --out progressive_rock
+  --out progressive_rock --no-play
 ```
 
-### **Custom Chord Progressions**
+### Custom chord progressions
 ```bash
-# Custom key sequence with specific chords
-python music_generator.py \
-  --keys "C:maj7:1,G:min7:2,Am:7:0,F:maj9:1" \
+venv/bin/python music_generator.py \
+  --keys "C:1:maj7, G:2:min7, A:0:min7, F:1:maj9" \
   --mode ostinato \
   --seconds 90 \
-  --out custom_progression
+  --out custom_progression --no-play
 ```
 
-## 🎚 Configuration
+## Configuration
 
-### **Instruments**
+### Instruments
 ```bash
-# Piano
 --instrument piano
-
-# Strings
 --instrument strings
-
-# Jazz guitar
 --instrument jazzguitar
-
-# Custom GM program (0-127)
---instrument 73  # Flute
+--instrument 73        # any GM program (0-127); 73 is flute
 ```
 
-#### Dense voicing (rich, colorful harmony)
-SATB voicing uses 4 voices and discards tones from big chords. `--voicing dense`
-instead sounds **every** chord tone, spread across the register — so full
-11ths/13ths, quartal stacks, clusters, and exotic sets (`mystic`, `messiaen_*`,
-`petrushka`, `whole_tone`…) ring out complete.
+#### Dense voicing
+SATB voicing uses four voices and discards tones from large chords.
+`--voicing dense` instead sounds every chord tone, spread across the register, so
+full elevenths and thirteenths, quartal stacks, clusters, and exotic sets
+(`mystic`, `messiaen_*`, `petrushka`, `whole_tone`) ring out complete.
 
 ```bash
-python music_generator.py --mode ostinato \
+venv/bin/python music_generator.py --mode ostinato \
   --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance' \
   --voicing dense --instrument strings --chord-length w --out colors --no-play
 ```
-Dense uses one timbre (`--instrument`); pair it with the rich recipe vocabulary
-in `library/chord_recipes.py`.
+Dense voicing uses a single timbre (`--instrument`); pair it with the chord
+vocabulary in `library/chord_recipes.py`.
 
 #### Per-voice instruments
 By default all four SATB voices share one patch (`--instrument`). With split
-stems (on by default) each voice is on its own channel, so you can give any
-voice its own instrument — most usefully a real **bass** patch:
+stems (on by default) each voice is on its own channel, so any voice can take its
+own instrument, most usefully a dedicated bass patch:
 
 ```bash
-# epiano chords with a dedicated electric-bass voice
 --instrument epiano --voice-instrument bass=33
-
-# multiple overrides (repeatable); unset voices use --instrument
 --instrument strings --voice-instrument bass=bass --voice-instrument soprano=saw
 ```
 Voices: `soprano`, `alto`, `tenor`, `bass`. Names accept aliases or GM numbers.
 Requires split stems (disabled by `--no-split-stems`).
 
 #### Bass lines
-By default the bass voice tracks the SATB voicing (`--bass-style follow`). Switch
-it to an **independent bass line** generated from the chord roots:
+By default the bass voice tracks the SATB voicing (`--bass-style follow`).
+Switch it to an independent line generated from the chord roots:
 
 ```bash
---bass-style octaves --bass-step 0.5   # root/octave bounce in eighths (pop/disco)
---bass-style walking --bass-step 1.0   # quarter-note walking line w/ approach tones
+--bass-style octaves --bass-step 0.5   # root/octave bounce in eighths
+--bass-style walking --bass-step 1.0   # quarter-note walking line with approach tones
 ```
-Styles: `follow`, `root`, `octaves`, `fifths`, `walking`, `arp`. `--bass-step` is
-the subdivision in beats. Honors slash/pedal basses, and pairs well with a
+Styles: `follow`, `root`, `octaves`, `fifths`, `walking`, `arp`. `--bass-step`
+is the subdivision in beats. Honors slash and pedal basses, and pairs well with a
 dedicated bass patch (`--voice-instrument bass=33`). Requires split stems.
 
-### **Velocity Modes**
+### Velocity modes
 ```bash
-# Humanized performance
---velocity-mode-chords human --velocity-mode-drums human
-
-# Random dynamics
---velocity-mode-chords random
-
-# Uniform (default)
---velocity-mode-chords uniform
+--velocity-mode-chords human --velocity-mode-drums human   # humanized
+--velocity-mode-chords random                              # random dynamics
+--velocity-mode-chords uniform                             # uniform (default)
 ```
 
-### **SATB Styles**
+### SATB styles
 ```bash
-# Block chords (default)
---satb-style block
-
-# Counterpoint lines
---satb-style counterpoint --counterpoint-step 0.25
-
-# Arpeggiated patterns
---satb-style arpeggio --counterpoint-step 0.125
+--satb-style block                                  # block chords (default)
+--satb-style counterpoint --counterpoint-step 0.25  # counterpoint lines
+--satb-style arpeggio --counterpoint-step 0.125     # arpeggiated patterns
 ```
 
-## 🥘 Recipe System
+## Recipe system
 
-The project includes a recipe system with pre-configured musical styles:
+The project includes a recipe system of pre-configured styles.
 
-### **Available Recipes**
 ```bash
-python cook_song.py list
+python cook_song.py list          # list available recipes
+python cook_song.py show rock     # show recipe details
+python cook_song.py make rock     # generate a pre-configured song
 ```
 
-### **Popular Styles**
-- **`rock`**: Arena rock with driving percussion
-- **`jazz`**: Bebop with swing rhythms
-- **`classical`**: Counterpoint with suspensions
-- **`funk`**: Pocket grooves with syncopation
-- **`ambient`**: Arpeggiated pads with reverb
-- **`metal`**: Blast beats and complex fills
+Representative styles include `rock`, `jazz`, `classical`, `funk`, `ambient`,
+and `metal`. Add your own to `library/song_cookbook.py`:
 
-### **Custom Recipes**
-Add your own styles to `library/song_cookbook.py`:
 ```python
 "my_style": {
     "title": "My Custom Style",
     "description": "A unique musical approach",
-    "args": ["--chords", "extended-chords", "--satb-style", "counterpoint"]
+    "args": ["--chords", "extended-chords", "--satb-style", "counterpoint"],
 }
 ```
 
-## 🔧 Advanced Features
+## Arrangements (song files)
 
-### **Percussion Patterns**
-```bash
-# Custom drum patterns
---perc-main "qk,eh,esh,eh" --perc-interrupters "qk,er,qs,er"
-
-# Staged evolution
---perc-stages "16:rock:4/4:fast" "16:rock:4/4:halftime"
-
-# Fill rate curves
---perc-fill-curve "0.1:0.5"
-```
-
-### **Chord Interrupters**
-```bash
-# Add rhythmic variety to harmony
---chord-interrupters "ec,er,sc" "er,ec,er,sc"
---chord-fill-rate 0.2
-```
-
-### **Counterpoint Parameters**
-```bash
-# Suspension probability
---counterpoint-suspension-prob 0.3
-
-# Anticipation probability  
---counterpoint-anticipation-prob 0.25
-
-# Step size
---counterpoint-step 0.25
-```
-
-## 🎵 Audio Rendering
-
-### **With FluidSynth**
-```bash
-# Install FluidSynth (macOS)
-brew install fluidsynth
-
-# Generate and play
-python music_generator.py --seconds 60 --out my_song --sf2 SoundFonts/arachno.sf2
-```
-
-### **MIDI Only**
-```bash
-# Generate MIDI without audio
-python music_generator.py --seconds 60 --out my_song --no-play
-```
-
-## 📚 Library Files
-
-### **Percussion Library** (`library/percussion_library.json`)
-- Drum pattern definitions
-- GM percussion mappings
-- Style-specific patterns (rock, jazz, funk, etc.)
-
-### **Chord Recipes** (`library/chord_recipes.py`)
-- Custom chord definitions
-- Extended harmony options
-- Inversion support
-
-### **Key Presets** (`library/keys_presets.json`)
-- Pre-configured key progressions
-- Circle of fifths sequences
-- Modal progressions
-
-## 🎬 Arrangements (song files)
-
-For long-form pieces that *evolve* instead of looping, describe a song as a YAML
+For long-form pieces that evolve rather than loop, describe a song as a YAML
 file: global `defaults` plus an ordered list of `sections`. Each section
-overrides only what changes — chords, length (`repeat` or `bars`), tempo,
-instruments, bass style, and percussion density — and the sections play
-end-to-end with per-section tempo and instrument changes.
+overrides only what changes (chords, length via `repeat` or `bars`, tempo,
+instruments, bass style, percussion density) and the sections play end to end.
 
 ```bash
-python music_generator.py --song songs/kiss.yml --out kiss --no-play
-# or render to audio via the wrapper:
+venv/bin/python music_generator.py --song songs/kiss.yml --out kiss --no-play
+# or render to audio:
 ./play_music --save-wav --no-play --song songs/kiss.yml --out kiss \
   --sf2 SoundFonts/arachno.sf2 --fx lush --normalize --boost-normalize 2
 ```
@@ -315,109 +201,122 @@ python music_generator.py --song songs/kiss.yml --out kiss --no-play
 See [songs/kiss.yml](songs/kiss.yml) for a worked example and
 [docs/arrangement-plan.md](docs/arrangement-plan.md) for the design.
 
-## 🎹 Fugue (experimental)
+## Fugue (experimental)
 
-Generate a fugal **exposition** from a melodic subject (in the scale-degree
-[melody grammar](docs/token-grammar.md)). Voices enter one at a time with the
-subject (tonic) and answer (dominant, = subject up a fifth), the prior voice
-continues with the countersubject, and a cadence closes it.
+Generate a fugal exposition from a melodic subject expressed in the scale-degree
+[melody grammar](docs/token-grammar.md). Voices enter one at a time with the
+subject (tonic) and answer (dominant, the subject up a fifth); the prior voice
+continues with the countersubject, and a cadence closes the exposition.
 
 ```bash
-# built-in subject, organ, D minor
-python music_generator.py --fugue --instrument organ --melody-key D --melody-mode minor --out fugue --no-play
+venv/bin/python music_generator.py --fugue --instrument organ \
+  --melody-key D --melody-mode minor --out fugue --no-play
 
-# your own subject, harpsichord
 ./play_music --save-wav --no-play --fugue 'q1 q5 e4 e3 e2 e1 q7, q2 h1' \
   --instrument harpsi --melody-key C --melody-mode major \
   --sf2 SoundFonts/arachno.sf2 --fx lush --normalize --boost-normalize 2 --out fugue
 ```
 
-This is an *exposition* (v1) — episodes, middle entries in related keys, and
-stretto/inversion devices are future work. Built on the melody primitive
-(`melody.py`): the answer is `transpose_diatonic(subject, 4)`, the default
-countersubject is `invert(subject)`.
+This is an exposition only; episodes, middle entries in related keys, and
+stretto and inversion devices are future work. It is built on the melody
+primitive (`melody.py`): the answer is `transpose_diatonic(subject, 4)` and the
+default countersubject is `invert(subject)`.
 
-## 🌀 Process music (experimental)
+## Process music (experimental)
 
 Minimalist process pieces from a single melodic cell (scale-degree
 [grammar](docs/token-grammar.md)), unfolding by rule:
 
-- **`phase`** (Reich, *Piano Phase*) — two voices loop the cell; the follower
-  advances one note per stage, sweeping every alignment back to unison.
-- **`additive`** (Glass) — the cell grows a note at a time (1, 12, 123, …) then
+- `phase` (Reich, *Piano Phase*): two voices loop the cell; the follower advances
+  one note per stage, sweeping every alignment back to unison.
+- `additive` (Glass): the cell grows a note at a time (1, 12, 123, ...) then
   contracts.
-- **`augment`** (Reich, *Four Organs*) — the cell's durations lengthen each stage.
+- `augment` (Reich, *Four Organs*): the cell's durations lengthen each stage.
 
 ```bash
-# phasing, two marimbas
 ./play_music --save-wav --no-play --process phase \
   --process-cell 's1 s2 s3 s5 s6 s5 s3 s2' --instrument 12 --bpm 160 \
   --melody-key E --melody-mode minor --sf2 SoundFonts/arachno.sf2 --out phase
 
-# additive build/contract, organ
-python music_generator.py --process additive --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
+venv/bin/python music_generator.py --process additive \
+  --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
   --instrument organ --melody-key C --out additive --no-play
 ```
 
 Tunables: `--process-cell`, `--process-reps` (stage length), `--process-stages`
 (augment). Built on the melody primitive (`process.py`).
 
-## 🧪 Testing
+## Audio rendering
 
 ```bash
-pip install -r requirements-dev.txt
-python -m pytest          # runs tests/ (token-grammar golden tests)
+# render and play through a SoundFont
+venv/bin/python music_generator.py --seconds 60 --out my_song \
+  --sf2 SoundFonts/arachno.sf2
+
+# MIDI only, no audio
+venv/bin/python music_generator.py --seconds 60 --out my_song --no-play
 ```
 
-The token DSL (chord + percussion tokens) is the core of the engine; see the
-full **[token grammar reference](docs/token-grammar.md)**. Its behavior is
-pinned by `tests/test_tokens.py` — run the tests before/after editing any parser.
+## Library files
 
-## 🛠 Development
+- `library/percussion_library.json`: drum-pattern definitions, GM percussion
+  mappings, and style-specific patterns.
+- `library/chord_recipes.py`: custom chord definitions, extended harmony, and
+  inversion support.
+- `library/keys_presets.json`: pre-configured key progressions, circle-of-fifths
+  sequences, and modal progressions.
+- `library/song_cookbook.py`: pre-configured song recipes for `cook_song.py`.
 
-### **Adding New Patterns**
-1. Edit `library/percussion_library.json`
-2. Add new style definitions
-3. Test with `--perc-main-key your_style:4/4:tempo`
+## Project structure
 
-### **Custom Chord Types**
-1. Edit `library/chord_recipes.py`
-2. Add new chord definitions
-3. Use with colon notation: `C:your_chord:inversion`
+```
+music-generator/
+  music_generator.py     # generation engine and CLI
+  render.py              # audio rendering pipeline (FluidSynth, ffmpeg, metadata)
+  play_music             # thin shim over render.py
+  cook_song.py           # recipe system
+  arrangement.py         # YAML song-file arrangements
+  fugue.py               # fugal exposition generator
+  process.py             # minimalist process music
+  melody.py              # scale-degree melody primitive
+  library/               # chord recipes, percussion, presets, cookbook
+  songs/                 # YAML song files
+  docs/                  # architecture, grammar, and design notes
+  tests/                 # pytest suite (token DSL and render smoke tests)
+  output/                # generated MIDI, audio, and metadata (gitignored)
+```
 
-### **New Recipes**
-1. Edit `library/song_cookbook.py`
-2. Add new recipe definitions
-3. Test with `python cook_song.py make your_recipe`
+## Testing
 
-## 🎯 Tips
+```bash
+venv/bin/python -m pytest
+```
 
-### **For Best Results**
-- Use `--velocity-mode-chords human` for realistic dynamics
-- Combine `--satb-style counterpoint` with `--counterpoint-step 0.25` for classical feel
-- Use `--perc-fill-rate 0.2` to add rhythmic variety
-- Experiment with different chord families: `--chords sevenths ninths`
+The token DSL is pinned by `tests/test_tokens.py`, and `tests/test_integration.py`
+exercises every render mode end to end. Run the suite before and after any change,
+and update [docs/token-grammar.md](docs/token-grammar.md) when the grammar changes.
 
-### **Performance**
-- Longer pieces work well with `--mode complete`
-- Use `--mode ostinato` for repetitive patterns
-- Combine multiple chord families: `--chords triads sevenths ninths`
+## Documentation
 
-### **Audio Quality**
-- Use high-quality SoundFonts for better audio
-- Adjust `--gain` parameter for volume control
-- Enable `--reverb 1 --chorus 1` for richer sound
+- [docs/token-grammar.md](docs/token-grammar.md): the chord, percussion, and
+  melody mini-languages.
+- [docs/refactor-plan.md](docs/refactor-plan.md): the active code-health plan.
+- [docs/roadmap-phase2.md](docs/roadmap-phase2.md): the feature roadmap.
+- [docs/arrangement-plan.md](docs/arrangement-plan.md),
+  [docs/melody-primitive-plan.md](docs/melody-primitive-plan.md),
+  [docs/leadsheet-import-plan.md](docs/leadsheet-import-plan.md): design notes.
 
-## 📄 License
+## Tips
 
-This project is for educational and creative use. The generated music is yours to use as you see fit.
+- Use `--velocity-mode-chords human` for more realistic dynamics.
+- Combine `--satb-style counterpoint` with `--counterpoint-step 0.25` for a
+  classical feel.
+- Layer chord families, e.g. `--chords triads sevenths ninths`.
+- Use `--mode ostinato` for repetitive grooves and `--mode complete` for
+  longer-form pieces.
+- For audio, prefer high-quality SoundFonts and tune `--gain`; `--reverb 1
+  --chorus 1` gives a richer sound.
 
-## 🤝 Contributing
+## License
 
-Feel free to add new recipes, patterns, or chord types to the library files. The system is designed to be easily extensible.
-
----
-
-**Happy music making!** 🎵
-
-
+Released under the MIT License. See [LICENSE](LICENSE).

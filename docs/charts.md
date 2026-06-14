@@ -9,14 +9,14 @@ files remain recoverable from git history.
 > of these in an album or EP. Want: billie jean, mathrock_blues_A (name tbd),
 > superstition."
 
-> ⚠️ These commands predate the repo move. Before running, fix:
+> **Note:** These commands predate the repo move. Before running, fix:
 > - SoundFont path: scratch uses `~/SoundFonts/Arachno.sf2` / `$HOME/SoundFonts/arachno.sf2`;
 >   the file now lives at `SoundFonts/arachno.sf2` (lowercase) inside the repo.
 > - Some use `--chord-len` (short form). Confirm the live flag name in the engine.
 
 ---
 
-## ⭐ mathrock_blues_A — "THIS WAS GREAT" (20-min version)
+## mathrock_blues_A — "THIS WAS GREAT" (20-min version)
 
 > Comment in original: *"THIS WAS GREAT / MAKE A SHORTER VERSION AND WE ARE GOOD."*
 > A 300s (5-min) variant existed with the same chart.
@@ -43,7 +43,7 @@ files remain recoverable from git history.
 
 ---
 
-## ⭐ billie jean — "this is the one"
+## billie jean — "this is the one"
 
 ```bash
 ./play_music \

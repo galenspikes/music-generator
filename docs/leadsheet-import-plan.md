@@ -36,8 +36,8 @@ layer: the chord symbols are **text with x/y positions**. `pdfplumber` /
 `pymupdf` give words + coordinates; reconstruct the chart by reading lines
 left→right, grouping into measures, separating chord-rows from lyric-rows by
 font/position.
-- ✅ Exact for the chord *symbols*; no ML; reproducible.
-- ❌ Gets chords/lyrics/section labels, **not the melody** (noteheads are vector
+- Pro: exact for the chord *symbols*; no ML; reproducible.
+- Con: gets chords/lyrics/section labels, **not the melody** (noteheads are vector
   graphics, not text). Fails on scanned/image PDFs (no text layer).
 
 ### B. Vision model (Claude reads the page) — *best for image/scanned PDFs & form*
@@ -45,15 +45,15 @@ Render pages to images and have a multimodal model transcribe the chart into the
 IR (sections, chords, repeats, key, tempo). **This is unusually available here:
 Claude Code's Read tool already reads PDFs** — so a v1 can be a *workflow*, not a
 big build: "read this lead sheet, emit song.yml using docs/token-grammar.md."
-- ✅ Handles image PDFs, messy layouts, section/repeat structure, capo notes.
-- ✅ Near-zero code to start (a documented prompt/skill).
-- ❌ Needs human verification (hallucination risk); not deterministic.
+- Pro: handles image PDFs, messy layouts, section/repeat structure, capo notes.
+- Pro: near-zero code to start (a documented prompt/skill).
+- Con: needs human verification (hallucination risk); not deterministic.
 
 ### C. Optical Music Recognition (OMR) — *only if we want the melody*
 Tools like `oemer` (DL-based, Python) or Audiveris output MusicXML; parse with
 `music21` → chords + melody.
-- ✅ The only path that recovers the **melody** (notes/rhythm).
-- ❌ Hard and error-prone, especially on scans/handwriting; heavy deps; chord
+- Pro: the only path that recovers the **melody** (notes/rhythm).
+- Con: hard and error-prone, especially on scans/handwriting; heavy deps; chord
   *text* often recognized worse than noteheads. High effort, variable payoff.
 
 **Recommendation:** start with **B** (agent-assisted, available now) + build the

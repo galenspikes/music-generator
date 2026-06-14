@@ -71,7 +71,7 @@ For the 20-minute version: change `--seconds 90` to `--seconds 1200`.
 - Try `--instrument piano` or `saw` vs `epiano`; try `--satb-style block`.
 - Bass now has its own patch via `--voice-instrument bass=33` (electric bass).
   Try `bass`, `pickbass`, `synthbass`, or a GM number.
-- ~~Add pedal-bass for the chorus slash chords~~ ✅ done (`/bass` suffix).
+- ~~Add pedal-bass for the chorus slash chords~~ done (`/bass` suffix).
 - Add the pre-chorus #2 variant with `D::min11`.
 - Vary sections over the 20 min (chord-interrupters, fill-rate curve) so it
   evolves rather than loops identically.

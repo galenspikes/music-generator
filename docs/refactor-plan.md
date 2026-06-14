@@ -88,7 +88,7 @@ functions). Working tree clean.
 
 ### Tier 3 — Break up the monolith (FINALIZED PLAN, not yet executed)
 
-Status: Tier 1 ✅ and Tier 2 ✅ are done. Tier 3 below is the agreed plan.
+Status: Tier 1 and Tier 2 are done. Tier 3 below is the agreed plan.
 
 Decisions (locked): **re-export for backward compat** (slim `music_generator.py`
 does `from <mod> import *` so the sibling modules keep using `mg.X` unchanged —
