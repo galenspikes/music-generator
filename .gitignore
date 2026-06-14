@@ -4,6 +4,15 @@ metadata/
 
 # --- Large binary assets (not tracked; keep locally / download separately) ---
 SoundFonts/
+ios/src/musicgen/resources/*.sf2
+ios/src/musicgen/resources/*.dls
+
+# --- iOS app (BeeWare/Briefcase) ---
+# Vendored engine (single source of truth is the repo root; see ios/README.md)
+ios/src/musicgen/_engine/
+ios/build/
+ios/dist/
+ios/.venv/
 
 # --- Python ---
 venv/

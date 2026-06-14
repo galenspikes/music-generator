@@ -1,0 +1,47 @@
+# Briefcase project for the offline Music Generator iOS app.
+# Docs: https://briefcase.readthedocs.io / https://beeware.org
+#
+# Before building, vendor the engine (single source of truth is the repo root):
+#     python tools/sync_engine.py
+# Then, on macOS with Xcode installed:
+#     briefcase create iOS
+#     briefcase build iOS
+#     briefcase run iOS
+
+[tool.briefcase]
+project_name = "Music Generator"
+bundle = "com.galenspikes"
+version = "0.1.0"
+url = "https://github.com/galenspikes/music-generator"
+license.file = "../LICENSE"
+author = "Galen Spikes"
+author_email = "galenspikes@gmail.com"
+
+[tool.briefcase.app.musicgen]
+formal_name = "Music Generator"
+description = "Offline generative MIDI music."
+long_description = """A compact token DSL describes chords, percussion, and
+melodies; the pure-Python engine realizes them into a MIDI file, which plays
+back natively through a bundled SoundFont. Everything runs on-device — no
+network, no FluidSynth, no ffmpeg.
+"""
+icon = "src/musicgen/resources/musicgen"
+sources = [
+    "src/musicgen",
+]
+test_sources = []
+
+# Pure-Python engine dependencies (the engine itself is vendored via
+# tools/sync_engine.py into src/musicgen/_engine).
+requires = [
+    "mido>=1.3,<2",
+    "numpy>=1.26",
+    "pyyaml>=6",
+]
+
+[tool.briefcase.app.musicgen.ios]
+requires = [
+    # rubicon-objc drives AVMIDIPlayer for native on-device playback.
+    "rubicon-objc>=0.4.9",
+    "std-nslog>=1.0.3",
+]
