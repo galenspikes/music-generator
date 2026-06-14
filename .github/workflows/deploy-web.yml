@@ -30,12 +30,11 @@ jobs:
           python-version: "3.11"
       - name: Install build deps
         run: pip install mido
-      - name: Assemble engine, Pyodide runtime, and icons
+      - name: Assemble engine bundle and Pyodide runtime
         working-directory: web
         run: |
           python tools/build_engine.py
           python tools/fetch_pyodide.py
-          python tools/make_icons.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
