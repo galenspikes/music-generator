@@ -2,7 +2,6 @@
 // Generates MIDI client-side, plays it with <midi-player>, and lets you browse a
 // demo gallery and save a small on-device library.
 
-import { loadPyodide } from "./pyodide/pyodide.mjs";
 import { initBuilder, refreshBuilder, setDemoChords } from "./builder.js";
 import { initInterrupterBuilder } from "./interrupter.js";
 
@@ -41,31 +40,40 @@ const CHORD_FAMILIES = [
   "quartal", "sus", "add6", "lyd-dom", "chromatic-mediants",
 ];
 
-let py = null;
 let last = { args: null, name: "", bytes: null };  // most recent generation
 
-// ---------- engine ----------
-async function boot() {
-  status("Loading Pyodide (Python → WebAssembly)…");
-  py = await loadPyodide({ indexURL: "./pyodide/" });
-  status("Loading numpy…");
-  await py.loadPackage(["numpy", "pyyaml", "packaging"]);
-  status("Loading the music engine…");
-  const buf = await (await fetch("./engine.zip")).arrayBuffer();
-  py.unpackArchive(buf, "zip", { extractDir: "/engine" });
-  py.runPython(`
-import sys, os
-sys.path.insert(0, "/engine")
-os.environ["MUSICGEN_OUTPUT_DIR"] = "/out"
-import music_generator as mg
-def generate(args):
-    args = [str(a) for a in args]
-    sys.argv = ["music_generator.py", *args, "--out", "web", "--no-play"]
-    return open(mg.main(), "rb").read()
-`);
-  $("go").disabled = false;
-  $("go").textContent = "Generate";
-  status("Ready — fully offline from here on.");
+// ---------- engine (runs in a Web Worker so long renders never freeze the UI) ----------
+let worker = null;
+let ready = false;
+let jobId = 0;
+const pending = new Map();
+
+function boot() {
+  worker = new Worker("./worker.js", { type: "module" });
+  worker.onmessage = (ev) => {
+    const m = ev.data;
+    if (m.type === "status") { status(m.message); return; }
+    if (m.type === "ready") {
+      ready = true;
+      $("go").disabled = false; $("go").textContent = "Generate";
+      status("Ready — fully offline from here on.");
+      return;
+    }
+    if (m.type === "fatal") { status("Failed to start: " + m.message); return; }
+    const p = pending.get(m.id);
+    if (!p) return;
+    pending.delete(m.id);
+    if (m.type === "result") p.resolve(m.bytes); else p.reject(new Error(m.message));
+  };
+  worker.onerror = (e) => status("Worker error: " + (e.message || e));
+}
+
+function generateInWorker(args) {
+  return new Promise((resolve, reject) => {
+    const id = ++jobId;
+    pending.set(id, { resolve, reject });
+    worker.postMessage({ type: "generate", id, args });
+  });
 }
 
 function bytesToDataUri(bytes) {
@@ -75,15 +83,15 @@ function bytesToDataUri(bytes) {
 }
 
 async function runGenerate(args, name) {
-  if (!py) return;
+  if (!ready) return;
   $("go").disabled = true;
+  const t0 = performance.now();
+  const elapsed = () => ((performance.now() - t0) / 1000).toFixed(1);
   status("Generating…");
+  const timer = setInterval(() => status(`Generating… ${elapsed()}s`), 200);
   try {
-    const gen = py.globals.get("generate");
-    const result = gen(py.toPy(args));
-    const bytes = result.toJs();
-    result.destroy(); gen.destroy();
-
+    const bytes = await generateInWorker(args);
+    clearInterval(timer);
     last = { args, name, bytes };
     const uri = bytesToDataUri(bytes);
     $("player").src = uri;
@@ -93,8 +101,9 @@ async function runGenerate(args, name) {
     $("output").hidden = false;
     $("save").disabled = false;
     $("output").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    status("Done. Tap ▶ to play.");
+    status(`Done in ${elapsed()}s. Tap ▶ to play.`);
   } catch (e) {
+    clearInterval(timer);
     status("Generation failed: " + (e.message || e));
   } finally {
     $("go").disabled = false;
@@ -514,7 +523,7 @@ renderExamples();
 renderLibrary();
 refreshCount();
 syncModeUI();
-boot().catch((e) => status("Failed to start: " + (e.message || e)));
+boot();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
