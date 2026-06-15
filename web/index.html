@@ -50,7 +50,10 @@
       <div class="field" id="keys-field">
         <span>Chords — tap to edit, drag ⠿ to reorder</span>
         <div id="chip-strip" class="chip-strip"></div>
-        <button id="add-chord" type="button" class="ghost add-chord">＋ Add chord</button>
+        <div class="builder-btns">
+          <button id="add-chord" type="button" class="ghost">＋ Add chord</button>
+          <button id="insert-prog" type="button" class="ghost">⛓ Insert progression</button>
+        </div>
         <details class="tokens-details">
           <summary>Tokens (advanced) — paste / copy</summary>
           <input id="keys" type="text" value="C::maj9, A::min11, D::min9, G::13"
@@ -124,6 +127,15 @@
 
     <p id="status" class="status">Booting Python in your browser…</p>
   </main>
+
+  <!-- insert-progression sheet -->
+  <div id="snip" class="sheet" hidden>
+    <div class="sheet-card">
+      <div class="sheet-row"><b>Insert / chain a progression</b><button id="snip-done" class="ghost">Done</button></div>
+      <button id="snip-save" class="ghost" style="width:100%; margin-bottom:10px;">★ Save current as progression…</button>
+      <div id="snip-list" class="snip-list"></div>
+    </div>
+  </div>
 
   <!-- chord editor bottom sheet -->
   <div id="sheet" class="sheet" hidden>

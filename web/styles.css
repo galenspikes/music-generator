@@ -102,7 +102,17 @@ footer a { color: var(--accent); }
 .chip-tok.dragging { opacity: 0.85; z-index: 5; }
 .chip-tok .grip { cursor: grab; color: var(--muted); font-size: 0.9rem; }
 .chip-tok .lbl { cursor: pointer; }
-.add-chord { margin-bottom: 8px; }
+.builder-btns { display: flex; gap: 8px; margin-bottom: 8px; }
+.builder-btns button { flex: 1; }
+.snip-list { max-height: 55vh; overflow-y: auto; }
+.snip-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
+.snip-add {
+  flex: 1; text-align: left; background: var(--bg2); color: var(--ink);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px 12px;
+}
+.snip-add b { display: block; font-size: 0.9rem; }
+.snip-add small { display: block; color: var(--muted); font-size: 0.74rem; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tokens-details summary { color: var(--muted); font-size: 0.8rem; cursor: pointer; margin-bottom: 8px; }
 .tokens-details input { margin-bottom: 8px; }
 button.ghost.mini { padding: 6px 10px; font-size: 0.78rem; }

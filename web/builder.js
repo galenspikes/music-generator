@@ -57,6 +57,37 @@ function serTok(c) {
 
 const serialize = () => chips.map(serTok).join(", ");
 
+// ---------- progressions / chaining ----------
+const SNIP_KEY = "musicgen.snippets.v1";
+let demoChords = [];   // chord-mode demos, set from app.js
+
+const PROGRESSIONS = [
+  ["ii–V–I (C)", "D::min7, G::7, C::maj7"],
+  ["I–V–vi–IV (C)", "C::maj, G::maj, A::min, F::maj"],
+  ["vi–IV–I–V (C)", "A::min, F::maj, C::maj, G::maj"],
+  ["I–vi–IV–V · 50s (C)", "C::maj, A::min, F::maj, G::maj"],
+  ["Jazz turnaround (C)", "C::maj7, A::7, D::min7, G::7"],
+  ["Minor ii–V–i (Am)", "B::m7b5, E::7b9, A::min9"],
+  ["12-bar blues (C)", "C::7, C::7, C::7, C::7, F::7, F::7, C::7, C::7, G::7, F::7, C::7, G::7"],
+  ["Rhythm changes A (Bb)", "Bb::maj7, G::min7, C::min7, F::7"],
+  ["Andalusian cadence (Am)", "A::min, G::maj, F::maj, E::maj"],
+  ["Circle of fifths", "C::maj7, F::maj7, B::m7b5, E::min7, A::min7, D::min7, G::7, C::maj7"],
+  ["Pachelbel (D)", "D::maj, A::maj, B::min, Gb::min, G::maj, D::maj, G::maj, A::maj"],
+  ["Coltrane / Giant Steps", "B::maj7, D::7, G::maj7, Bb::7, Eb::maj7"],
+  ["Dorian vamp (Dm)", "D::min11*4, G::13*4"],
+  ["Pop-punk (E)", "E::maj, B::maj, Db::min, A::maj"],
+];
+
+const loadSnips = () => { try { return JSON.parse(localStorage.getItem(SNIP_KEY)) || []; } catch { return []; } };
+const saveSnips = (a) => localStorage.setItem(SNIP_KEY, JSON.stringify(a));
+
+function appendKeys(keysStr) {
+  const added = splitTop(keysStr).map(parseTok);
+  if (!added.length) return;
+  chips.push(...added);
+  syncToText(); render();
+}
+
 function syncToText() {
   keysInput.value = serialize();
   if (onChange) onChange();
@@ -175,7 +206,45 @@ function readSheet() {
 
 function closeSheet() { sheet.el.hidden = true; editing = -1; }
 
+// ---------- insert-progression sheet ----------
+function snipRow(list, label, keys, onDelete) {
+  const row = document.createElement("div"); row.className = "snip-row";
+  const b = document.createElement("button"); b.className = "snip-add";
+  b.innerHTML = `<b></b><small></small>`;
+  b.querySelector("b").textContent = label;
+  b.querySelector("small").textContent = keys;
+  b.onclick = () => { appendKeys(keys); document.getElementById("snip").hidden = true; };
+  row.appendChild(b);
+  if (onDelete) {
+    const d = document.createElement("button"); d.className = "ghost danger"; d.textContent = "✕";
+    d.onclick = onDelete; row.appendChild(d);
+  }
+  list.appendChild(row);
+}
+
+function openSnips() {
+  const list = document.getElementById("snip-list");
+  list.innerHTML = "";
+  const head = (t) => { const h = document.createElement("h3"); h.className = "cat"; h.textContent = t; list.appendChild(h); };
+  head("Common progressions");
+  for (const [name, keys] of PROGRESSIONS) snipRow(list, name, keys);
+  const saved = loadSnips();
+  if (saved.length) {
+    head("Your saved progressions");
+    saved.forEach((s, idx) => snipRow(list, s.name, s.keys, () => {
+      const a = loadSnips(); a.splice(idx, 1); saveSnips(a); openSnips();
+    }));
+  }
+  if (demoChords.length) {
+    head("From demos");
+    for (const d of demoChords) snipRow(list, d.name, d.keys);
+  }
+  document.getElementById("snip").hidden = false;
+}
+
 // ---------- public ----------
+export function setDemoChords(list) { demoChords = list || []; }
+
 export function refreshBuilder() {
   chips = splitTop(keysInput.value).map(parseTok);
   render();
@@ -218,6 +287,22 @@ export async function initBuilder(opts) {
   };
   document.getElementById("sheet-done").onclick = closeSheet;
   sheet.el.addEventListener("click", (e) => { if (e.target === sheet.el) closeSheet(); });
+
+  // insert-progression / chaining
+  opts.insertBtn.onclick = openSnips;
+  document.getElementById("snip-done").onclick = () => { document.getElementById("snip").hidden = true; };
+  document.getElementById("snip").addEventListener("click", (e) => {
+    if (e.target.id === "snip") e.currentTarget.hidden = true;
+  });
+  document.getElementById("snip-save").onclick = () => {
+    const keys = serialize();
+    if (!keys.trim()) return;
+    const name = prompt("Name this progression:", "My progression");
+    if (!name) return;
+    const a = loadSnips(); a.unshift({ name, keys }); saveSnips(a.slice(0, 30));
+    document.getElementById("snip-save").textContent = "★ Saved!";
+    setTimeout(() => { document.getElementById("snip-save").textContent = "★ Save current as progression…"; }, 1200);
+  };
 
   refreshBuilder();
 }

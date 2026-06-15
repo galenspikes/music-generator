@@ -3,7 +3,7 @@
 // demo gallery and save a small on-device library.
 
 import { loadPyodide } from "./pyodide/pyodide.mjs";
-import { initBuilder, refreshBuilder } from "./builder.js";
+import { initBuilder, refreshBuilder, setDemoChords } from "./builder.js";
 
 const $ = (id) => document.getElementById(id);
 const status = (msg) => { $("status").textContent = msg; };
@@ -235,6 +235,11 @@ function drawChips() {
 async function renderExamples() {
   try { EXAMPLES = await (await fetch("./examples.json")).json(); } catch { EXAMPLES = []; }
   $("ex-count").textContent = String(EXAMPLES.length);
+  // feed chord-mode demos to the builder's "Insert progression" picker
+  const demoChords = EXAMPLES
+    .filter(e => { const i = e.args.indexOf("--keys"); return i >= 0; })
+    .map(e => ({ name: e.name, keys: e.args[e.args.indexOf("--keys") + 1] }));
+  setDemoChords(demoChords);
   $("ex-search").addEventListener("input", drawExamples);
   $("ex-random").addEventListener("click", () => {
     const items = exFiltered();
@@ -273,7 +278,7 @@ for (const [label, alias] of INSTRUMENTS) {
   o.value = alias; o.textContent = label;
   $("instrument").appendChild(o);
 }
-initBuilder({ keysInput: $("keys"), strip: $("chip-strip"), addBtn: $("add-chord") });
+initBuilder({ keysInput: $("keys"), strip: $("chip-strip"), addBtn: $("add-chord"), insertBtn: $("insert-prog") });
 $("copy-tokens").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText($("keys").value); status("Tokens copied."); }
   catch { status("Copy failed — select the field and copy manually."); }
