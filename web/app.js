@@ -8,6 +8,10 @@ import { initInterrupterBuilder } from "./interrupter.js";
 
 const $ = (id) => document.getElementById(id);
 const status = (msg) => { $("status").textContent = msg; };
+const fmtSecs = (s) => {
+  s = +s;
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
 
 const LIB_KEY = "musicgen.library.v1";
 const LIB_MAX = 10;
@@ -291,7 +295,7 @@ function applyArgs(args) {
   if (get("--instrument") && [...$("instrument").options].some(o => o.value === get("--instrument")))
     $("instrument").value = get("--instrument");
   if (get("--bpm")) { $("bpm").value = get("--bpm"); $("bpm-val").textContent = get("--bpm"); }
-  if (get("--seconds")) { $("seconds").value = get("--seconds"); $("sec-val").textContent = get("--seconds"); }
+  if (get("--seconds")) { $("seconds").value = get("--seconds"); $("sec-val").textContent = fmtSecs(get("--seconds")); }
 
   // harmony
   sel("chord-length", get("--chord-length") || "e");
@@ -486,7 +490,7 @@ function syncModeUI() {
 
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => showPanel(t.dataset.panel));
 $("bpm").addEventListener("input", () => { $("bpm-val").textContent = $("bpm").value; });
-$("seconds").addEventListener("input", () => { $("sec-val").textContent = $("seconds").value; });
+$("seconds").addEventListener("input", () => { $("sec-val").textContent = fmtSecs($("seconds").value); });
 $("mode").addEventListener("change", syncModeUI);
 $("go").addEventListener("click", () => {
   let args; try { args = buildArgs(); } catch (e) { status(e.message); return; }
