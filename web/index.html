@@ -81,6 +81,18 @@
 
       <label class="check"><input id="drums" type="checkbox" checked /> Drums</label>
 
+      <details id="perc-adv">
+        <summary>Percussion pattern — lengths &amp; interrupters</summary>
+        <label class="field"><span>Main groove <small>(blank = preset rock beat)</small></span>
+          <input id="perc-main" type="text" placeholder="e.g. qb,eg,ec,eg" /></label>
+        <label class="field"><span>Drum interrupters / fills</span>
+          <input id="perc-intr" type="text" placeholder="optional · e.g. eb,ei,eb,ei" /></label>
+        <label class="field"><span>Chord interrupters <small>(c = play chord, r = rest)</small></span>
+          <input id="chord-intr" type="text" placeholder="optional · e.g. qc,qr,qc,qc" /></label>
+        <p class="hint">Lengths: <b>w h q e s t</b> = whole → 32nd. Drum letters: b kick, c snare,
+          g closed-hat, i open-hat, … Comma-separated. Peek at the demos for ideas.</p>
+      </details>
+
       <details id="advanced">
         <summary>Process / fugue inputs</summary>
         <label class="field"><span>Process cell (scale degrees)</span>

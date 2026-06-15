@@ -89,7 +89,16 @@ function buildArgs() {
     const keys = $("keys").value.trim();
     if (!keys) throw new Error("Enter at least one chord token, e.g. C::maj7, G::13");
     args.push("--mode", mode, "--keys", keys, "--seconds", String($("seconds").value));
-    if ($("drums").checked) args.push("--perc-lib", PERC_LIB, "--perc-main-key", DRUMS_MAIN_KEY);
+    if ($("drums").checked) {
+      args.push("--perc-lib", PERC_LIB);
+      const main = $("perc-main").value.trim();
+      if (main) args.push("--perc-main", main);
+      else args.push("--perc-main-key", DRUMS_MAIN_KEY);
+      const fills = $("perc-intr").value.trim();
+      if (fills) args.push("--perc-interrupters", fills);
+    }
+    const chordIntr = $("chord-intr").value.trim();
+    if (chordIntr) args.push("--chord-interrupters", chordIntr);
   } else if (mode.startsWith("process:")) {
     const cell = $("cell").value.trim();
     if (!cell) throw new Error("Enter a melodic cell, e.g. e1 e2 e3 e5 e7 e5 e3 e2");
@@ -122,7 +131,11 @@ function applyArgs(args) {
     $("instrument").value = get("--instrument");
   if (get("--bpm")) { $("bpm").value = get("--bpm"); $("bpm-val").textContent = get("--bpm"); }
   if (get("--seconds")) { $("seconds").value = get("--seconds"); $("sec-val").textContent = get("--seconds"); }
-  $("drums").checked = args.includes("--perc-main-key");
+  $("drums").checked = ["--perc-main-key", "--perc-main", "--perc-interrupters"]
+    .some((f) => args.includes(f));
+  $("perc-main").value = get("--perc-main") || "";
+  $("perc-intr").value = get("--perc-interrupters") || "";
+  $("chord-intr").value = get("--chord-interrupters") || "";
   if (get("--process-cell")) $("cell").value = get("--process-cell");
   if (get("--melody-key")) $("melkey").value = get("--melody-key");
   if (get("--melody-mode")) $("melmode").value = get("--melody-mode");
@@ -260,6 +273,7 @@ function syncModeUI() {
   const m = $("mode").value;
   const chordMode = (m === "ostinato" || m === "complete");
   $("keys-field").style.display = chordMode ? "" : "none";
+  $("perc-adv").style.display = chordMode ? "" : "none";
   $("advanced").open = !chordMode;
 }
 
