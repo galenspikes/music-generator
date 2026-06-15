@@ -1,0 +1,1916 @@
+[
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in C",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::min9, G::13, C::maj9",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in F",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::min9, C::13, F::maj9",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in Bb",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::min9, F::13, Bb::maj9",
+   "--instrument",
+   "vibes",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in Eb",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::min9, Bb::13, Eb::maj9",
+   "--instrument",
+   "harpsi",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in G",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::min9, D::13, G::maj9",
+   "--instrument",
+   "sax",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in D",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::min9, A::13, D::maj9",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "ii\u2013V\u2013I in A",
+  "desc": "Classic ii\u2013V\u2013I with extended voicings.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "B::min9, E::13, A::maj9",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "92",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "I\u2013vi\u2013ii\u2013V in C",
+  "desc": "Rhythm-changes turnaround, extended.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj9, A::min9, D::min7, G::13",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "I\u2013vi\u2013ii\u2013V in Eb",
+  "desc": "Rhythm-changes turnaround, extended.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Eb::maj9, C::min9, F::min7, Bb::13",
+   "--instrument",
+   "vibes",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "I\u2013vi\u2013ii\u2013V in G",
+  "desc": "Rhythm-changes turnaround, extended.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::maj9, E::min9, A::min7, D::13",
+   "--instrument",
+   "harpsi",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "I\u2013vi\u2013ii\u2013V in Bb",
+  "desc": "Rhythm-changes turnaround, extended.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Bb::maj9, G::min9, C::min7, F::13",
+   "--instrument",
+   "sax",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "I\u2013vi\u2013ii\u2013V in F",
+  "desc": "Rhythm-changes turnaround, extended.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::maj9, D::min9, G::min7, C::13",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "Minor ii\u2013V\u2013i in Am",
+  "desc": "Half-diminished into a minor resolution.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "B::m7b5, E::7b9, A::min9",
+   "--instrument",
+   "vibes",
+   "--bpm",
+   "88",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "Minor ii\u2013V\u2013i in Dm",
+  "desc": "Half-diminished into a minor resolution.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::m7b5, A::7b9, D::min9",
+   "--instrument",
+   "harpsi",
+   "--bpm",
+   "88",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "Minor ii\u2013V\u2013i in Cm",
+  "desc": "Half-diminished into a minor resolution.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::m7b5, G::7b9, C::min9",
+   "--instrument",
+   "sax",
+   "--bpm",
+   "88",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Jazz & Soul",
+  "name": "Minor ii\u2013V\u2013i in Em",
+  "desc": "Half-diminished into a minor resolution.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Gb::m7b5, B::7b9, E::min9",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "88",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Gospel & Neo-Soul",
+  "name": "Gospel Shout in C",
+  "desc": "Inversions climbing under organ.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj9, C:1:maj7, F::maj9, F:1:maj7",
+   "--instrument",
+   "organ",
+   "--bpm",
+   "100",
+   "--seconds",
+   "32"
+  ]
+ },
+ {
+  "cat": "Gospel & Neo-Soul",
+  "name": "Slash & Pedal in C",
+  "desc": "Chords riding a steady C pedal.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::maj/C, F::maj/C, C::maj9, G::13/C",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "88",
+   "--seconds",
+   "32"
+  ]
+ },
+ {
+  "cat": "Gospel & Neo-Soul",
+  "name": "Neo-Soul in F",
+  "desc": "Smooth maj9/min9/13 changes.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::maj9, A::min7, D::min9, G::13",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Gospel & Neo-Soul",
+  "name": "Neo-Soul in Ab",
+  "desc": "Smooth maj9/min9/13 changes.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Ab::maj9, C::min7, F::min9, Bb::13",
+   "--instrument",
+   "clav",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Gospel & Neo-Soul",
+  "name": "Neo-Soul in Bb",
+  "desc": "Smooth maj9/min9/13 changes.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Bb::maj9, D::min7, G::min9, C::13",
+   "--instrument",
+   "vibes",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Gospel & Neo-Soul",
+  "name": "Neo-Soul in D",
+  "desc": "Smooth maj9/min9/13 changes.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::maj9, Gb::min7, B::min9, E::13",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "I\u2013V\u2013vi\u2013IV in C",
+  "desc": "The four-chord pop loop.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj, G::maj, A::min, F::maj",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "120",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:med"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "I\u2013V\u2013vi\u2013IV in G",
+  "desc": "The four-chord pop loop.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::maj, D::maj, E::min, C::maj",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "120",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "I\u2013V\u2013vi\u2013IV in D",
+  "desc": "The four-chord pop loop.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::maj, A::maj, B::min, G::maj",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "120",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:halftime"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "I\u2013V\u2013vi\u2013IV in A",
+  "desc": "The four-chord pop loop.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::maj, E::maj, Gb::min, D::maj",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "120",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:med"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "I\u2013V\u2013vi\u2013IV in E",
+  "desc": "The four-chord pop loop.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::maj, B::maj, Db::min, A::maj",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "120",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "I\u2013V\u2013vi\u2013IV in F",
+  "desc": "The four-chord pop loop.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::maj, C::maj, D::min, Bb::maj",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "120",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:halftime"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "vi\u2013IV\u2013I\u2013V in G",
+  "desc": "Anthemic pop-punk turn.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::min, C::maj, G::maj, D::maj",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "132",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "vi\u2013IV\u2013I\u2013V in D",
+  "desc": "Anthemic pop-punk turn.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "B::min, G::maj, D::maj, A::maj",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "132",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "vi\u2013IV\u2013I\u2013V in A",
+  "desc": "Anthemic pop-punk turn.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Gb::min, D::maj, A::maj, E::maj",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "132",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "vi\u2013IV\u2013I\u2013V in C",
+  "desc": "Anthemic pop-punk turn.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::min, F::maj, C::maj, G::maj",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "132",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "Power Drive in E",
+  "desc": "Power chords, hard beat.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::5, A::5, B::5",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "150",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "Power Drive in A",
+  "desc": "Power chords, hard beat.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::5, D::5, E::5",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "150",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "Power Drive in D",
+  "desc": "Power chords, hard beat.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::5, G::5, A::5",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "150",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:fast"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "Metal Riff in E",
+  "desc": "Power chords + blast-lite.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::5, A::5, B::5",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "172",
+   "--seconds",
+   "24",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "metal:4/4:blast-lite"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "Metal Riff in B",
+  "desc": "Power chords + blast-lite.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "B::5, E::5, Gb::5",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "172",
+   "--seconds",
+   "24",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "metal:4/4:blast-lite"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "Metal Riff in A",
+  "desc": "Power chords + blast-lite.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::5, D::5, E::5",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "172",
+   "--seconds",
+   "24",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "metal:4/4:blast-lite"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "50s Doo-Wop in C",
+  "desc": "I\u2013vi\u2013IV\u2013V, vintage.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj, A::min, F::maj, G::maj",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "108",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:halftime"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "50s Doo-Wop in G",
+  "desc": "I\u2013vi\u2013IV\u2013V, vintage.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::maj, E::min, C::maj, D::maj",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "108",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:halftime"
+  ]
+ },
+ {
+  "cat": "Pop & Rock",
+  "name": "50s Doo-Wop in F",
+  "desc": "I\u2013vi\u2013IV\u2013V, vintage.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::maj, D::min, Bb::maj, C::maj",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "108",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "rock:4/4:halftime"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Blues Shuffle in A",
+  "desc": "I\u2013IV\u2013V dominants, shuffle.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::7, D::7, E::7",
+   "--instrument",
+   "organ",
+   "--bpm",
+   "116",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "blues:4/4:shuffle"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Blues Shuffle in E",
+  "desc": "I\u2013IV\u2013V dominants, shuffle.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::7, A::7, B::7",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "116",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "blues:4/4:shuffle"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Blues Shuffle in G",
+  "desc": "I\u2013IV\u2013V dominants, shuffle.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::7, C::7, D::7",
+   "--instrument",
+   "distguitar",
+   "--bpm",
+   "116",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "blues:4/4:shuffle"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Blues Shuffle in C",
+  "desc": "I\u2013IV\u2013V dominants, shuffle.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::7, F::7, G::7",
+   "--instrument",
+   "organ",
+   "--bpm",
+   "116",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "blues:4/4:shuffle"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Blues Shuffle in D",
+  "desc": "I\u2013IV\u2013V dominants, shuffle.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::7, G::7, A::7",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "116",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "blues:4/4:shuffle"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Funk Pocket in E",
+  "desc": "Dominant-9 stabs, tight groove.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::9, A::9",
+   "--instrument",
+   "clav",
+   "--bpm",
+   "104",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "funk:4/4:med"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Funk Pocket in C",
+  "desc": "Dominant-9 stabs, tight groove.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::9, F::9",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "104",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "funk:4/4:med"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Funk Pocket in G",
+  "desc": "Dominant-9 stabs, tight groove.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::9, C::9",
+   "--instrument",
+   "jazzguitar",
+   "--bpm",
+   "104",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "funk:4/4:med"
+  ]
+ },
+ {
+  "cat": "Blues & Funk",
+  "name": "Funk Pocket in A",
+  "desc": "Dominant-9 stabs, tight groove.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::9, D::9",
+   "--instrument",
+   "clav",
+   "--bpm",
+   "104",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "funk:4/4:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Bossa Nova in A",
+  "desc": "Gentle ii\u2013V\u2013I, bossa clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "B::min7, E::7, A::maj7",
+   "--instrument",
+   "nylongt",
+   "--bpm",
+   "128",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "bossa:4/4:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Bossa Nova in D",
+  "desc": "Gentle ii\u2013V\u2013I, bossa clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::min7, A::7, D::maj7",
+   "--instrument",
+   "nylongt",
+   "--bpm",
+   "128",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "bossa:4/4:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Bossa Nova in F",
+  "desc": "Gentle ii\u2013V\u2013I, bossa clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::min7, C::7, F::maj7",
+   "--instrument",
+   "nylongt",
+   "--bpm",
+   "128",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "bossa:4/4:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Bossa Nova in Bb",
+  "desc": "Gentle ii\u2013V\u2013I, bossa clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::min7, F::7, Bb::maj7",
+   "--instrument",
+   "nylongt",
+   "--bpm",
+   "128",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "bossa:4/4:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Salsa Montuno in C",
+  "desc": "Bright brass over 3-2 clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj7, F::maj7, G::7, C::maj7",
+   "--instrument",
+   "trumpet",
+   "--bpm",
+   "184",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "salsa:4/4:clave-3-2"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Salsa Montuno in F",
+  "desc": "Bright brass over 3-2 clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::maj7, Bb::maj7, C::7, F::maj7",
+   "--instrument",
+   "trumpet",
+   "--bpm",
+   "184",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "salsa:4/4:clave-3-2"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Salsa Montuno in G",
+  "desc": "Bright brass over 3-2 clave.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::maj7, C::maj7, D::7, G::maj7",
+   "--instrument",
+   "trumpet",
+   "--bpm",
+   "184",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "salsa:4/4:clave-3-2"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Afro 12/8 in Em",
+  "desc": "Rolling 12/8 cross-rhythm.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::min9, D::maj9",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "afro:12/8:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Afro 12/8 in Am",
+  "desc": "Rolling 12/8 cross-rhythm.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::min9, G::maj9",
+   "--instrument",
+   "marimba",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "afro:12/8:med"
+  ]
+ },
+ {
+  "cat": "Latin & World",
+  "name": "Afro 12/8 in Dm",
+  "desc": "Rolling 12/8 cross-rhythm.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::min9, C::maj9",
+   "--instrument",
+   "piano",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40",
+   "--perc-lib",
+   "/engine/library/percussion_library.json",
+   "--perc-main-key",
+   "afro:12/8:med"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Drift in C",
+  "desc": "Two-chord pad, slow and wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj9, A::min11",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "68",
+   "--seconds",
+   "52",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Drift in E",
+  "desc": "Two-chord pad, slow and wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::maj9, Db::min11",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "68",
+   "--seconds",
+   "52",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Drift in Ab",
+  "desc": "Two-chord pad, slow and wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Ab::maj9, F::min11",
+   "--instrument",
+   "choir",
+   "--bpm",
+   "68",
+   "--seconds",
+   "52",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Drift in D",
+  "desc": "Two-chord pad, slow and wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::maj9, B::min11",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "68",
+   "--seconds",
+   "52",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Drift in F",
+  "desc": "Two-chord pad, slow and wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::maj9, D::min11",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "68",
+   "--seconds",
+   "52",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Drift in A",
+  "desc": "Two-chord pad, slow and wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::maj9, Gb::min11",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "68",
+   "--seconds",
+   "52",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Lydian Float in G",
+  "desc": "maj7#11 shimmer.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::maj7add9, C::maj7#11",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "48",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Lydian Float in Bb",
+  "desc": "maj7#11 shimmer.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "Bb::maj7add9, Eb::maj7#11",
+   "--instrument",
+   "choir",
+   "--bpm",
+   "72",
+   "--seconds",
+   "48",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Lydian Float in D",
+  "desc": "maj7#11 shimmer.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::maj7add9, G::maj7#11",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "72",
+   "--seconds",
+   "48",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Nocturne in Am",
+  "desc": "Minor 11 to a distant major.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::min11, F::maj9",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "64",
+   "--seconds",
+   "56"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Nocturne in Cm",
+  "desc": "Minor 11 to a distant major.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::min11, Ab::maj9",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "64",
+   "--seconds",
+   "56"
+  ]
+ },
+ {
+  "cat": "Ambient & Cinematic",
+  "name": "Nocturne in Fm",
+  "desc": "Minor 11 to a distant major.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::min11, Db::maj9",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "64",
+   "--seconds",
+   "56"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Quartal Voyage in C",
+  "desc": "Stacked fourths, spread wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::quartal, D::quartal, E::quartal, G::quartal",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "80",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Quartal Voyage in D",
+  "desc": "Stacked fourths, spread wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::quartal, E::quartal, Gb::quartal, A::quartal",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "80",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Quartal Voyage in E",
+  "desc": "Stacked fourths, spread wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::quartal, Gb::quartal, Ab::quartal, B::quartal",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "80",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Quartal Voyage in G",
+  "desc": "Stacked fourths, spread wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::quartal, A::quartal, B::quartal, D::quartal",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "80",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Quartal Voyage in A",
+  "desc": "Stacked fourths, spread wide.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::quartal, B::quartal, Db::quartal, E::quartal",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "80",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Dorian Vamp in D",
+  "desc": "min11\u201313 modal loop (repeats).",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::min11*4, G::13*4",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Dorian Vamp in E",
+  "desc": "min11\u201313 modal loop (repeats).",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::min11*4, A::13*4",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Dorian Vamp in A",
+  "desc": "min11\u201313 modal loop (repeats).",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::min11*4, D::13*4",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "96",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "So What in E",
+  "desc": "The classic quartal 'So What' chord.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::so_what, Gb::so_what",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "88",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "So What in D",
+  "desc": "The classic quartal 'So What' chord.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::so_what, E::so_what",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "88",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "So What in G",
+  "desc": "The classic quartal 'So What' chord.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::so_what, A::so_what",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "88",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Suspended Air in C",
+  "desc": "sus2/sus4 ambiguity.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::sus2, G::sus4, F::sus2",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Suspended Air in G",
+  "desc": "sus2/sus4 ambiguity.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::sus2, D::sus4, C::sus2",
+   "--instrument",
+   "epiano",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Modal & Quartal",
+  "name": "Suspended Air in A",
+  "desc": "sus2/sus4 ambiguity.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::sus2, E::sus4, D::sus2",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "84",
+   "--seconds",
+   "40"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Whole-Tone Dream",
+  "desc": "The whole_tone sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::whole_tone, F::whole_tone",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Mystic Chord",
+  "desc": "The mystic sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::mystic, G::mystic",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Petrushka Bitonal",
+  "desc": "The petrushka sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::petrushka, A::petrushka",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Messiaen Resonance",
+  "desc": "The messiaen_resonance sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::messiaen_resonance, Bb::messiaen_resonance",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Messiaen Dominant",
+  "desc": "The messiaen_dom sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::messiaen_dom, C::messiaen_dom",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Octatonic Set",
+  "desc": "The octatonic_tet sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::octatonic_tet, D::octatonic_tet",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Rite of Spring 'Augurs'",
+  "desc": "The augurs sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::augurs, F::augurs",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Bart\u00f3k Cluster",
+  "desc": "The bartok sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::bartok, G::bartok",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Tristan Chord",
+  "desc": "The tristan sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "E::tristan, A::tristan",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Quintal Stack",
+  "desc": "The quintal sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "F::quintal, Bb::quintal",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Altered Dominant",
+  "desc": "The 7alt sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "G::7alt, C::7alt",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Hendrix #9",
+  "desc": "The 7#9 sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "A::7#9, D::7#9",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Lydian maj7#11",
+  "desc": "The maj7#11 sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "C::maj7#11, F::maj7#11",
+   "--instrument",
+   "strings",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ },
+ {
+  "cat": "Exotic & Atonal",
+  "name": "Tone Cluster",
+  "desc": "The tone_cluster_4 sonority, fully voiced.",
+  "args": [
+   "--mode",
+   "ostinato",
+   "--keys",
+   "D::tone_cluster_4, G::tone_cluster_4",
+   "--instrument",
+   "pad",
+   "--bpm",
+   "72",
+   "--seconds",
+   "36",
+   "--voicing",
+   "dense"
+  ]
+ }
+]

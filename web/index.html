@@ -26,8 +26,15 @@
     </div>
   </header>
 
+  <nav class="tabs">
+    <button class="tab active" data-panel="create">Create</button>
+    <button class="tab" data-panel="examples">Examples</button>
+    <button class="tab" data-panel="library">Library <span id="lib-count" class="badge">0</span></button>
+  </nav>
+
   <main>
-    <section class="card">
+    <!-- ===== CREATE ===== -->
+    <section class="card panel" id="panel-create">
       <label class="field">
         <span>Mode</span>
         <select id="mode">
@@ -42,9 +49,9 @@
 
       <label class="field" id="keys-field">
         <span>Chord keys</span>
-        <input id="keys" type="text" value="C::maj9, A::min11, F::maj7, G::13"
+        <input id="keys" type="text" value="C::maj9, A::min11, D::min9, G::13"
                placeholder="e.g. C::maj7, A:1:min9, G::maj/C" />
-        <small>root[:inversion][:recipe][/bass] — see the token grammar.</small>
+        <small>root[:inversion][:recipe][/bass] — comma-separated.</small>
       </label>
 
       <div class="field">
@@ -58,8 +65,8 @@
           <input id="bpm" type="range" min="60" max="200" value="96" />
         </label>
         <label class="field grow">
-          <span>Length: <b id="sec-val">30</b> s</span>
-          <input id="seconds" type="range" min="10" max="180" step="5" value="30" />
+          <span>Length: <b id="sec-val">40</b> s</span>
+          <input id="seconds" type="range" min="10" max="180" step="5" value="40" />
         </label>
       </div>
 
@@ -67,38 +74,49 @@
 
       <details id="advanced">
         <summary>Process / fugue inputs</summary>
-        <label class="field">
-          <span>Process cell (scale degrees)</span>
-          <input id="cell" type="text" value="e1 e2 e3 e5 e7 e5 e3 e2" />
-        </label>
-        <label class="field">
-          <span>Fugue subject (blank = built-in)</span>
-          <input id="subject" type="text" value="q1 q5 e4 e3 e2 e1 q7" />
-        </label>
+        <label class="field"><span>Process cell (scale degrees)</span>
+          <input id="cell" type="text" value="e1 e2 e3 e5 e7 e5 e3 e2" /></label>
+        <label class="field"><span>Fugue subject (blank = built-in)</span>
+          <input id="subject" type="text" value="q1 q5 e4 e3 e2 e1 q7" /></label>
         <div class="row">
           <label class="field grow"><span>Melody key</span>
             <input id="melkey" type="text" value="C" /></label>
           <label class="field grow"><span>Melody mode</span>
-            <select id="melmode"><option>major</option><option>minor</option></select>
-          </label>
+            <select id="melmode"><option>major</option><option>minor</option></select></label>
         </div>
       </details>
 
       <button id="go" disabled>Loading engine…</button>
-      <p id="status" class="status">Booting Python in your browser…</p>
     </section>
 
+    <!-- ===== EXAMPLES ===== -->
+    <section class="panel" id="panel-examples" hidden>
+      <p class="hint">Tap any demo to generate and play it. Then tweak it in Create or ★ save it.</p>
+      <div id="examples-grid"></div>
+    </section>
+
+    <!-- ===== LIBRARY ===== -->
+    <section class="panel" id="panel-library" hidden>
+      <p class="hint">Your saved pieces (up to 10). Stored on this device only.</p>
+      <div id="library-list"></div>
+      <p id="library-empty" class="hint">Nothing saved yet — generate something and tap ★ Save.</p>
+    </section>
+
+    <!-- ===== SHARED OUTPUT ===== -->
     <section class="card" id="output" hidden>
+      <div class="now-playing"><span id="now-name">—</span>
+        <button id="save" class="ghost">★ Save</button></div>
       <midi-player id="player" sound-font visualizer="#viz"></midi-player>
       <midi-visualizer id="viz" type="piano-roll"></midi-visualizer>
       <a id="download" class="download" download="music.mid">⬇ Download MIDI</a>
     </section>
+
+    <p id="status" class="status">Booting Python in your browser…</p>
   </main>
 
   <footer>
     Built from
-    <a href="https://github.com/galenspikes/music-generator">galenspikes/music-generator</a>
-    · MIT
+    <a href="https://github.com/galenspikes/music-generator">galenspikes/music-generator</a> · MIT
   </footer>
 
   <script type="module" src="app.js"></script>

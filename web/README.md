@@ -59,6 +59,17 @@ publishing. See `.github/workflows/deploy-web.yml`: it runs the three `tools/*`
 scripts and publishes `web/` to Pages. Point Pages at the workflow and the app
 is live at `https://<user>.github.io/music-generator/`.
 
+## Features
+
+- **Create**: modes (ostinato/complete, process ×3, fugue), instrument, tempo,
+  length, drums, and chord-key tokens.
+- **Examples**: a 100-piece demo gallery (`examples.json`, every entry validated
+  against the engine) grouped by genre — tap to generate & play.
+- **Library**: save up to 10 generated pieces to the device (localStorage),
+  replay / edit / delete.
+- **Planned**: a visual token builder (drag-and-drop chips, mobile-first) — see
+  `docs/web-token-builder-plan.md`.
+
 ## Notes / roadmap
 
 - Engine generation is **fully offline** (verified headlessly under Pyodide).
