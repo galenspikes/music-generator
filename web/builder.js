@@ -106,49 +106,20 @@ function chipLabel(c) {
 // ---------- render strip ----------
 function render() {
   strip.innerHTML = "";
+  if (!chips.length) {
+    const empty = document.createElement("span");
+    empty.className = "chip-empty";
+    empty.textContent = "No chords yet — tap ＋ Add chord or ⛓ Insert progression.";
+    strip.appendChild(empty);
+    return;
+  }
   chips.forEach((c, i) => {
-    const el = document.createElement("div");
-    el.className = "chip-tok"; el.dataset.i = i;
-    el.innerHTML = `<span class="grip">⠿</span><span class="lbl"></span>`;
-    el.querySelector(".lbl").textContent = chipLabel(c);
-    el.querySelector(".lbl").onclick = () => openSheet(i);
-    el.querySelector(".grip").addEventListener("pointerdown", (ev) => startDrag(ev, i, el));
+    const el = document.createElement("button");
+    el.type = "button"; el.className = "chip-tok"; el.dataset.i = i;
+    el.textContent = chipLabel(c);
+    el.addEventListener("click", () => openSheet(i));
     strip.appendChild(el);
   });
-}
-
-// ---------- drag reorder (pointer events) ----------
-let drag = null;
-function startDrag(ev, i, el) {
-  ev.preventDefault();
-  drag = { i, el, x0: ev.clientX };
-  el.classList.add("dragging");
-  el.setPointerCapture(ev.pointerId);
-  el.onpointermove = onDrag;
-  el.onpointerup = endDrag;
-}
-function onDrag(ev) {
-  if (!drag) return;
-  drag.el.style.transform = `translateX(${ev.clientX - drag.x0}px)`;
-  const sibs = [...strip.children];
-  let target = drag.i;
-  sibs.forEach((s, j) => {
-    const r = s.getBoundingClientRect();
-    if (ev.clientX > r.left + r.width / 2) target = j;
-  });
-  drag.target = target;
-}
-function endDrag() {
-  if (!drag) return;
-  const { i } = drag; let t = drag.target;
-  drag.el.classList.remove("dragging"); drag.el.style.transform = "";
-  if (t !== undefined && t !== i) {
-    const [moved] = chips.splice(i, 1);
-    chips.splice(t, 0, moved);
-    syncToText();
-  }
-  render();
-  drag = null;
 }
 
 // ---------- bottom sheet editor ----------
