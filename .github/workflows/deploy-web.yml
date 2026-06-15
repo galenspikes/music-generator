@@ -1,8 +1,7 @@
 name: Deploy web app (PWA) to GitHub Pages
 
 # Manual only. Builds the offline PWA (from the feature branch) and publishes it
-# to Pages. A repo serves a single Pages site, so running this replaces whatever
-# Pages currently serves; re-run the showcase workflow to switch back.
+# to Pages. Requires Pages "Source" = GitHub Actions in repo settings.
 on:
   workflow_dispatch:
 
@@ -36,8 +35,6 @@ jobs:
           python tools/build_engine.py
           python tools/fetch_pyodide.py
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
