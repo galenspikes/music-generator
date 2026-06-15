@@ -2944,8 +2944,9 @@ def main():
         "--process-cell; key via --melody-key/--melody-mode.")
     ap.add_argument("--process-cell", type=str, default=None,
                     help="Melodic cell (scale-degree syntax) for --process.")
-    ap.add_argument("--process-reps", type=int, default=4,
-                    help="Repetitions held at each stage of the process.")
+    ap.add_argument("--process-reps", type=int, default=None,
+                    help="Repetitions held at each stage of the process. "
+                         "Omit to size the piece to --seconds.")
     ap.add_argument("--process-stages", type=int, default=6,
                     help="Number of stages (for --process augment).")
     ap.add_argument("--keys",
@@ -3200,9 +3201,18 @@ def main():
         key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
         pmode = args.melody_mode or "major"
         proc_out = resolve_out_path(args.out, f"process_{args.process}")
+        reps = args.process_reps
+        if reps is None:
+            # Size the piece to the requested duration: one rep-block has a fixed
+            # length, so derive how many we need to reach --seconds.
+            _, base = proc.build_process(
+                cell, key_pc, pmode, kind=args.process,
+                reps=1, stages=args.process_stages)
+            target_beats = (args.seconds * args.bpm) / 60.0
+            reps = max(1, round(target_beats / base)) if base > 0 else 1
         proc_events, total = proc.build_process(
             cell, key_pc, pmode, kind=args.process,
-            reps=args.process_reps, stages=args.process_stages)
+            reps=reps, stages=args.process_stages)
         _render_generated(proc_out, args.bpm, proc_events, total,
                           args.instrument, args.velocity_mode_chords,
                           args.velocity_mode_drums)

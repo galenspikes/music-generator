@@ -257,6 +257,7 @@ function buildArgs() {
     const cell = $("cell").value.trim();
     if (!cell) throw new Error("Enter a melodic cell, e.g. e1 e2 e3 e5 e7 e5 e3 e2");
     args.push("--process", mode.split(":")[1].trim(), "--process-cell", cell,
+              "--seconds", String($("seconds").value),
               "--melody-key", $("melkey").value.trim() || "C", "--melody-mode", $("melmode").value);
     if (v("process-reps").trim() !== "") args.push("--process-reps", v("process-reps").trim());
     if (v("process-stages").trim() !== "") args.push("--process-stages", v("process-stages").trim());
