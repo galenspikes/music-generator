@@ -28,7 +28,7 @@
 
   <nav class="tabs">
     <button class="tab active" data-panel="create">Create</button>
-    <button class="tab" data-panel="examples">Examples</button>
+    <button class="tab" data-panel="examples">Examples <span id="ex-count" class="badge">100</span></button>
     <button class="tab" data-panel="library">Library <span id="lib-count" class="badge">0</span></button>
   </nav>
 
@@ -91,7 +91,12 @@
 
     <!-- ===== EXAMPLES ===== -->
     <section class="panel" id="panel-examples" hidden>
-      <p class="hint">Tap any demo to generate and play it. Then tweak it in Create or ★ save it.</p>
+      <div class="ex-toolbar">
+        <input id="ex-search" type="search" placeholder="Search demos…" autocomplete="off" />
+        <button id="ex-random" class="ghost">🎲 Surprise me</button>
+      </div>
+      <div id="ex-chips" class="chips"></div>
+      <p class="hint" id="ex-status">Tap any demo to generate &amp; play it.</p>
       <div id="examples-grid"></div>
     </section>
 

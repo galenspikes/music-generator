@@ -184,13 +184,23 @@ function renderLibrary() {
   }
 }
 
-// ---------- Examples gallery ----------
-async function renderExamples() {
-  let data = [];
-  try { data = await (await fetch("./examples.json")).json(); } catch { return; }
+// ---------- Examples gallery (search + category chips + random) ----------
+let EXAMPLES = [];
+let exCat = "All";
+
+function exFiltered() {
+  const q = ($("ex-search").value || "").trim().toLowerCase();
+  return EXAMPLES.filter(ex =>
+    (exCat === "All" || ex.cat === exCat) &&
+    (!q || (ex.name + " " + ex.desc + " " + ex.cat).toLowerCase().includes(q)));
+}
+
+function drawExamples() {
   const grid = $("examples-grid");
+  const items = exFiltered();
+  $("ex-status").textContent = `${items.length} demo${items.length === 1 ? "" : "s"} — tap to generate & play.`;
   const byCat = {};
-  for (const ex of data) (byCat[ex.cat] = byCat[ex.cat] || []).push(ex);
+  for (const ex of items) (byCat[ex.cat] = byCat[ex.cat] || []).push(ex);
   grid.innerHTML = "";
   for (const cat of Object.keys(byCat)) {
     const h = document.createElement("h3"); h.className = "cat"; h.textContent = cat;
@@ -205,6 +215,33 @@ async function renderExamples() {
       grid.appendChild(card);
     }
   }
+}
+
+function drawChips() {
+  const cats = ["All", ...[...new Set(EXAMPLES.map(e => e.cat))]];
+  const box = $("ex-chips");
+  box.innerHTML = "";
+  for (const c of cats) {
+    const b = document.createElement("button");
+    b.className = "chip" + (c === exCat ? " active" : "");
+    b.textContent = c === "All" ? `All ${EXAMPLES.length}` : c;
+    b.onclick = () => { exCat = c; drawChips(); drawExamples(); };
+    box.appendChild(b);
+  }
+}
+
+async function renderExamples() {
+  try { EXAMPLES = await (await fetch("./examples.json")).json(); } catch { EXAMPLES = []; }
+  $("ex-count").textContent = String(EXAMPLES.length);
+  $("ex-search").addEventListener("input", drawExamples);
+  $("ex-random").addEventListener("click", () => {
+    const items = exFiltered();
+    if (!items.length) return;
+    const ex = items[Math.floor(Math.random() * items.length)];
+    applyArgs(ex.args); runGenerate(ex.args, ex.name);
+  });
+  drawChips();
+  drawExamples();
 }
 
 // ---------- nav + small UI ----------

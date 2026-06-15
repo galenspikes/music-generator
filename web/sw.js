@@ -1,8 +1,13 @@
-// Service worker: precache the app shell + Pyodide runtime + engine so the app
-// works fully offline, and cache-first everything else (the CDN player script
-// and its SoundFont) so playback survives offline after the first online load.
+// Service worker. Strategy:
+//   - App shell (html/js/css/json, same-origin small files): NETWORK-FIRST so a
+//     new deploy shows up immediately; falls back to cache when offline.
+//   - Heavy, effectively-immutable assets (Pyodide runtime, engine.zip, icons):
+//     CACHE-FIRST (fetched once, reused offline).
+//   - Cross-origin CDN (player + soundfont): cache-first so playback survives
+//     offline after the first online load.
+// Bump CACHE to force returning visitors onto the latest shell.
 
-const CACHE = "musicgen-v2";
+const CACHE = "musicgen-v3";
 
 const PRECACHE = [
   "./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest",
@@ -29,20 +34,35 @@ self.addEventListener("activate", (e) => {
   );
 });
 
+const isImmutable = (u) =>
+  u.pathname.includes("/pyodide/") || u.pathname.endsWith("/engine.zip") || u.pathname.includes("/icons/");
+
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
-  e.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) return hit;
-      return fetch(req).then((res) => {
-        // Cache successful and opaque (cross-origin CDN) responses for next time.
-        if (res && (res.ok || res.type === "opaque")) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy));
-        }
+  const url = new URL(req.url);
+  const sameOrigin = url.origin === self.location.origin;
+
+  if (sameOrigin && !isImmutable(url)) {
+    // network-first for the app shell
+    e.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
         return res;
-      }).catch(() => caches.match("./index.html"));
-    })
+      }).catch(() => caches.match(req).then((hit) => hit || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // cache-first for big/immutable assets and cross-origin (CDN)
+  e.respondWith(
+    caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res && (res.ok || res.type === "opaque")) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
+      return res;
+    }).catch(() => caches.match("./index.html")))
   );
 });

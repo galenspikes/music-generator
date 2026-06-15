@@ -108,6 +108,15 @@ footer a { color: var(--accent); }
 .hint { color: var(--muted); font-size: 0.82rem; margin: 4px 2px 12px; }
 
 /* examples gallery */
+.ex-toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+.ex-toolbar input[type="search"] { flex: 1; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip {
+  width: auto; padding: 7px 11px; font-size: 0.8rem; font-weight: 600;
+  background: var(--card); color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 999px;
+}
+.chip.active { color: white; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: transparent; }
 .cat { color: var(--ink); font-size: 0.95rem; margin: 16px 2px 8px; opacity: 0.9; }
 .example {
   width: 100%; text-align: left; display: block; margin-bottom: 8px;
