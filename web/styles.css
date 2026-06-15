@@ -91,6 +91,40 @@ midi-visualizer { display: block; overflow: auto; border-radius: 10px; backgroun
 footer { max-width: 640px; margin: 8px auto 24px; color: var(--muted); font-size: 0.8rem; text-align: center; }
 footer a { color: var(--accent); }
 
+/* chord chip builder */
+.chip-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; min-height: 8px; }
+.chip-tok {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: linear-gradient(135deg, rgba(138,92,246,0.28), rgba(92,44,140,0.28));
+  border: 1px solid rgba(138,92,246,0.5); border-radius: 11px;
+  padding: 9px 11px; font-size: 0.92rem; font-weight: 600; touch-action: none;
+}
+.chip-tok.dragging { opacity: 0.85; z-index: 5; }
+.chip-tok .grip { cursor: grab; color: var(--muted); font-size: 0.9rem; }
+.chip-tok .lbl { cursor: pointer; }
+.add-chord { margin-bottom: 8px; }
+.tokens-details summary { color: var(--muted); font-size: 0.8rem; cursor: pointer; margin-bottom: 8px; }
+.tokens-details input { margin-bottom: 8px; }
+button.ghost.mini { padding: 6px 10px; font-size: 0.78rem; }
+
+/* bottom sheet */
+.sheet {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+}
+.sheet-card {
+  width: 100%; max-width: 640px; background: var(--card);
+  border-radius: 18px 18px 0 0; padding: 18px 16px calc(env(safe-area-inset-bottom) + 18px);
+  border: 1px solid rgba(255,255,255,0.1); border-bottom: none;
+}
+.sheet-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.sheet-row b { font-size: 1.05rem; }
+.sheet-actions { display: flex; gap: 8px; margin-top: 6px; }
+.sheet-actions button { flex: 1; }
+.stepper { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.9rem; }
+.stepper b { color: var(--ink); min-width: 16px; text-align: center; }
+.sheet select { width: 100%; }
+
 /* tabs */
 .tabs { max-width: 640px; margin: 0 auto 12px; display: flex; gap: 6px; }
 .tab {

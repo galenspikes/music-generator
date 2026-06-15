@@ -1,0 +1,133 @@
+[
+ {
+  "label": "Triads",
+  "recipes": [
+   "maj",
+   "min",
+   "dim",
+   "aug",
+   "5",
+   "5add8",
+   "5add9"
+  ]
+ },
+ {
+  "label": "Sixths & Sevenths",
+  "recipes": [
+   "maj7",
+   "min7",
+   "7",
+   "m7b5",
+   "hdim7",
+   "dim7",
+   "mmaj7",
+   "7b5",
+   "7#5",
+   "majadd6",
+   "minadd6"
+  ]
+ },
+ {
+  "label": "Ninths, 11ths & 13ths",
+  "recipes": [
+   "9",
+   "maj9",
+   "min9",
+   "11",
+   "min11",
+   "13",
+   "min13",
+   "maj7add9",
+   "min7add9",
+   "majadd9",
+   "minadd9",
+   "majadd11",
+   "minadd11",
+   "majadd13",
+   "majaddb13",
+   "majadd#9",
+   "majadd#11",
+   "majaddb9",
+   "add4",
+   "maj7#11",
+   "min7#11",
+   "maj7split3",
+   "split3",
+   "7split3"
+  ]
+ },
+ {
+  "label": "Altered Dominants",
+  "recipes": [
+   "7b9",
+   "7#9",
+   "7b13",
+   "7#13",
+   "7#11",
+   "7b11",
+   "7alt",
+   "lyd-dom"
+  ]
+ },
+ {
+  "label": "Suspended",
+  "recipes": [
+   "sus2",
+   "sus4",
+   "sus2add6",
+   "sus2add7",
+   "sus4add7"
+  ]
+ },
+ {
+  "label": "Quartal & Quintal",
+  "recipes": [
+   "quartal",
+   "quartal7",
+   "quintal",
+   "so_what",
+   "lydian_stack"
+  ]
+ },
+ {
+  "label": "Clusters",
+  "recipes": [
+   "chromatic_cluster",
+   "diatonic_cluster",
+   "tone_cluster_3",
+   "tone_cluster_4",
+   "tone_cluster_5"
+  ]
+ },
+ {
+  "label": "Aug-6th & Chromatic",
+  "recipes": [
+   "it6",
+   "fr6",
+   "ger6",
+   "n6",
+   "tristan"
+  ]
+ },
+ {
+  "label": "Spectral & Exotic",
+  "recipes": [
+   "mystic",
+   "petrushka",
+   "whole_tone",
+   "wholetone_tet",
+   "octatonic_tet",
+   "messiaen_dom",
+   "messiaen_resonance",
+   "messiaen_resonance_pc",
+   "augurs",
+   "bartok"
+  ]
+ },
+ {
+  "label": "More",
+  "recipes": [
+   "wdim7"
+  ]
+ }
+]

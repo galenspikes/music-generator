@@ -3,6 +3,7 @@
 // demo gallery and save a small on-device library.
 
 import { loadPyodide } from "./pyodide/pyodide.mjs";
+import { initBuilder, refreshBuilder } from "./builder.js";
 
 const $ = (id) => document.getElementById(id);
 const status = (msg) => { $("status").textContent = msg; };
@@ -126,6 +127,7 @@ function applyArgs(args) {
   if (get("--melody-key")) $("melkey").value = get("--melody-key");
   if (get("--melody-mode")) $("melmode").value = get("--melody-mode");
   syncModeUI();
+  refreshBuilder();   // reflect the new keys into the chip strip
 }
 
 // ---------- Library (localStorage, capped) ----------
@@ -271,6 +273,11 @@ for (const [label, alias] of INSTRUMENTS) {
   o.value = alias; o.textContent = label;
   $("instrument").appendChild(o);
 }
+initBuilder({ keysInput: $("keys"), strip: $("chip-strip"), addBtn: $("add-chord") });
+$("copy-tokens").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("keys").value); status("Tokens copied."); }
+  catch { status("Copy failed — select the field and copy manually."); }
+});
 renderExamples();
 renderLibrary();
 refreshCount();

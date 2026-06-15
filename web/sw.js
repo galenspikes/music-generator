@@ -7,11 +7,11 @@
 //     offline after the first online load.
 // Bump CACHE to force returning visitors onto the latest shell.
 
-const CACHE = "musicgen-v3";
+const CACHE = "musicgen-v4";
 
 const PRECACHE = [
-  "./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest",
-  "./examples.json",
+  "./", "./index.html", "./styles.css", "./app.js", "./builder.js",
+  "./manifest.webmanifest", "./examples.json", "./recipes.json",
   "./icons/icon-192.png", "./icons/icon-512.png",
   "./engine.zip",
   "./pyodide/pyodide.mjs", "./pyodide/pyodide.asm.js", "./pyodide/pyodide.asm.wasm",

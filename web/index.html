@@ -47,12 +47,18 @@
         </select>
       </label>
 
-      <label class="field" id="keys-field">
-        <span>Chord keys</span>
-        <input id="keys" type="text" value="C::maj9, A::min11, D::min9, G::13"
-               placeholder="e.g. C::maj7, A:1:min9, G::maj/C" />
-        <small>root[:inversion][:recipe][/bass] — comma-separated.</small>
-      </label>
+      <div class="field" id="keys-field">
+        <span>Chords — tap to edit, drag ⠿ to reorder</span>
+        <div id="chip-strip" class="chip-strip"></div>
+        <button id="add-chord" type="button" class="ghost add-chord">＋ Add chord</button>
+        <details class="tokens-details">
+          <summary>Tokens (advanced) — paste / copy</summary>
+          <input id="keys" type="text" value="C::maj9, A::min11, D::min9, G::13"
+                 placeholder="e.g. C::maj7, A:1:min9, G::maj/C" />
+          <small>root[:inversion][:recipe][/bass] — comma-separated. Edits sync to the chips.</small>
+          <button id="copy-tokens" type="button" class="ghost mini">⧉ Copy tokens</button>
+        </details>
+      </div>
 
       <div class="field">
         <span>Instrument</span>
@@ -118,6 +124,29 @@
 
     <p id="status" class="status">Booting Python in your browser…</p>
   </main>
+
+  <!-- chord editor bottom sheet -->
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-card">
+      <div class="sheet-row"><b>Edit chord</b><button id="sheet-done" class="ghost">Done</button></div>
+      <label class="field"><span>Root</span><select id="f-root"></select></label>
+      <label class="field"><span>Quality</span><select id="f-recipe"></select></label>
+      <div class="row">
+        <label class="field grow"><span>Inversion</span><select id="f-inv"></select></label>
+        <label class="field grow"><span>Bass</span><select id="f-bass"></select></label>
+      </div>
+      <div class="sheet-row">
+        <span class="stepper">Repeat
+          <button id="f-rep-" class="ghost">−</button><b id="f-rep">1</b><button id="f-rep+" class="ghost">＋</button>
+        </span>
+        <span><button id="f-move-" class="ghost">◀</button><button id="f-move+" class="ghost">▶</button></span>
+      </div>
+      <div class="sheet-actions">
+        <button id="f-dup" class="ghost">⧉ Duplicate</button>
+        <button id="f-del" class="ghost danger">✕ Delete</button>
+      </div>
+    </div>
+  </div>
 
   <footer>
     Built from
