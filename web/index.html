@@ -81,30 +81,174 @@
 
       <label class="check"><input id="drums" type="checkbox" checked /> Drums</label>
 
+      <!-- ===== Percussion ===== -->
       <details id="perc-adv">
-        <summary>Percussion pattern — lengths &amp; interrupters</summary>
-        <label class="field"><span>Main groove <small>(blank = preset rock beat)</small></span>
-          <input id="perc-main" type="text" placeholder="e.g. qb,eg,ec,eg" /></label>
-        <label class="field"><span>Drum interrupters / fills</span>
-          <input id="perc-intr" type="text" placeholder="optional · e.g. eb,ei,eb,ei" /></label>
-        <label class="field"><span>Chord interrupters <small>(c = play chord, r = rest)</small></span>
-          <input id="chord-intr" type="text" placeholder="optional · e.g. qc,qr,qc,qc" /></label>
-        <p class="hint">Lengths: <b>w h q e s t</b> = whole → 32nd. Drum letters: b kick, c snare,
-          g closed-hat, i open-hat, … Comma-separated. Peek at the demos for ideas.</p>
+        <summary>Percussion — groove, interrupters &amp; rates</summary>
+        <label class="field"><span>Drum preset</span>
+          <select id="perc-main-key"></select></label>
+        <details class="sub">
+          <summary>Custom main groove (overrides preset)</summary>
+          <input id="perc-main" type="text" placeholder="e.g. qb,eg,ec,eg" />
+          <button id="build-main" type="button" class="ghost mini">🎛 Build groove…</button>
+          <small>Lengths: w h q e s t = whole→32nd · letters: b kick, c snare, g hat, i open-hat…</small>
+        </details>
+
+        <label class="field"><span>Interrupter banks — tap to toggle</span>
+          <div id="perc-intr-chips" class="chips"></div></label>
+        <div class="row-wrap">
+          <input id="perc-intr" type="text" placeholder="custom drum interrupters" />
+          <button id="build-perc-intr" type="button" class="ghost mini">🎛 Build…</button>
+        </div>
+        <label class="field"><span>Fill rate: <b id="perc-fill-val">20</b>%
+            <small>chance an interrupter replaces the beat</small></span>
+          <input id="perc-fill-rate" type="range" min="0" max="100" step="5" value="20" /></label>
+        <label class="field"><span>Drum velocity</span>
+          <select id="vel-drums">
+            <option value="uniform" selected>uniform</option>
+            <option value="random">random</option>
+            <option value="human">human</option>
+          </select></label>
       </details>
 
+      <!-- ===== Harmony ===== -->
+      <details id="adv-harmony">
+        <summary>Harmony — chord length, voicing, families</summary>
+        <div class="row">
+          <label class="field grow"><span>Chord length</span>
+            <select id="chord-length">
+              <option value="w">whole</option>
+              <option value="h">half</option>
+              <option value="q">quarter</option>
+              <option value="e" selected>eighth</option>
+              <option value="s">16th</option>
+              <option value="t">32nd</option>
+            </select></label>
+          <label class="field grow"><span>Voicing</span>
+            <select id="voicing">
+              <option value="satb" selected>SATB (4-voice)</option>
+              <option value="dense">dense (all tones)</option>
+            </select></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>SATB style</span>
+            <select id="satb-style">
+              <option value="block" selected>block</option>
+              <option value="counterpoint">counterpoint</option>
+              <option value="arpeggio">arpeggio</option>
+            </select></label>
+          <label class="field grow"><span>Chord velocity</span>
+            <select id="vel-chords">
+              <option value="uniform" selected>uniform</option>
+              <option value="random">random</option>
+              <option value="human">human</option>
+            </select></label>
+        </div>
+        <label class="field"><span>Chord families <small>(used when chords are bare roots)</small></span>
+          <div id="chords-chips" class="chips"></div></label>
+        <label class="field"><span>Family order</span>
+          <select id="chords-order">
+            <option value="random" selected>random</option>
+            <option value="roundrobin">round-robin</option>
+          </select></label>
+        <details class="sub" id="cp-sub">
+          <summary>Counterpoint settings (when SATB style = counterpoint)</summary>
+          <label class="field"><span>Step: <b id="cp-step-val">0.5</b> beats</span>
+            <input id="cp-step" type="range" min="0.25" max="2" step="0.25" value="0.5" /></label>
+          <label class="field"><span>Suspension: <b id="cp-susp-val">30</b>%</span>
+            <input id="cp-susp" type="range" min="0" max="100" step="5" value="30" /></label>
+          <label class="field"><span>Anticipation: <b id="cp-ant-val">25</b>%</span>
+            <input id="cp-ant" type="range" min="0" max="100" step="5" value="25" /></label>
+        </details>
+      </details>
+
+      <!-- ===== Bass ===== -->
+      <details id="adv-bass">
+        <summary>Bass line</summary>
+        <label class="field"><span>Bass style</span>
+          <select id="bass-style">
+            <option value="follow" selected>follow (tracks voicing)</option>
+            <option value="root">root</option>
+            <option value="octaves">octaves</option>
+            <option value="fifths">fifths</option>
+            <option value="walking">walking</option>
+            <option value="arp">arp</option>
+          </select></label>
+        <label class="field" id="bass-step-field"><span>Bass step: <b id="bass-step-val">0.5</b> beats</span>
+          <input id="bass-step" type="range" min="0.25" max="2" step="0.25" value="0.5" /></label>
+      </details>
+
+      <!-- ===== Melody / lead ===== -->
+      <details id="adv-melody">
+        <summary>Melody / lead line</summary>
+        <label class="field"><span>Melody (scale degrees, loops to fill)</span>
+          <input id="melody" type="text" placeholder="e.g. q1 q3 q5 h1" /></label>
+        <div class="row">
+          <label class="field grow"><span>Relative to</span>
+            <select id="melody-relative">
+              <option value="key" selected>key</option>
+              <option value="chord">chord</option>
+            </select></label>
+          <label class="field grow"><span>Octave</span>
+            <input id="melody-octave" type="number" min="2" max="7" value="5" /></label>
+        </div>
+        <label class="field"><span>Transform</span>
+          <select id="melody-transform">
+            <option value="none" selected>none</option>
+            <option value="invert">invert</option>
+            <option value="retrograde">retrograde</option>
+            <option value="augment">augment</option>
+          </select></label>
+      </details>
+
+      <!-- ===== Chord interrupters ===== -->
+      <details id="adv-chordintr">
+        <summary>Chord interrupters (rhythmic stabs)</summary>
+        <label class="field"><span>Pattern</span>
+          <select id="chord-intr-preset">
+            <option value="" selected>off</option>
+            <option value="qc,qr,qc,qr">half-time stabs</option>
+            <option value="ec,er,ec,er,ec,er,ec,er">offbeat 8ths</option>
+            <option value="sc,sr,sc,sc,sr,sc,sr,sc">syncopated 16ths</option>
+            <option value="__custom">custom…</option>
+          </select></label>
+        <div class="row-wrap" id="chord-intr-custom" hidden>
+          <input id="chord-intr" type="text" placeholder="c = play chord, r = rest · e.g. qc,qr,qc,qc" />
+          <button id="build-chord-intr" type="button" class="ghost mini">🎛 Build…</button>
+        </div>
+        <label class="field"><span>Fill rate: <b id="chord-fill-val">0</b>%
+            <small>raise above 0 to hear the stabs</small></span>
+          <input id="chord-fill-rate" type="range" min="0" max="100" step="5" value="0" /></label>
+      </details>
+
+      <!-- ===== Process / fugue ===== -->
       <details id="advanced">
         <summary>Process / fugue inputs</summary>
         <label class="field"><span>Process cell (scale degrees)</span>
           <input id="cell" type="text" value="e1 e2 e3 e5 e7 e5 e3 e2" /></label>
+        <div class="row">
+          <label class="field grow"><span>Process reps / stage</span>
+            <input id="process-reps" type="number" min="1" placeholder="default" /></label>
+          <label class="field grow"><span>Process stages</span>
+            <input id="process-stages" type="number" min="1" placeholder="default" /></label>
+        </div>
         <label class="field"><span>Fugue subject (blank = built-in)</span>
           <input id="subject" type="text" value="q1 q5 e4 e3 e2 e1 q7" /></label>
+        <label class="field"><span>Fugue countersubject (blank = inverted subject)</span>
+          <input id="countersubject" type="text" placeholder="optional" /></label>
         <div class="row">
           <label class="field grow"><span>Melody key</span>
             <input id="melkey" type="text" value="C" /></label>
           <label class="field grow"><span>Melody mode</span>
             <select id="melmode"><option>major</option><option>minor</option></select></label>
         </div>
+      </details>
+
+      <!-- ===== General ===== -->
+      <details id="adv-general">
+        <summary>General</summary>
+        <label class="field"><span>Seed (blank = random each time)</span>
+          <input id="seed" type="number" placeholder="random" /></label>
+        <label class="check"><input id="split-stems" type="checkbox" checked /> Separate voice tracks (SATB stems)</label>
       </details>
 
       <button id="go" disabled>Loading engine…</button>
@@ -168,6 +312,24 @@
       <div class="sheet-actions">
         <button id="f-dup" class="ghost">⧉ Duplicate</button>
         <button id="f-del" class="ghost danger">✕ Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- interrupter / groove builder bottom sheet -->
+  <div id="intr-sheet" class="sheet" hidden>
+    <div class="sheet-card">
+      <div class="sheet-row"><b id="intr-title">Build interrupter</b><button id="intr-done" class="ghost">Done</button></div>
+      <div class="intr-preview"><code id="intr-preview">—</code></div>
+      <span class="lbl">Steps — tap one to remove</span>
+      <div id="intr-steps" class="chips"></div>
+      <span class="lbl">Length</span>
+      <div id="intr-durs" class="chips"></div>
+      <span class="lbl" id="intr-inst-lbl">Hits — tap one or more</span>
+      <div id="intr-insts" class="chips"></div>
+      <div class="sheet-actions">
+        <button id="intr-add" class="ghost">＋ Add step</button>
+        <button id="intr-clear" class="ghost danger">Clear all</button>
       </div>
     </div>
   </div>
