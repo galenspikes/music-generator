@@ -527,5 +527,17 @@ syncModeUI();
 boot();
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+  // If the page was already controlled, a controller change means a new build
+  // just took over — reload once so the fresh shell + engine are actually used.
+  const wasControlled = !!navigator.serviceWorker.controller;
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (wasControlled && !reloading) { reloading = true; location.reload(); }
+  });
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      reg.addEventListener("updatefound", () => status("Updating to the latest version…"));
+      setInterval(() => reg.update(), 60 * 60 * 1000);  // check hourly
+    }).catch(() => {});
+  });
 }

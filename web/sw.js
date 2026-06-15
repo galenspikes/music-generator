@@ -7,7 +7,7 @@
 //     offline after the first online load.
 // Bump CACHE to force returning visitors onto the latest shell.
 
-const CACHE = "musicgen-v12";
+const CACHE = "musicgen-v13";
 
 const PRECACHE = [
   "./", "./index.html", "./styles.css", "./app.js", "./builder.js", "./interrupter.js", "./worker.js",
@@ -23,7 +23,19 @@ const PRECACHE = [
 ];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  // Re-fetch the shell + engine bytes fresh on every version bump (cache:reload)
+  // so a stale HTTP cache can't pin an old engine.zip/app.js. Pyodide rarely
+  // changes, so let it come from the HTTP cache normally.
+  e.waitUntil(
+    caches.open(CACHE).then((c) => Promise.all(
+      PRECACHE.map((u) => {
+        const opts = u.includes("/pyodide/") ? undefined : { cache: "reload" };
+        return fetch(new Request(u, opts))
+          .then((res) => (res && (res.ok || res.type === "opaque")) ? c.put(u, res) : null)
+          .catch(() => null);
+      })
+    )).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {
