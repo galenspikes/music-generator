@@ -292,6 +292,35 @@ midi-visualizer {
 .pchip.rest .dur { background: var(--line-hi); color: var(--muted); }
 .pchip.bad { background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.4); color: #ff9b9b; }
 
+.perc-modes { display: inline-flex; align-self: flex-start; background: var(--slot); border: 1px solid var(--line-hi); border-radius: 8px; padding: 2px; gap: 2px; margin-bottom: 2px; }
+
+/* ---- step sequencer (perc grid build mode) ---- */
+.seq { display: flex; flex-direction: column; gap: 8px; }
+.seq-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.seq-lbl { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 2px 0 6px; }
+.seq-lbl:first-child { margin-left: 0; }
+.seq-opt { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line-hi); background: var(--slot); color: var(--muted); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+.seq-opt.on { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.seq-clear { margin-left: auto; font-family: var(--mono); font-size: 11px; border: 1px solid var(--line-hi); background: transparent; color: var(--muted); border-radius: 6px; padding: 3px 9px; cursor: pointer; }
+.seq-clear:hover { color: #ff8f8f; border-color: rgba(255,107,107,0.4); }
+.seq-note { font-family: var(--mono); font-size: 10.5px; color: #ffcf8a; }
+
+.seq-grid { display: flex; flex-direction: column; gap: 3px; }
+.seq-row { display: flex; align-items: center; gap: 8px; }
+.seq-name { width: 64px; flex-shrink: 0; font-family: var(--mono); font-size: 10.5px; color: var(--muted); text-align: right; }
+.seq-cells { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; flex: 1; }
+.seq-cell {
+  height: 22px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--slot); cursor: pointer; padding: 0; transition: background .08s;
+}
+.seq-cell.beat { border-color: var(--line-hi); }
+.seq-cell:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line-hi)); }
+.seq-cell.on {
+  background: var(--accent);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--accent) 60%, transparent);
+  border-color: var(--accent);
+}
+
 .perclist { display: flex; flex-direction: column; gap: 7px; }
 .perc-row { display: flex; align-items: flex-start; gap: 7px; }
 .perc-idx { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--slot); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; margin-top: 3px; }
