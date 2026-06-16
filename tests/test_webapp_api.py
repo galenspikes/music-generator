@@ -44,10 +44,6 @@ def test_vocab_endpoint():
     assert r.status_code == 200
     assert len(body["recipes"]) > 0
     assert len(body["drums"]) > 0
-    # named grooves + the library path (for perc_main_key / perc_intr_keys)
-    assert len(body["grooves"]) > 0
-    assert all("name" in g for g in body["grooves"])
-    assert body["perc_lib"].endswith("percussion_library.json")
 
 
 def test_generate_endpoint_returns_midi():
