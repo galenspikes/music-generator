@@ -1290,14 +1290,38 @@ def parse_single_token(tok: str,
     return (beats, hits)
 
 
+def _split_tokens_bracket_aware(text: str) -> list[str]:
+    """Split on commas, but preserve commas inside [...] modifier blocks."""
+    parts = []
+    depth = 0
+    cur = ""
+    for ch in text or "":
+        if ch == "[":
+            depth += 1
+            cur += ch
+        elif ch == "]":
+            depth -= 1
+            cur += ch
+        elif ch == "," and depth == 0:
+            if cur.strip():
+                parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur.strip())
+    return parts
+
+
 def parse_pattern(text: str,
                   drum_map: dict[str, int] | None = None
                   ) -> list[tuple[float, list[PercHit]]]:
     """
     Comma-separated percussion tokens -> list of (beats, hits)
-    Example: "qk,eh,esh,er,ek"
+    Preserves commas inside [...] modifier blocks (e.g., [vel+10,prob0.5]).
+    Example: "qk,eh,esh[vel+5,prob0.8],er,ek"
     """
-    parts = [p for p in text.split(",") if p.strip() != ""]
+    parts = _split_tokens_bracket_aware(text)
     drum_map = drum_map or get_drum_map()
     return [parse_single_token(p, drum_map) for p in parts]
 
@@ -1310,21 +1334,23 @@ def parse_many_patterns(items: list[str],
     return [parse_pattern(s, drum_map) for s in items]
 
 
-GRID_STEP = 0.25  # 16th = 0.25 beats
+GRID_STEP = 0.125  # 32nd = 0.125 beats (supports 8th/16th/32nd)
 
 
 def quantize_to_grid(pattern: list[tuple[float, list[PercHit]]],
                      step: float = GRID_STEP) -> list[tuple[float, list[PercHit]]]:
     """
-    Expand a pattern into fixed-step slots (e.g., 16ths), so it loops exactly.
+    Expand a pattern into fixed-step slots (e.g., 32nds), so it loops exactly.
     Input pattern: list of (beats, hits_set). Rest = empty set().
     Output: list of (step_beats, hits) slots, length is multiple of step.
+    Every token is guaranteed at least 1 slot (no silent drops).
     """
     out: list[tuple[float, list[PercHit]]] = []
     for beats, hits in pattern:
         if beats <= 0:
             continue
-        slots = int(round(beats / step))
+        # Ensure every token gets at least 1 slot, even if rounds to <1.
+        slots = max(1, int(round(beats / step)))
         # distribute duration across 'slots' fixed cells
         for i in range(slots):
             out.append(
@@ -2514,6 +2540,13 @@ def build_perc_from_args(args) -> PercPlan:
     """Build percussion plan (main loop, fills, staged evolution) from CLI args."""
 
     drum_map = get_drum_map()
+
+    # Default perc_lib to the bundled library so groove lookups (perc_main_key,
+    # perc_intr_keys) work out of the box on the CLI.
+    if not getattr(args, "perc_lib", None):
+        lib_path = LIB_DIR / "percussion_library.json"
+        if lib_path.exists():
+            args.perc_lib = str(lib_path)
 
     def parse_main(text: str) -> list[tuple[float, list[PercHit]]]:
         return quantize_to_grid(parse_pattern(text, drum_map))

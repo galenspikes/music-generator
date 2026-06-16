@@ -233,3 +233,77 @@ def test_key_roots_non_ostinato_uses_circle_of_fifths():
     circle = ["C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"]
     assert M.key_roots("mixed", "C,F,G") == circle
     assert M.key_roots("complete", None) == circle
+
+
+# --------------------------------------------------------------------------
+# percussion parsing (bug fixes: bracket-aware split, 32nd quantize, lib default)
+# --------------------------------------------------------------------------
+
+def test_parse_pattern_bracket_aware_split():
+    # BUG FIX: parse_pattern must preserve commas inside [...] modifier blocks.
+    # Pattern: "qk[vel+10,prob0.5]sh, er, qb"
+    # Should parse as 3 tokens, not broken.
+    pattern = M.parse_pattern("qk[vel+10,prob0.5]sh, er, qb")
+    assert len(pattern) == 3
+    beats1, hits1 = pattern[0]
+    beats2, hits2 = pattern[1]
+    beats3, hits3 = pattern[2]
+    # First token: quarter note + kick + snare + hat with modifiers
+    assert beats1 == 1.0
+    assert len(hits1) == 3  # 3 hits
+    assert beats2 == 0.5
+    assert beats3 == 1.0
+
+
+def test_parse_pattern_modifier_blocks_nested():
+    # Multiple tokens, some with modifier blocks, some without.
+    pattern = M.parse_pattern("qb, eg[prob0.3], qr, sh[vel+5,prob0.8]")
+    assert len(pattern) == 4
+    for beats, hits in pattern:
+        assert beats > 0
+        assert isinstance(hits, list)
+
+
+def test_quantize_32nds_not_dropped():
+    # BUG FIX: GRID_STEP = 0.125 (32nd), quantize ensures slots >= 1.
+    # 32nd token 't' = 0.125 beats should NOT round to 0 slots.
+    pattern = M.parse_pattern("tb, tr, tb, tr")  # 4 thirty-second kicks
+    assert len(pattern) == 4
+    quantized = M.quantize_to_grid(pattern)
+    # Each 32nd (0.125) at 0.125 grid step = 1 slot each. Total 4 slots.
+    assert len(quantized) == 4
+    hits = [h for _, h in quantized]
+    # First and third have the kick hit.
+    assert len(hits[0]) == 1
+    assert len(hits[1]) == 0
+    assert len(hits[2]) == 1
+    assert len(hits[3]) == 0
+
+
+def test_quantize_mixed_resolutions():
+    # Mixing 8th (e=0.5), 16th (s=0.25), 32nd (t=0.125).
+    pattern = M.parse_pattern("eb, sb, tb")  # 8th + 16th + 32nd kick
+    assert len(pattern) == 3
+    quantized = M.quantize_to_grid(pattern)
+    # 0.5 / 0.125 = 4 slots
+    # 0.25 / 0.125 = 2 slots
+    # 0.125 / 0.125 = 1 slot
+    # Total = 7 slots
+    assert len(quantized) == 7
+    kicks = sum(1 for _, h in quantized if h)
+    assert kicks == 3  # One kick hit per token
+
+
+def test_perc_main_key_without_explicit_lib():
+    # BUG FIX: perc_main_key should work without explicit --perc-lib.
+    # We default to the bundled library in build_perc_from_args.
+    args = M.build_parser().parse_args([
+        "--mode", "ostinato",
+        "--keys", "C::maj7",
+        "--perc-main-key", "funk:4/4:med",
+        "--seconds", "8",
+    ])
+    # Should not raise; perc_main_key should resolve from the default lib.
+    perc_plan = M.build_perc_from_args(args)
+    assert perc_plan.main is not None
+    assert len(perc_plan.main) > 0
