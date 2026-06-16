@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 import argparse
 import importlib.util
 import json
@@ -1288,14 +1290,38 @@ def parse_single_token(tok: str,
     return (beats, hits)
 
 
+def _split_tokens_bracket_aware(text: str) -> list[str]:
+    """Split on commas, but preserve commas inside [...] modifier blocks."""
+    parts = []
+    depth = 0
+    cur = ""
+    for ch in text or "":
+        if ch == "[":
+            depth += 1
+            cur += ch
+        elif ch == "]":
+            depth -= 1
+            cur += ch
+        elif ch == "," and depth == 0:
+            if cur.strip():
+                parts.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        parts.append(cur.strip())
+    return parts
+
+
 def parse_pattern(text: str,
                   drum_map: dict[str, int] | None = None
                   ) -> list[tuple[float, list[PercHit]]]:
     """
     Comma-separated percussion tokens -> list of (beats, hits)
-    Example: "qk,eh,esh,er,ek"
+    Preserves commas inside [...] modifier blocks (e.g., [vel+10,prob0.5]).
+    Example: "qk,eh,esh[vel+5,prob0.8],er,ek"
     """
-    parts = [p for p in text.split(",") if p.strip() != ""]
+    parts = _split_tokens_bracket_aware(text)
     drum_map = drum_map or get_drum_map()
     return [parse_single_token(p, drum_map) for p in parts]
 
@@ -1308,21 +1334,23 @@ def parse_many_patterns(items: list[str],
     return [parse_pattern(s, drum_map) for s in items]
 
 
-GRID_STEP = 0.25  # 16th = 0.25 beats
+GRID_STEP = 0.125  # 32nd = 0.125 beats (supports 8th/16th/32nd)
 
 
 def quantize_to_grid(pattern: list[tuple[float, list[PercHit]]],
                      step: float = GRID_STEP) -> list[tuple[float, list[PercHit]]]:
     """
-    Expand a pattern into fixed-step slots (e.g., 16ths), so it loops exactly.
+    Expand a pattern into fixed-step slots (e.g., 32nds), so it loops exactly.
     Input pattern: list of (beats, hits_set). Rest = empty set().
     Output: list of (step_beats, hits) slots, length is multiple of step.
+    Every token is guaranteed at least 1 slot (no silent drops).
     """
     out: list[tuple[float, list[PercHit]]] = []
     for beats, hits in pattern:
         if beats <= 0:
             continue
-        slots = int(round(beats / step))
+        # Ensure every token gets at least 1 slot, even if rounds to <1.
+        slots = max(1, int(round(beats / step)))
         # distribute duration across 'slots' fixed cells
         for i in range(slots):
             out.append(
@@ -1894,7 +1922,7 @@ class MidiOut:
 
     def __init__(self,
                  bpm: int,
-                 fname: str,
+                 fname: str | None = None,
                  tpb: int = 480,
                  vel_mode_chords: str = "uniform",
                  vel_mode_drums: str = "uniform",
@@ -2382,8 +2410,23 @@ class MidiOut:
                             time=0))
                 self.active_dr.discard(note)
 
-    def save(self) -> None:
-        self.mid.save(self.fname)
+    def save(self, path: str | None = None) -> None:
+        target = path or self.fname
+        if target is None:
+            raise ValueError("MidiOut.save() needs a path (none set at init)")
+        self.mid.save(target)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the MIDI to an in-memory bytes object (no disk write).
+
+        This is the seam the web API renders through: generation stays in
+        memory instead of round-tripping a file through ``output/``.
+        """
+        import io
+
+        buf = io.BytesIO()
+        self.mid.save(file=buf)
+        return buf.getvalue()
 
     def _flush_active_chords(self) -> None:
         for key, notes in self.active_ch.items():
@@ -2497,6 +2540,13 @@ def build_perc_from_args(args) -> PercPlan:
     """Build percussion plan (main loop, fills, staged evolution) from CLI args."""
 
     drum_map = get_drum_map()
+
+    # Default perc_lib to the bundled library so groove lookups (perc_main_key,
+    # perc_intr_keys) work out of the box on the CLI.
+    if not getattr(args, "perc_lib", None):
+        lib_path = LIB_DIR / "percussion_library.json"
+        if lib_path.exists():
+            args.perc_lib = str(lib_path)
 
     def parse_main(text: str) -> list[tuple[float, list[PercHit]]]:
         return quantize_to_grid(parse_pattern(text, drum_map))
@@ -2884,25 +2934,159 @@ def render_events(midi: "MidiOut",
     return t_ch, t_dr, voice_max
 
 
-def _render_generated(out_path: str, bpm: int, voice_events: list, total: float,
-                      instrument: str, vel_chords: str, vel_drums: str) -> None:
-    """Create a single-timbre MidiOut, dispatch, flush, save. Used by the
-    fugue/process modes, which emit raw (voice, when, dur, note) tuples — wrap
+def build_generated(bpm: int, voice_events: list, total: float,
+                    instrument: str, vel_chords: str,
+                    vel_drums: str) -> "MidiOut":
+    """Create a single-timbre MidiOut for the fugue/process modes and return it
+    in memory (no save). They emit raw (voice, when, dur, note) tuples — wrap
     them into the standard ('voice', when, dur, (voice, note)) event form."""
-    midi = MidiOut(bpm, out_path, vel_mode_chords=vel_chords,
+    midi = MidiOut(bpm, None, vel_mode_chords=vel_chords,
                    vel_mode_drums=vel_drums, split_stems=True)
     midi.set_program(resolve_instrument(instrument))
     events = [("voice", when, dur, (voice, note))
               for (voice, when, dur, note) in voice_events]
     render_events(midi, events)
     midi.flush_to_end(total, 0.0, total)
-    midi.save()
+    return midi
 
 
-def main():
-    start_time = datetime.now()
-    music_generator_logger.info("Starting music generation")
-    
+def _render_generated(out_path: str, bpm: int, voice_events: list, total: float,
+                      instrument: str, vel_chords: str, vel_drums: str) -> None:
+    """Build the fugue/process MIDI and save it to ``out_path`` (CLI path)."""
+    build_generated(bpm, voice_events, total, instrument, vel_chords,
+                    vel_drums).save(out_path)
+
+
+def build_flat_midi(args) -> tuple["MidiOut", dict]:
+    """Render the flat ostinato/mixed/complete path into an in-memory MidiOut.
+
+    Shared by the CLI (``main``) and the web API. Pure with respect to disk: it
+    writes nothing and performs no manifest/catalog side effects — the caller
+    owns output paths and metadata. Returns ``(midi, meta)`` where ``meta``
+    carries the derived fields the CLI manifest records. RNG-consumption order
+    matches the original inline ``main`` body, so seeded output is identical.
+    """
+    tpb = 480
+    beats_total = (args.seconds * args.bpm) / 60.0
+    chord_len_beats = DUR_MAP[args.chord_len]
+
+    roots = key_roots(args.mode, args.keys)
+    if args.mode == "complete":
+        max_ch = None
+    elif args.mode == "ostinato":
+        max_ch = 9999
+    else:  # mixed
+        random.shuffle(roots)
+        max_ch = 9999
+
+    seq = build_progression(roots, args.chords, args.chords_order,
+                            max_chords=max_ch)
+
+    picker = next_mode_picker(args.chords, args.chords_order)
+    preview_modes = [picker() for _ in range(16)]
+
+    chord_intr = parse_chord_interrupters(
+        args.chord_interrupters) if args.chord_interrupters else None
+
+    chord_tl = build_chord_timeline(seq, beats_total, chord_len_beats,
+                                    chord_intr,
+                                    chord_fill_rate=args.chord_fill_rate)
+    chord_tl = fill_chords_to_end(chord_tl, beats_total)
+
+    perc_plan = build_perc_from_args(args)
+    main_pat = perc_plan.main
+    intr_pats = perc_plan.interrupters
+    stage_specs = perc_plan.stages or []
+    fill_curve = perc_plan.fill_curve
+
+    if stage_specs:
+        drum_tl = build_drum_timeline_stages(stage_specs, beats_total, main_pat,
+                                             intr_pats, args.perc_fill_rate,
+                                             fill_curve)
+    elif intr_pats and args.perc_fill_rate > 0.0:
+        drum_tl = build_drum_timeline_with_fills(main_pat, intr_pats,
+                                                 beats_total,
+                                                 args.perc_fill_rate)
+    else:
+        drum_tl = build_drum_timeline_from_main(main_pat, beats_total)
+
+    ch_end = 0.0 if not chord_tl else max(
+        when + dur for (when, dur, _n) in chord_tl)
+    drum_tl = truncate_timeline_to(drum_tl, ch_end)
+
+    midi = MidiOut(args.bpm, None, tpb=tpb,
+                   vel_mode_chords=args.velocity_mode_chords,
+                   vel_mode_drums=args.velocity_mode_drums,
+                   split_stems=args.split_stems)
+
+    program = resolve_instrument(args.instrument)
+
+    voice_programs: dict[str, int] = {}
+    for spec in args.voice_instrument:
+        if "=" not in spec:
+            raise SystemExit(
+                f"--voice-instrument expects VOICE=NAME, got '{spec}'")
+        voice, name = (part.strip() for part in spec.split("=", 1))
+        voice = voice.lower()
+        if voice not in VOICE_ORDER:
+            raise SystemExit(
+                f"--voice-instrument unknown voice '{voice}'; "
+                f"choose from {', '.join(VOICE_ORDER)}")
+        if not name:
+            raise SystemExit(
+                f"--voice-instrument missing instrument name in '{spec}'")
+        voice_programs[voice] = resolve_instrument(name)
+    if voice_programs and not args.split_stems:
+        music_generator_logger.warning(
+            "--voice-instrument has no effect without split stems "
+            "(all voices share one channel); ignoring per-voice instruments.")
+        voice_programs = {}
+
+    midi.set_voice_programs(voice_programs, program)
+
+    if args.voicing == "dense":
+        dense_tl = build_dense_timeline(seq, beats_total, chord_len_beats)
+        events = [("densechord", w, d, notes) for (w, d, notes) in dense_tl]
+        voice_max = max((w + d for w, d, _ in dense_tl), default=0.0)
+    else:
+        events, voice_max = build_harmony_events(
+            chord_tl,
+            satb_style=args.satb_style,
+            bass_style=args.bass_style,
+            bass_step=args.bass_step,
+            counterpoint_step=args.counterpoint_step,
+            counterpoint_suspension_prob=args.counterpoint_suspension_prob,
+            counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
+            split_stems=args.split_stems,
+            logger=music_generator_logger,
+        )
+
+    if args.melody and args.voicing != "dense":
+        events, voice_max = _apply_melody(args, events, seq, chord_len_beats,
+                                          beats_total, voice_max)
+
+    for when, dur, hits in drum_tl:
+        events.append(("drum", when, dur, hits))
+
+    t_ch, t_dr, vmax = render_events(midi, events)
+    voice_max = max(voice_max, vmax)
+    midi.flush_to_end(max(t_ch, voice_max), t_dr, beats_total)
+
+    meta = {
+        "chord_family_preview_first16": preview_modes,
+        "perc_stages_declared": len(stage_specs),
+        "perc_fill_curve": fill_curve,
+    }
+    return midi, meta
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Construct the full CLI parser.
+
+    Extracted from ``main`` so the web API can introspect every flag (its type,
+    choices, default, help) and render a control for each — the UI schema is
+    generated from this, never hand-mirrored.
+    """
     ap = argparse.ArgumentParser(
         description=
         "Harmony + Percussion generator (independent parts, SATB, interrupters)."
@@ -3123,26 +3307,17 @@ def main():
                     action="store_false",
                     help="Merge SATB voices into a single MIDI track.")
 
-    args = ap.parse_args()
+    return ap
 
+
+def apply_arg_normalization(args) -> bool:
+    """Clamp/normalize counterpoint + voicing-dependent args in place.
+
+    Shared by the CLI and the web API so both honour the same guardrails
+    (counterpoint forces split stems; dense voicing disables them). Returns
+    whether split-stems was force-enabled by the counterpoint style.
+    """
     counterpoint_forced_split = False
-
-    preset_used = None
-    if getattr(args, "keys_preset", None):
-        presets = load_key_presets()
-        preset = presets.get(args.keys_preset)
-        if not preset:
-            raise ValueError(f"Unknown keys preset '{args.keys_preset}'")
-        args.keys = ','.join(preset)
-        preset_used = args.keys_preset
-
-    ensure_dirs()
-
-    if args.perc_lib:
-        set_active_drum_map(args.perc_lib)
-    else:
-        set_active_drum_map(None)
-
     if args.satb_style in ("counterpoint", "arpeggio"):
         if args.counterpoint_step <= 0.0:
             args.counterpoint_step = 0.5
@@ -3164,6 +3339,32 @@ def main():
     # Dense voicing sounds every chord tone on one ensemble channel/timbre.
     if args.voicing == "dense":
         args.split_stems = False
+    return counterpoint_forced_split
+
+
+def main():
+    start_time = datetime.now()
+    music_generator_logger.info("Starting music generation")
+    ap = build_parser()
+    args = ap.parse_args()
+
+    preset_used = None
+    if getattr(args, "keys_preset", None):
+        presets = load_key_presets()
+        preset = presets.get(args.keys_preset)
+        if not preset:
+            raise ValueError(f"Unknown keys preset '{args.keys_preset}'")
+        args.keys = ','.join(preset)
+        preset_used = args.keys_preset
+
+    ensure_dirs()
+
+    if args.perc_lib:
+        set_active_drum_map(args.perc_lib)
+    else:
+        set_active_drum_map(None)
+
+    counterpoint_forced_split = apply_arg_normalization(args)
 
     if args.seed is not None:
         random.seed(args.seed)
@@ -3226,34 +3427,14 @@ def main():
     sidecar_path = write_manifest(out_path, args)
     update_master_catalog(sidecar_path)
 
-    # ----- musical time -----
-    tpb = 480
-    beats_total = (args.seconds * args.bpm) / 60.0
-    chord_len_beats = DUR_MAP[args.chord_len]
+    midi, meta = build_flat_midi(args)
 
-    # ----- chord sequence (multi-family aware) -----
-    roots = key_roots(args.mode, args.keys)
-    if args.mode == "complete":
-        max_ch = None
-    elif args.mode == "ostinato":
-        max_ch = 9999
-    else:  # mixed
-        random.shuffle(roots)
-        max_ch = 9999
-
-    seq = build_progression(roots,
-                            args.chords,
-                            args.chords_order,
-                            max_chords=max_ch)
-
-    # chord family preview (optional)
-    picker = next_mode_picker(args.chords, args.chords_order)
-    preview_modes = [picker() for _ in range(16)]
     append_manifest_fields(
         sidecar_path, {
             "chord_families_passed": args.chords,
             "chord_family_order": args.chords_order,
-            "chord_family_preview_first16": preview_modes,
+            "chord_family_preview_first16":
+                meta["chord_family_preview_first16"],
             "keys_preset": preset_used,
             "satb_style": args.satb_style,
             "split_stems": args.split_stems,
@@ -3265,118 +3446,13 @@ def main():
             "counterpoint_anticipation_prob": args.counterpoint_anticipation_prob,
             "counterpoint_forced_split": counterpoint_forced_split
         })
-
-    # ----- chord interrupters -----
-    chord_intr = parse_chord_interrupters(
-        args.chord_interrupters) if args.chord_interrupters else None
-
-    # ----- chord timeline (truncate slices; then fill to full length) -----
-    chord_tl = build_chord_timeline(seq,
-                                    beats_total,
-                                    chord_len_beats,
-                                    chord_intr,
-                                    chord_fill_rate=args.chord_fill_rate)
-    chord_tl = fill_chords_to_end(
-        chord_tl, beats_total)  # ensure harmony spans the whole piece
-
-    # ----- percussion patterns + timeline -----
-    perc_plan = build_perc_from_args(args)
-    main_pat = perc_plan.main
-    intr_pats = perc_plan.interrupters
-    stage_specs = perc_plan.stages or []
-    fill_curve = perc_plan.fill_curve
-
     append_manifest_fields(
         sidecar_path, {
-            "perc_stages_declared": len(stage_specs),
-            "perc_fill_curve": fill_curve,
+            "perc_stages_declared": meta["perc_stages_declared"],
+            "perc_fill_curve": meta["perc_fill_curve"],
         })
 
-    if stage_specs:
-        drum_tl = build_drum_timeline_stages(stage_specs,
-                                             beats_total,
-                                             main_pat,
-                                             intr_pats,
-                                             args.perc_fill_rate,
-                                             fill_curve)
-    else:
-        if intr_pats and args.perc_fill_rate > 0.0:
-            drum_tl = build_drum_timeline_with_fills(main_pat, intr_pats,
-                                                     beats_total,
-                                                     args.perc_fill_rate)
-        else:
-            drum_tl = build_drum_timeline_from_main(main_pat, beats_total)
-
-    # Hard-cap drums to chord end (now equal to beats_total after fill)
-    ch_end = 0.0 if not chord_tl else max(
-        when + dur for (when, dur, _n) in chord_tl)
-    drum_tl = truncate_timeline_to(drum_tl, ch_end)
-
-    # ----- render -----
-    midi = MidiOut(args.bpm,
-                   out_path,
-                   tpb=tpb,
-                   vel_mode_chords=args.velocity_mode_chords,
-                   vel_mode_drums=args.velocity_mode_drums,
-                   split_stems=args.split_stems)
-
-    program = resolve_instrument(
-        args.instrument)  # 'trumpet'->56, 'trombone'->57, etc.
-
-    # Per-voice instrument overrides: --voice-instrument VOICE=NAME
-    voice_programs: dict[str, int] = {}
-    for spec in args.voice_instrument:
-        if "=" not in spec:
-            raise SystemExit(
-                f"--voice-instrument expects VOICE=NAME, got '{spec}'")
-        voice, name = (part.strip() for part in spec.split("=", 1))
-        voice = voice.lower()
-        if voice not in VOICE_ORDER:
-            raise SystemExit(
-                f"--voice-instrument unknown voice '{voice}'; "
-                f"choose from {', '.join(VOICE_ORDER)}")
-        if not name:
-            raise SystemExit(
-                f"--voice-instrument missing instrument name in '{spec}'")
-        voice_programs[voice] = resolve_instrument(name)
-    if voice_programs and not args.split_stems:
-        music_generator_logger.warning(
-            "--voice-instrument has no effect without split stems "
-            "(all voices share one channel); ignoring per-voice instruments.")
-        voice_programs = {}
-
-    midi.set_voice_programs(voice_programs, program)  # one-time, at time 0
-
-    # ---- RENDER with independent track cursors ----
-    if args.voicing == "dense":
-        dense_tl = build_dense_timeline(seq, beats_total, chord_len_beats)
-        events = [("densechord", w, d, notes) for (w, d, notes) in dense_tl]
-        voice_max = max((w + d for w, d, _ in dense_tl), default=0.0)
-    else:
-        events, voice_max = build_harmony_events(
-            chord_tl,
-            satb_style=args.satb_style,
-            bass_style=args.bass_style,
-            bass_step=args.bass_step,
-            counterpoint_step=args.counterpoint_step,
-            counterpoint_suspension_prob=args.counterpoint_suspension_prob,
-            counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
-            split_stems=args.split_stems,
-            logger=music_generator_logger,
-        )
-
-    if args.melody and args.voicing != "dense":
-        events, voice_max = _apply_melody(args, events, seq, chord_len_beats,
-                                          beats_total, voice_max)
-
-    for when, dur, hits in drum_tl:
-        events.append(("drum", when, dur, hits))
-
-    t_ch, t_dr, vmax = render_events(midi, events)
-    voice_max = max(voice_max, vmax)
-
-    midi.flush_to_end(max(t_ch, voice_max), t_dr, beats_total)
-    midi.save()
+    midi.save(out_path)
 
     # NOTE:
     # Originally this block auto-launched FluidSynth to play the generated MIDI.

@@ -1,3 +1,5 @@
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Arrangement layer: sequence multiple sections into one evolving piece.
 
 A *song* is global settings plus an ordered list of *sections*. Each section

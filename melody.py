@@ -1,3 +1,5 @@
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Melody primitive: a scale-degree mini-language + model + transforms.
 
 Shared foundation for the (future) fugue subject handling and the lead/hook

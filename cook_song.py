@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Convenience CLI for rendering curated song recipes with play_music."""
 
 from __future__ import annotations
