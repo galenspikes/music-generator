@@ -1,3 +1,5 @@
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Curated song generator presets for the Fluidsynth toolkit.
 
 Each recipe describes a ready-to-run `play_music` invocation for a specific

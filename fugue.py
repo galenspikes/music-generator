@@ -1,3 +1,5 @@
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Fugue generator (v1: exposition + cadence).
 
 Builds a fugal **exposition** on the four SATB voice-channels:

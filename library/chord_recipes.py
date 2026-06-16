@@ -1,3 +1,5 @@
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Chord recipe catalogue for the FluidSynth music generator.
 
 Each entry maps a short recipe name to semitone offsets relative to the chord

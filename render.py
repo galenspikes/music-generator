@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Render wrapper: generate MIDI, then (optionally) render/normalize/boost audio.
 
 Python port of the old `play_music` zsh wrapper. Pipeline:

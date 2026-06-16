@@ -1,3 +1,5 @@
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """Process-music generator: phasing, additive, and augmentation.
 
 Minimalist/process techniques applied to a melodic cell (written in the melody

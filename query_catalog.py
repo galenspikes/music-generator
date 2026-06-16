@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+# https://github.com/galenspikes/music-generator
 """
 Query the master catalog of generated songs.
 """
