@@ -22,6 +22,28 @@ cd webapp/frontend && npm install && npm run dev
 
 The Vite dev server proxies `/api` to the backend; open the printed localhost URL.
 
+## Deploy (production)
+
+**Frontend build:**
+```bash
+cd webapp/frontend && npm install && npm run build
+# output → webapp/frontend/dist/
+```
+
+**Single-process serve** (backend mounts built frontend):
+```bash
+PYTHONPATH=$PWD venv/bin/uvicorn app:app --app-dir webapp/backend --port 8000
+```
+
+The backend automatically serves the built frontend at `/` if `webapp/frontend/dist/` exists.
+Open `http://localhost:8000`.
+
+**Or separate servers** (frontend on CDN/static host, backend on app server):
+- Build frontend as above
+- Host `webapp/frontend/dist/` on a web server or CDN
+- Run backend on an app server (Heroku, Fly.io, your VPS, etc.)
+- Update frontend's API proxy in `vite.config.js` to point to the backend
+
 ---
 
 Created by **Galen Spikes**. Copyright © 2026 Galen Spikes. Released under the
