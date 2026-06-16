@@ -174,6 +174,41 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
   );
 }
 
+const bpmLabel = (b) => (Array.isArray(b) && b.length === 2 ? ` · ${b[0]}–${b[1]} bpm` : "");
+
+/* Pick a preset groove by name (perc_main_key). */
+export function GrooveSelect({ value, grooves = [], onChange }) {
+  return (
+    <select className="dropdown" value={value || ""}
+      onChange={(e) => onChange(e.target.value || null)}>
+      <option value="">(none — use perc main)</option>
+      {grooves.map((g) => (
+        <option key={g.name} value={g.name}>{g.name}{bpmLabel(g.bpm)}</option>
+      ))}
+    </select>
+  );
+}
+
+/* Multi-select preset grooves to borrow fills from (perc_intr_keys). */
+export function GrooveMulti({ value = [], grooves = [], onChange }) {
+  const set = new Set(value || []);
+  const flip = (n) => {
+    const s = new Set(set);
+    s.has(n) ? s.delete(n) : s.add(n);
+    onChange([...s]);
+  };
+  return (
+    <div className="chips">
+      {grooves.map((g) => (
+        <button key={g.name} className={"tchip" + (set.has(g.name) ? " on" : "")}
+          title={`fills from ${g.name}`} onClick={() => flip(g.name)}>
+          {g.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* A list of motifs (perc_interrupters / chord_interrupters). */
 export function PercList({ value = [], onChange, kind = "drums" }) {
   const list = value || [];

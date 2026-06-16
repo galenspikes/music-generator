@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Control } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
-import { PercField, PercList } from "./PercEditor.jsx";
+import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
@@ -42,6 +42,7 @@ const pretty = (name) => name.replace(/_/g, " ");
 export default function App() {
   const [params, setParams] = useState(null);
   const [spec, setSpec] = useState(null);
+  const [grooves, setGrooves] = useState([]);
   const [live, setLive] = useState(true);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
@@ -54,15 +55,21 @@ export default function App() {
   const debounceRef = useRef(null);
   const reqIdRef = useRef(0);
 
-  // Load the schema and seed the spec from defaults + overrides.
+  // Load schema + vocab, seed the spec from defaults + overrides.
   useEffect(() => {
-    fetch("/api/schema")
-      .then((r) => r.json())
-      .then((d) => {
-        setParams(d.params);
+    Promise.all([
+      fetch("/api/schema").then((r) => r.json()),
+      fetch("/api/vocab").then((r) => r.json()).catch(() => ({})),
+    ])
+      .then(([schema, vocab]) => {
+        setParams(schema.params);
+        setGrooves(vocab.grooves || []);
         const base = {};
-        for (const p of d.params) base[p.name] = p.default;
-        setSpec({ ...base, ...SEED_OVERRIDES });
+        for (const p of schema.params) base[p.name] = p.default;
+        const overrides = { ...SEED_OVERRIDES };
+        // Default perc_lib to the bundled library so groove lookups resolve.
+        if (vocab.perc_lib) overrides.perc_lib = vocab.perc_lib;
+        setSpec({ ...base, ...overrides });
         setStatus("idle");
       })
       .catch((e) => { setError(String(e)); setStatus("error"); });
@@ -187,7 +194,8 @@ export default function App() {
             onToggle={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}
           >
             {ps.map((p) => (
-              <Param key={p.name} param={p} value={spec[p.name]} onChange={setField(p.name)} />
+              <Param key={p.name} param={p} value={spec[p.name]}
+                onChange={setField(p.name)} grooves={grooves} />
             ))}
           </Panel>
         ))}
@@ -226,7 +234,33 @@ const SPECIAL = {
   chord_interrupters: (v, oc) => <PercList value={v} kind="chord" onChange={oc} />,
 };
 
-function Param({ param, value, onChange }) {
+function Param({ param, value, onChange, grooves }) {
+  // Preset-groove pickers (perc_main_key / perc_intr_keys) — discoverable
+  // dropdowns/chips instead of blank text fields.
+  if (param.name === "perc_main_key") {
+    return (
+      <div className="param">
+        <div className="param-label">
+          <span>{pretty(param.name)}</span>
+          {param.help && <span className="info" title={param.help}>?</span>}
+        </div>
+        <div className="param-control">
+          <GrooveSelect value={value} grooves={grooves} onChange={onChange} />
+        </div>
+      </div>
+    );
+  }
+  if (param.name === "perc_intr_keys") {
+    return (
+      <div className="param wide">
+        <div className="param-label">
+          <span>{pretty(param.name)}</span>
+          {param.help && <span className="info" title={param.help}>?</span>}
+        </div>
+        <GrooveMulti value={value} grooves={grooves} onChange={onChange} />
+      </div>
+    );
+  }
   const special = SPECIAL[param.name];
   if (special) {
     return (
