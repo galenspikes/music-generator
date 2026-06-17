@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Control } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
-import { PercField, PercList } from "./PercEditor.jsx";
+import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
