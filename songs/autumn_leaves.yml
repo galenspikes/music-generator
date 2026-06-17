@@ -1,0 +1,33 @@
+title: Autumn Leaves (jazz standard)
+description: Classic ii-V-I cycle in E minor. Walking bass, arpeggio voicing, jazz brushes.
+tempo: 116
+soundfont: SoundFonts/arachno.sf2
+
+defaults:
+  instrument: epiano
+  voices: { bass: 32 }
+  bass: { style: walking, step: 0.5 }
+  satb: arpeggio
+  chord_length: h
+  chords_order: roundrobin
+  perc:
+    main: "er,eg,er,eg, er,eg,er,ei"
+    fill_rate: 0.08
+
+sections:
+  - name: head
+    repeat: 2
+    keys: "A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min7, E::min7, A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min, E::min"
+
+  - name: solo
+    repeat: 2
+    instrument: saw
+    bass: { style: walking, step: 1.0 }
+    perc: { fill_rate: 0.18 }
+    keys: "A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min7, E::min7, A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min, E::min"
+
+  - name: outro
+    repeat: 1
+    satb: block
+    perc: { fill_rate: 0.02 }
+    keys: "A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min, E::min"

@@ -7,6 +7,7 @@
 # NOTE: our section granularity is coarser than Reich's per-note augmentation,
 # so this is a convincing impression. The four SATB voice-channels = four organs.
 title: Four Organs (process, after Reich)
+description: After Steve Reich (1970). One chord slowly augments from eighth-note pulse to vast sustained sonority.
 tempo: 100
 soundfont: SoundFonts/arachno.sf2
 

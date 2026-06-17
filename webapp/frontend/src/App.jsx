@@ -55,6 +55,7 @@ export default function App() {
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
   const [presets, setPresets] = useState([]);
+  const [showLibrary, setShowLibrary] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
   const [saveDesc, setSaveDesc] = useState("");
@@ -105,6 +106,17 @@ export default function App() {
         });
       })
       .catch((e) => console.log("Song load failed:", e.message));
+  };
+
+  // Load a preset by name
+  const loadPreset = (name) => {
+    fetch(`/api/presets/${name}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setCurrentSong(null);
+        setSpec((s) => ({ ...s, ...data.spec }));
+      })
+      .catch((e) => console.log("Preset load failed:", e.message));
   };
 
   // Save current spec as a preset
@@ -220,15 +232,12 @@ export default function App() {
       {error && <pre className="errbar">{error}</pre>}
 
       <div className="songbar">
-        <div className="song-selector">
-          <label>Song:</label>
-          <select value={currentSong || ""} onChange={(e) => loadSong(e.target.value)}>
-            <option value="">Select a song…</option>
-            {songs.map((s) => (
-              <option key={s.name} value={s.name}>{s.title}</option>
-            ))}
-          </select>
-        </div>
+        <button className="btn-library" onClick={() => setShowLibrary(true)}>◈ Library</button>
+        {currentSong && (
+          <span className="song-current">
+            {songs.find((s) => s.name === currentSong)?.title || currentSong}
+          </span>
+        )}
         <div className="song-actions">
           <button className="btn-new" onClick={() => {
             const base = {};
@@ -281,6 +290,44 @@ export default function App() {
           </Panel>
         ))}
       </main>
+
+      {showLibrary && (
+        <div className="lib-overlay" onClick={() => setShowLibrary(false)}>
+          <div className="lib-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="lib-header">
+              <span className="lib-title">Library</span>
+              <button className="lib-close" onClick={() => setShowLibrary(false)}>✕</button>
+            </div>
+            <div className="lib-section">
+              <div className="lib-section-label">Songs</div>
+              <div className="lib-grid">
+                {songs.map((s) => (
+                  <div key={s.name} className={"lib-card" + (currentSong === s.name ? " active" : "")}
+                    onClick={() => { loadSong(s.name); setShowLibrary(false); }}>
+                    <div className="lib-card-title">{s.title}</div>
+                    {s.description && <div className="lib-card-desc">{s.description}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {presets.length > 0 && (
+              <div className="lib-section">
+                <div className="lib-section-label">My Presets</div>
+                <div className="lib-grid">
+                  {presets.map((p) => (
+                    <div key={p.name} className="lib-card"
+                      onClick={() => { loadPreset(p.name); setShowLibrary(false); }}>
+                      <div className="lib-card-title">{p.title || p.name}</div>
+                      {p.description && <div className="lib-card-desc">{p.description}</div>}
+                      {p.saved && <div className="lib-card-meta">{p.saved.slice(0, 10)}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showSaveDialog && (
         <div className="modal-overlay" onClick={() => setShowSaveDialog(false)}>

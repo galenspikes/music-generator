@@ -1,0 +1,32 @@
+title: A Whiter Shade of Pale (Procol Harum)
+description: Bach-influenced descending bass line in C. Church organ, slow waltz feel.
+tempo: 76
+soundfont: SoundFonts/arachno.sf2
+
+defaults:
+  instrument: churchorgan
+  voices: { bass: 19 }
+  bass: { style: follow }
+  satb: arpeggio
+  chord_length: h
+  chords_order: roundrobin
+  perc:
+    main: "er,er,er, er,er,er"
+    fill_rate: 0.02
+
+sections:
+  - name: intro
+    repeat: 1
+    satb: block
+    perc: { fill_rate: 0.0 }
+    keys: "C::maj, C::maj/B, A::min, A::min/G, F::maj, F::maj/E, D::min, D::min/C, G::maj, G::7, C::maj, F::maj, G::7, G::7"
+
+  - name: verse
+    repeat: 3
+    keys: "C::maj, C::maj/B, A::min, A::min/G, F::maj, F::maj/E, D::min, D::min/C, G::maj, G::maj/F, E::min, G::7, C::maj, F::maj, G::7, G::7"
+
+  - name: chorus
+    repeat: 2
+    satb: block
+    perc: { fill_rate: 0.0 }
+    keys: "C::maj, C::maj/B, A::min, A::min/G, F::maj, F::maj/E, D::min, D::min/C, G::maj, G::7, C::maj, C::maj"

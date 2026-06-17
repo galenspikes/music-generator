@@ -1,0 +1,38 @@
+title: Isn't She Lovely (Stevie Wonder)
+description: Upbeat funk-soul in E major. Octave bass, syncopated groove, harmonica lead on the bridge.
+tempo: 160
+soundfont: SoundFonts/arachno.sf2
+
+defaults:
+  instrument: epiano
+  voices: { bass: 33 }
+  bass: { style: octaves, step: 0.5 }
+  satb: arpeggio
+  chord_length: q
+  chords_order: roundrobin
+  perc:
+    main: "qb,sc,qb,sc,sb,sc"
+    fill_rate: 0.22
+
+sections:
+  - name: intro
+    repeat: 2
+    satb: block
+    perc: { fill_rate: 0.0 }
+    keys: "E::maj, B::7, E::maj, B::7"
+
+  - name: verse
+    repeat: 4
+    keys: "E::maj, E::maj7, E::7, A::maj, A::min, E::maj, B::7, E::maj"
+
+  - name: bridge
+    repeat: 2
+    instrument: 22
+    voices: { bass: 33, soprano: 22 }
+    bass: { style: root }
+    keys: "A::maj7, A::min7, D::7, G::maj7, C#::min7, F#::7, B::maj7, B::7"
+
+  - name: outro
+    repeat: 3
+    perc: { fill_rate: 0.35 }
+    keys: "E::maj, E::maj7, E::7, A::maj, A::min, E::maj, B::7, E::maj"

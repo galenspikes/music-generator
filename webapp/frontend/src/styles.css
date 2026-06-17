@@ -81,19 +81,23 @@ body {
 
 /* ---- song bar ---- */
 .songbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  margin-bottom: 16px; padding: 12px 14px; border-radius: 10px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 10px 14px; border-radius: 10px;
   background: var(--panel-hi); border: 1px solid var(--line);
 }
-.song-selector { display: flex; align-items: center; gap: 10px; flex: 1; }
-.song-selector label { color: var(--muted); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
-.song-selector select {
-  flex: 1; max-width: 300px; padding: 6px 10px; border-radius: 6px;
-  background: var(--slot); border: 1px solid var(--line); color: var(--text);
-  font-family: var(--mono); font-size: 12px;
+.btn-library {
+  font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+  padding: 7px 14px; border-radius: 8px; cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line-hi));
+  color: color-mix(in srgb, var(--accent) 85%, #fff);
 }
-.song-selector select:focus { border-color: var(--accent); outline: none; }
-.song-actions { display: flex; gap: 8px; }
+.btn-library:hover { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); border-color: var(--accent); }
+.song-current {
+  flex: 1; font-family: var(--mono); font-size: 12px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.song-actions { display: flex; gap: 8px; margin-left: auto; }
 .btn-new, .btn-save {
   padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line-hi);
   background: var(--panel); color: var(--text); cursor: pointer;
@@ -101,6 +105,53 @@ body {
 }
 .btn-new:hover, .btn-save:hover { border-color: var(--accent); }
 .btn-save { background: linear-gradient(180deg, #5a7bff, #3f5be0); border-color: #6f8bff; color: #fff; }
+
+/* ---- library modal ---- */
+.lib-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 48px 24px 48px; z-index: 300; overflow-y: auto;
+}
+.lib-modal {
+  background: var(--panel); border: 1px solid var(--line-hi);
+  border-radius: 16px; width: 100%; max-width: 960px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.65);
+}
+.lib-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px; border-bottom: 1px solid var(--line);
+}
+.lib-title {
+  font-family: var(--mono); font-size: 15px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 80%, #fff);
+}
+.lib-close {
+  border: none; background: transparent; color: var(--muted);
+  cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px;
+  border-radius: 6px;
+}
+.lib-close:hover { color: var(--text); background: var(--panel-hi); }
+.lib-section { padding: 24px; }
+.lib-section + .lib-section { border-top: 1px solid var(--line); }
+.lib-section-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--muted); margin-bottom: 14px;
+}
+.lib-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
+}
+.lib-card {
+  background: var(--panel-hi); border: 1px solid var(--line);
+  border-radius: 10px; padding: 14px 16px; cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.lib-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--panel-hi)); }
+.lib-card.active { border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--panel-hi)); }
+.lib-card-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+.lib-card-desc { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+.lib-card-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; opacity: 0.6; }
 
 /* ---- deck (player) ---- */
 .deck {

@@ -1,0 +1,31 @@
+title: Girl from Ipanema (Jobim)
+description: Bossa nova with the classic Gb bridge modulation. Finger bass, gentle hihat clave.
+tempo: 128
+soundfont: SoundFonts/arachno.sf2
+
+defaults:
+  instrument: piano
+  voices: { bass: 32 }
+  bass: { style: root, step: 0.5 }
+  satb: arpeggio
+  chord_length: h
+  chords_order: roundrobin
+  perc:
+    main: "qb,eg,eg, qb,eg,eg"
+    fill_rate: 0.04
+
+sections:
+  - name: A
+    repeat: 2
+    keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"
+
+  - name: B
+    repeat: 1
+    voices: { bass: 32, soprano: flute }
+    perc: { fill_rate: 0.0 }
+    keys: "Gb::maj7, Gb::maj7, B::7, B::7, F#::min7, D::7, G::min7, Eb::7, A::min7, D::7, G::min7, C::7"
+
+  - name: A_out
+    repeat: 2
+    perc: { fill_rate: 0.10 }
+    keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"

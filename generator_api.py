@@ -602,13 +602,15 @@ def list_songs() -> list[dict]:
                 content = yml.read_text()
                 lines = content.split("\n")
                 title = yml.stem
-                for line in lines[:10]:
+                description = ""
+                for line in lines[:12]:
                     if line.startswith("title:"):
                         title = line.split(":", 1)[1].strip()
-                        break
-                songs.append({"name": yml.stem, "title": title})
+                    elif line.startswith("description:"):
+                        description = line.split(":", 1)[1].strip()
+                songs.append({"name": yml.stem, "title": title, "description": description})
             except Exception:
-                songs.append({"name": yml.stem, "title": yml.stem})
+                songs.append({"name": yml.stem, "title": yml.stem, "description": ""})
     return songs
 
 

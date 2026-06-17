@@ -1,0 +1,39 @@
+title: Riders on the Storm (The Doors)
+description: Dark Dm vamp with electric organ. Slow, brooding groove — finger bass, sparse percussion.
+tempo: 82
+soundfont: SoundFonts/arachno.sf2
+
+defaults:
+  instrument: rockorgan
+  voices: { bass: 33 }
+  bass: { style: walking, step: 0.5 }
+  satb: arpeggio
+  chord_length: h
+  chords_order: roundrobin
+  perc:
+    main: "er,eg,er,eg, er,eg,er,eg"
+    fill_rate: 0.06
+
+sections:
+  - name: intro
+    repeat: 2
+    satb: block
+    perc: { fill_rate: 0.0 }
+    keys: "D::min7, D::min7, D::min7, D::min7"
+
+  - name: verse
+    repeat: 3
+    keys: "D::min7, D::min7, G::7, G::7, D::min7, D::min7, Bb::maj, C::7, D::min7, D::min7, G::7, G::7, D::min7, D::min7, D::min7, D::min7"
+
+  - name: organ_solo
+    repeat: 2
+    instrument: organ
+    bass: { style: root }
+    perc: { fill_rate: 0.14 }
+    keys: "D::min7, C::7, Bb::maj, A::7, D::min7, C::7, G::7, D::min7"
+
+  - name: outro
+    repeat: 2
+    satb: block
+    perc: { fill_rate: 0.02 }
+    keys: "D::min7, D::min7, D::min7, D::min7"
