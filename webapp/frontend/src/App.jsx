@@ -51,6 +51,7 @@ export default function App() {
   const [collapsed, setCollapsed] = useState({});
   const [downloadUrl, setDownloadUrl] = useState("");
 
+  const [instruments, setInstruments] = useState([]);
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
   const [presets, setPresets] = useState([]);
@@ -74,6 +75,7 @@ export default function App() {
       .then(([schema, vocab, songsData, presetsData]) => {
         setParams(schema.params);
         setGrooves(vocab.grooves || []);
+        setInstruments(vocab.instruments || []);
         setSongs(songsData.songs || []);
         setPresets(presetsData.presets || []);
 
@@ -274,7 +276,7 @@ export default function App() {
           >
             {ps.map((p) => (
               <Param key={p.name} param={p} value={spec[p.name]}
-                onChange={setField(p.name)} grooves={grooves} />
+                onChange={setField(p.name)} grooves={grooves} instruments={instruments} />
             ))}
           </Panel>
         ))}
@@ -350,7 +352,24 @@ const SPECIAL = {
   chord_interrupters: (v, oc) => <PercList value={v} kind="chord" onChange={oc} />,
 };
 
-function Param({ param, value, onChange, grooves }) {
+function InstrumentPicker({ value, instruments, onChange }) {
+  return (
+    <div className="param-control" style={{ width: "100%" }}>
+      <input
+        className="textfield mono" list="instrument-list"
+        value={value ?? ""} spellCheck={false}
+        placeholder="epiano, strings, 0–127…"
+        onChange={(e) => onChange(e.target.value)}
+        style={{ width: "100%" }}
+      />
+      <datalist id="instrument-list">
+        {instruments.map((name) => <option key={name} value={name} />)}
+      </datalist>
+    </div>
+  );
+}
+
+function Param({ param, value, onChange, grooves, instruments }) {
   // Preset-groove pickers (perc_main_key / perc_intr_keys) — discoverable
   // dropdowns/chips instead of blank text fields.
   if (param.name === "perc_main_key") {
@@ -377,6 +396,18 @@ function Param({ param, value, onChange, grooves }) {
       </div>
     );
   }
+  if (param.name === "instrument") {
+    return (
+      <div className="param wide">
+        <div className="param-label">
+          <span>{pretty(param.name)}</span>
+          {param.help && <span className="info" data-tip={param.help}>?</span>}
+        </div>
+        <InstrumentPicker value={value} instruments={instruments} onChange={onChange} />
+      </div>
+    );
+  }
+
   const special = SPECIAL[param.name];
   if (special) {
     return (

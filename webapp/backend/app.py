@@ -67,8 +67,15 @@ def vocab() -> dict:
         perc_lib = str(lib_path)  # absolute, so groove lookups resolve server-side
     except Exception:
         pass
+    instruments = []
+    try:
+        import music_generator as mg
+        instruments = sorted(mg.GM_ALIASES.keys())
+    except Exception:
+        pass
     return {"recipes": recipes, "drums": drums,
-            "grooves": grooves, "perc_lib": perc_lib}
+            "grooves": grooves, "perc_lib": perc_lib,
+            "instruments": instruments}
 
 
 @app.get("/api/schema")
