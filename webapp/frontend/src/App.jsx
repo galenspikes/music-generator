@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Control } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
-import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
+import { PercField, PercList } from "./PercEditor.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
@@ -78,15 +78,20 @@ export default function App() {
 
   // Load the opening demo on mount.
   useEffect(() => {
-    fetch("/api/preset/kiss")
-      .then((r) => r.json())
-      .then((data) => {
-        setDemoMeta(data);
-        const bytes = Uint8Array.from(atob(data.midi), (c) => c.charCodeAt(0));
-        const url = URL.createObjectURL(new Blob([bytes], { type: "audio/midi" }));
+    fetch("/kiss_opening_demo.mid")
+      .then((r) => r.arrayBuffer())
+      .then((arrayBuffer) => {
+        const url = URL.createObjectURL(new Blob([arrayBuffer], { type: "audio/midi" }));
         if (playerRef.current) playerRef.current.src = url;
         if (vizRef.current) vizRef.current.src = url;
         setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return url; });
+        setDemoMeta({
+          title: "Kiss On My List",
+          composer: "Hall & Oates",
+          year: 1981,
+          bpm: 148,
+          duration_seconds: 208,
+        });
       })
       .catch((e) => console.log("Demo load skipped:", e.message));
   }, []);
