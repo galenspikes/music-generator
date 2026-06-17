@@ -11,6 +11,7 @@ defaults:
   bass: { style: root, step: 1.0 }
   satb: arpeggio
   chord_length: h
+  chords_order: roundrobin
   perc:
     main: "er,eg,er,eg, er,eg,er,eg"   # gentle hats
     fill_rate: 0.05

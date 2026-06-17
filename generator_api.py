@@ -584,3 +584,155 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     "out": {"group": "Render", "control": "text"},
     "no_play": {"group": "Render", "control": "toggle"},
 }
+
+
+# --- songs and presets -------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parent
+SONGS_DIR = REPO_ROOT / "songs"
+PRESETS_DIR = REPO_ROOT / "presets" / "user"
+
+
+def list_songs() -> list[dict]:
+    """List all available songs (from songs/*.yml)."""
+    songs = []
+    if SONGS_DIR.exists():
+        for yml in sorted(SONGS_DIR.glob("*.yml")):
+            try:
+                content = yml.read_text()
+                lines = content.split("\n")
+                title = yml.stem
+                for line in lines[:10]:
+                    if line.startswith("title:"):
+                        title = line.split(":", 1)[1].strip()
+                        break
+                songs.append({"name": yml.stem, "title": title})
+            except Exception:
+                songs.append({"name": yml.stem, "title": yml.stem})
+    return songs
+
+
+def load_song(name: str) -> dict:
+    """Load a song YAML and return all params (defaults + derived)."""
+    import yaml
+
+    song_path = SONGS_DIR / f"{name}.yml"
+    if not song_path.exists():
+        raise GenerationError(f"Song '{name}' not found")
+
+    try:
+        song_data = yaml.safe_load(song_path.read_text())
+    except Exception as e:
+        raise GenerationError(f"Failed to parse song '{name}': {e}")
+
+    spec = {"song": str(song_path)}
+
+    # Extract top-level song properties
+    if "tempo" in song_data:
+        spec["bpm"] = song_data["tempo"]
+    if "soundfont" in song_data:
+        spec["sf2"] = song_data["soundfont"]
+
+    # Extract defaults section
+    defaults = song_data.get("defaults", {})
+    if "instrument" in defaults:
+        spec["instrument"] = defaults["instrument"]
+    if "voices" in defaults:
+        voices = defaults["voices"]
+        if voices:
+            voice_instrument = []
+            for voice, instr in voices.items():
+                voice_instrument.append(f"{voice}={instr}")
+            spec["voice_instrument"] = voice_instrument
+
+    bass_cfg = defaults.get("bass", {})
+    if isinstance(bass_cfg, dict):
+        if "style" in bass_cfg:
+            spec["bass_style"] = bass_cfg["style"]
+        if "step" in bass_cfg:
+            spec["bass_step"] = bass_cfg["step"]
+
+    if "satb" in defaults:
+        spec["satb_style"] = defaults["satb"]
+    if "chord_length" in defaults:
+        spec["chord_len"] = defaults["chord_length"]
+
+    perc_cfg = defaults.get("perc", {})
+    if isinstance(perc_cfg, dict):
+        if "main" in perc_cfg:
+            spec["perc_main"] = perc_cfg["main"]
+        if "interrupters" in perc_cfg:
+            spec["perc_interrupters"] = perc_cfg["interrupters"]
+        if "fill_rate" in perc_cfg:
+            spec["perc_fill_rate"] = perc_cfg["fill_rate"]
+
+    # Extract chord progression from sections
+    sections = song_data.get("sections", [])
+    if sections:
+        keys_list = []
+        for section in sections:
+            section_keys = section.get("keys", "")
+            if section_keys:
+                reps = section.get("repeat", 1)
+                for _ in range(reps):
+                    keys_list.append(section_keys)
+        if keys_list:
+            spec["keys"] = ", ".join(keys_list)
+
+    return spec
+
+
+def list_presets() -> list[dict]:
+    """List user presets with metadata."""
+    presets = []
+    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
+    for preset_file in sorted(PRESETS_DIR.glob("*.json")):
+        try:
+            import json
+            data = json.loads(preset_file.read_text())
+            presets.append({
+                "name": preset_file.stem,
+                "title": data.get("title", preset_file.stem),
+                "description": data.get("description", ""),
+                "saved": data.get("saved", ""),
+            })
+        except Exception:
+            pass
+    return presets
+
+
+def load_preset(name: str) -> dict:
+    """Load a user preset and return the spec."""
+    import json
+
+    preset_path = PRESETS_DIR / f"{name}.json"
+    if not preset_path.exists():
+        raise GenerationError(f"Preset '{name}' not found")
+
+    try:
+        data = json.loads(preset_path.read_text())
+        return data.get("spec", {})
+    except Exception as e:
+        raise GenerationError(f"Failed to load preset '{name}': {e}")
+
+
+def save_preset(name: str, spec: dict, title: str = "", description: str = "") -> dict:
+    """Save a user preset with metadata."""
+    import json
+    from datetime import datetime
+
+    PRESETS_DIR.mkdir(parents=True, exist_ok=True)
+    preset_path = PRESETS_DIR / f"{name}.json"
+
+    data = {
+        "title": title or name,
+        "description": description,
+        "spec": spec,
+        "saved": datetime.now().isoformat(),
+    }
+
+    try:
+        preset_path.write_text(json.dumps(data, indent=2))
+        return data
+    except Exception as e:
+        raise GenerationError(f"Failed to save preset '{name}': {e}")

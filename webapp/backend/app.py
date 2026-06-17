@@ -113,22 +113,52 @@ def generate(req: SpecRequest) -> dict:
     }
 
 
-@app.get("/api/preset/kiss")
-def preset_kiss() -> dict:
-    """Serve the pre-rendered Kiss On My List opening demo."""
-    demo_path = REPO_ROOT / "webapp" / "frontend" / "public" / "kiss_opening_demo.mid"
-    if not demo_path.exists():
-        raise HTTPException(status_code=404, detail="Demo MIDI not found")
-    midi_bytes = demo_path.read_bytes()
-    return {
-        "midi": base64.b64encode(midi_bytes).decode("ascii"),
-        "title": "Kiss On My List",
-        "composer": "Hall & Oates",
-        "year": 1981,
-        "bpm": 148,
-        "duration_seconds": 208,  # ~3:28 at 148 BPM
-        "mode": "arrangement",
-    }
+@app.get("/api/songs")
+def list_songs() -> dict:
+    """List all available songs."""
+    return {"songs": api.list_songs()}
+
+
+@app.get("/api/songs/{name}")
+def load_song(name: str) -> dict:
+    """Load a song and return the spec for it."""
+    try:
+        spec = api.load_song(name)
+    except api.GenerationError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"spec": spec, "name": name}
+
+
+@app.get("/api/presets")
+def list_presets() -> dict:
+    """List user presets."""
+    return {"presets": api.list_presets()}
+
+
+@app.get("/api/presets/{name}")
+def load_preset(name: str) -> dict:
+    """Load a user preset."""
+    try:
+        spec = api.load_preset(name)
+    except api.GenerationError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"spec": spec, "name": name}
+
+
+class SavePresetRequest(BaseModel):
+    spec: dict
+    title: str = ""
+    description: str = ""
+
+
+@app.post("/api/presets/{name}")
+def save_preset(name: str, req: SavePresetRequest) -> dict:
+    """Save a user preset."""
+    try:
+        data = api.save_preset(name, req.spec, req.title, req.description)
+    except api.GenerationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return data
 
 
 # Serve the built frontend if present (production single-process mode).

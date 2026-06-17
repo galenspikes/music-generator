@@ -33,6 +33,7 @@ const SEED_OVERRIDES = {
   bpm: 120,
   seed: 42,
   chord_len: "q",
+  chords_order: "roundrobin",
   bass_style: "root",
   perc_main: "qb, eg, qc, eg",
 };
@@ -49,52 +50,88 @@ export default function App() {
   const [tracks, setTracks] = useState([]);
   const [collapsed, setCollapsed] = useState({});
   const [downloadUrl, setDownloadUrl] = useState("");
-  const [demoMeta, setDemoMeta] = useState(null);
+
+  const [songs, setSongs] = useState([]);
+  const [currentSong, setCurrentSong] = useState(null);
+  const [presets, setPresets] = useState([]);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveTitle, setSaveTitle] = useState("");
+  const [saveDesc, setSaveDesc] = useState("");
 
   const playerRef = useRef(null);
   const vizRef = useRef(null);
   const debounceRef = useRef(null);
   const reqIdRef = useRef(0);
 
-  // Load schema + vocab, seed the spec from defaults + overrides.
+  // Load schema, vocab, songs, presets on mount.
   useEffect(() => {
     Promise.all([
       fetch("/api/schema").then((r) => r.json()),
       fetch("/api/vocab").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/songs").then((r) => r.json()).catch(() => ({ songs: [] })),
+      fetch("/api/presets").then((r) => r.json()).catch(() => ({ presets: [] })),
     ])
-      .then(([schema, vocab]) => {
+      .then(([schema, vocab, songsData, presetsData]) => {
         setParams(schema.params);
         setGrooves(vocab.grooves || []);
+        setSongs(songsData.songs || []);
+        setPresets(presetsData.presets || []);
+
         const base = {};
         for (const p of schema.params) base[p.name] = p.default;
         const overrides = { ...SEED_OVERRIDES };
-        // Default perc_lib to the bundled library so groove lookups resolve.
         if (vocab.perc_lib) overrides.perc_lib = vocab.perc_lib;
         setSpec({ ...base, ...overrides });
         setStatus("idle");
+
+        // Auto-load "kiss" song as the opening demo
+        loadSong("kiss");
       })
       .catch((e) => { setError(String(e)); setStatus("error"); });
   }, []);
 
-  // Load the opening demo on mount.
-  useEffect(() => {
-    fetch("/kiss_opening_demo.mid")
-      .then((r) => r.arrayBuffer())
-      .then((arrayBuffer) => {
-        const url = URL.createObjectURL(new Blob([arrayBuffer], { type: "audio/midi" }));
-        if (playerRef.current) playerRef.current.src = url;
-        if (vizRef.current) vizRef.current.src = url;
-        setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return url; });
-        setDemoMeta({
-          title: "Kiss On My List",
-          composer: "Hall & Oates",
-          year: 1981,
-          bpm: 148,
-          duration_seconds: 208,
+  // Load a song by name
+  const loadSong = (name) => {
+    fetch(`/api/songs/${name}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setCurrentSong(name);
+        // Merge song spec with current base params
+        setSpec((s) => {
+          if (!s) return s;
+          return { ...s, ...data.spec };
         });
       })
-      .catch((e) => console.log("Demo load skipped:", e.message));
-  }, []);
+      .catch((e) => console.log("Song load failed:", e.message));
+  };
+
+  // Save current spec as a preset
+  const handleSavePreset = async (presetName) => {
+    if (!spec) return;
+    try {
+      const res = await fetch(`/api/presets/${presetName}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          spec,
+          title: saveTitle || presetName,
+          description: saveDesc,
+        }),
+      });
+      if (res.ok) {
+        // Refresh presets list
+        fetch("/api/presets")
+          .then((r) => r.json())
+          .then((data) => setPresets(data.presets || []))
+          .catch(() => {});
+        setShowSaveDialog(false);
+        setSaveTitle("");
+        setSaveDesc("");
+      }
+    } catch (e) {
+      console.log("Save failed:", e.message);
+    }
+  };
 
   const setField = (name) => (value) =>
     setSpec((s) => ({ ...s, [name]: value }));
@@ -180,15 +217,26 @@ export default function App() {
 
       {error && <pre className="errbar">{error}</pre>}
 
-      {demoMeta && (
-        <div className="demo-banner">
-          <div className="demo-info">
-            <h2>{demoMeta.title}</h2>
-            <p>{demoMeta.composer} ({demoMeta.year})</p>
-            <p className="prompt">Press <strong>PLAY</strong> or hit <strong>SPACE</strong></p>
-          </div>
+      <div className="songbar">
+        <div className="song-selector">
+          <label>Song:</label>
+          <select value={currentSong || ""} onChange={(e) => loadSong(e.target.value)}>
+            <option value="">Select a song…</option>
+            {songs.map((s) => (
+              <option key={s.name} value={s.name}>{s.title}</option>
+            ))}
+          </select>
         </div>
-      )}
+        <div className="song-actions">
+          <button className="btn-new" onClick={() => {
+            const base = {};
+            for (const p of params) base[p.name] = p.default;
+            setSpec({ ...base, ...SEED_OVERRIDES });
+            setCurrentSong(null);
+          }}>+ New</button>
+          <button className="btn-save" onClick={() => setShowSaveDialog(true)}>Save</button>
+        </div>
+      </div>
 
       <section className="deck">
         <div className="player-wrap">
@@ -232,6 +280,43 @@ export default function App() {
         ))}
       </main>
 
+      {showSaveDialog && (
+        <div className="modal-overlay" onClick={() => setShowSaveDialog(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Save as Preset</h3>
+            <div className="modal-field">
+              <label>Preset name:</label>
+              <input
+                type="text"
+                placeholder="my-groove"
+                value={saveTitle}
+                onChange={(e) => setSaveTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && saveTitle) {
+                    handleSavePreset(saveTitle);
+                  }
+                }}
+              />
+            </div>
+            <div className="modal-field">
+              <label>Description:</label>
+              <textarea
+                placeholder="(optional)"
+                value={saveDesc}
+                onChange={(e) => setSaveDesc(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="modal-actions">
+              <button onClick={() => setShowSaveDialog(false)}>Cancel</button>
+              <button onClick={() => {
+                if (saveTitle) handleSavePreset(saveTitle);
+              }} disabled={!saveTitle}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <footer className="footer">
         <div className="credit">
           Music Generator — © 2026 <strong>Galen Spikes</strong> · MIT licensed ·{" "}
@@ -273,7 +358,7 @@ function Param({ param, value, onChange, grooves }) {
       <div className="param">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" title={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help}>?</span>}
         </div>
         <div className="param-control">
           <GrooveSelect value={value} grooves={grooves} onChange={onChange} />
@@ -286,7 +371,7 @@ function Param({ param, value, onChange, grooves }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" title={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help}>?</span>}
         </div>
         <GrooveMulti value={value} grooves={grooves} onChange={onChange} />
       </div>
@@ -298,7 +383,7 @@ function Param({ param, value, onChange, grooves }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" title={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help}>?</span>}
         </div>
         {special(value, onChange)}
       </div>
@@ -309,7 +394,7 @@ function Param({ param, value, onChange, grooves }) {
     <div className={"param" + (wide ? " wide" : "")}>
       <div className="param-label">
         <span>{pretty(param.name)}</span>
-        {param.help && <span className="info" title={param.help}>?</span>}
+        {param.help && <span className="info" data-tip={param.help}>?</span>}
       </div>
       <div className="param-control">
         <Control param={param} value={value} onChange={onChange} />

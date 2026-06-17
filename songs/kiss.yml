@@ -9,6 +9,7 @@ defaults:
   bass: { style: octaves, step: 0.5 }
   satb: arpeggio
   chord_length: h
+  chords_order: roundrobin
   perc:
     main: "ebg,eg,ecg,eg, ebg,eg,ecg,eg"
     interrupters:
