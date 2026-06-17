@@ -61,9 +61,16 @@ class SongSpec:
 
 def build_spec(raw: dict,
                vel_mode_chords: str = "human",
-               vel_mode_drums: str = "human") -> SongSpec:
+               vel_mode_drums: str = "human",
+               overrides: dict | None = None) -> SongSpec:
     """Validate a raw song dict and resolve per-section configs (merged over
-    the song's defaults)."""
+    the song's defaults).
+
+    ``overrides`` is applied on top of the YAML defaults but below any
+    per-section explicit values — so a section that hard-codes
+    ``instrument: saw`` keeps its saw even when the caller overrides the
+    default instrument.
+    """
     if not isinstance(raw, dict):
         raise ValueError("Song file must be a mapping at the top level.")
     sections_raw = raw.get("sections")
@@ -72,6 +79,8 @@ def build_spec(raw: dict,
 
     global_tempo = int(raw.get("tempo", BASE_DEFAULTS["tempo"]))
     defaults = _deep_merge(BASE_DEFAULTS, raw.get("defaults"))
+    if overrides:
+        defaults = _deep_merge(defaults, overrides)
     defaults["tempo"] = raw.get("defaults", {}).get("tempo", global_tempo)
 
     sections: list[dict] = []
@@ -103,10 +112,11 @@ def build_spec(raw: dict,
 
 def load_spec(path: str,
               vel_mode_chords: str = "human",
-              vel_mode_drums: str = "human") -> SongSpec:
+              vel_mode_drums: str = "human",
+              overrides: dict | None = None) -> SongSpec:
     import yaml
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    return build_spec(raw, vel_mode_chords, vel_mode_drums)
+    return build_spec(raw, vel_mode_chords, vel_mode_drums, overrides)
 
 
 def _section_beats(sec: dict, seq_len: int, chord_len: float) -> float:

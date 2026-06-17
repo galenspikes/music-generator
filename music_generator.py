@@ -3409,10 +3409,14 @@ def main():
         import arrangement
         default_slug = Path(args.song).stem
         song_out = resolve_out_path(args.out, default_slug)
+        arr_overrides: dict = {}
+        if args.instrument:
+            arr_overrides["instrument"] = args.instrument
         spec = arrangement.load_spec(
             args.song,
             vel_mode_chords=args.velocity_mode_chords,
-            vel_mode_drums=args.velocity_mode_drums)
+            vel_mode_drums=args.velocity_mode_drums,
+            overrides=arr_overrides or None)
         arrangement.render(spec, song_out)
         log_file_operation(music_generator_logger, "write", song_out, True)
         print(f"Wrote {song_out}")
