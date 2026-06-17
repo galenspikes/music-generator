@@ -475,3 +475,74 @@ midi-visualizer {
 .modal-actions button:hover:not(:disabled) { border-color: var(--accent); }
 .modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .modal-actions button:last-child { background: linear-gradient(180deg, #5a7bff, #3f5be0); border-color: #6f8bff; color: #fff; }
+
+/* =====================================================================
+   MOBILE  (≤640px)
+   Additive layer: reflow the desktop rack for thumbs. Stacks param rows,
+   pins the transport to the thumb zone, fattens tap targets, and bumps
+   input font-size to 16px so iOS doesn't zoom on focus. Desktop is
+   untouched above this breakpoint.
+   ===================================================================== */
+@media (max-width: 640px) {
+  .rack { padding: 14px 12px 96px; }
+
+  /* ---- compact topbar (transport leaves for the bottom bar) ---- */
+  .topbar { margin-bottom: 12px; gap: 10px; }
+  .brand p { display: none; }
+  .brand h1 { font-size: 16px; letter-spacing: 0.08em; }
+  .logo { font-size: 20px; }
+
+  /* ---- sticky bottom transport: seed · live · RUN in the thumb zone ---- */
+  .transport {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
+    gap: 10px; justify-content: stretch;
+    background: rgba(14, 17, 24, 0.96);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line-hi);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .transport .live { font-size: 13px; }
+  .dice { padding: 13px 14px; font-size: 13px; }
+  .run { flex: 1; padding: 14px; font-size: 14px; text-align: center; }
+  .statustext { display: none; }
+
+  /* ---- deck stacks; presets become a horizontal scroll strip ---- */
+  .deck { grid-template-columns: 1fr; }
+  .presets { flex-direction: row; flex-wrap: nowrap; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .preset { flex: 0 0 auto; white-space: nowrap; padding: 11px 14px; }
+  midi-visualizer { height: 120px; }
+
+  /* ---- song bar wraps cleanly ---- */
+  .song-current { flex-basis: 100%; order: 3; }
+
+  /* ---- param rows stack: label over a full-width control ---- */
+  .param, .param.wide { grid-template-columns: 1fr; gap: 8px; }
+  .param-control { justify-content: flex-start; }
+  .param-control > * { width: 100%; }
+  .knob { width: auto; }
+  .segmented { width: 100%; }
+  .segmented .seg { flex: 1; text-align: center; }
+
+  /* ---- fatter tap targets ---- */
+  .seg { padding: 10px 12px; }
+  .tchip, .hm, .seq-opt { padding: 9px 13px; }
+  .lib-close { font-size: 22px; padding: 8px 12px; }
+  .tag button, .cx { font-size: 18px; padding: 4px 8px; }
+
+  /* ---- 16px inputs: stops iOS Safari auto-zoom on focus ---- */
+  .intfield, .dropdown, .textfield, .textfield.mono, .harm-text, .perc-text,
+  .taglist > input, .cblock input, .cblock select,
+  .modal-field input, .modal-field textarea { font-size: 16px; }
+
+  /* ---- tap-to-reveal help (hover doesn't exist on touch) ---- */
+  .info { width: 22px; height: 22px; font-size: 11px; }
+  .info[data-tip]:focus { outline: none; border-color: var(--accent); color: var(--accent); }
+  .info[data-tip]:focus::after { opacity: 1; }
+  .info[data-tip]::after { width: min(78vw, 280px); }
+
+  /* ---- modals fill the small screen ---- */
+  .lib-overlay { padding: 24px 12px; }
+  .lib-grid { grid-template-columns: 1fr; }
+  .lib-section { padding: 18px 16px; }
+}

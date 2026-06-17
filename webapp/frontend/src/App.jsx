@@ -48,7 +48,18 @@ export default function App() {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [tracks, setTracks] = useState([]);
-  const [collapsed, setCollapsed] = useState({});
+  // On phones, open only Harmony by default — the full rack expanded is an
+  // overwhelming scroll. Desktop keeps everything open.
+  const [collapsed, setCollapsed] = useState(() => {
+    const mobile =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(max-width: 640px)").matches;
+    if (!mobile) return {};
+    return Object.fromEntries(
+      GROUP_ORDER.filter((g) => g !== "Harmony").map((g) => [g, true])
+    );
+  });
   const [downloadUrl, setDownloadUrl] = useState("");
 
   const [instruments, setInstruments] = useState([]);
@@ -448,7 +459,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         <div className="param-control">
           <GrooveSelect value={value} grooves={grooves} onChange={onChange} />
@@ -461,7 +472,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         <GrooveMulti value={value} grooves={grooves} onChange={onChange} />
       </div>
@@ -472,7 +483,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         <InstrumentPicker value={value} instruments={instruments} onChange={onChange} />
       </div>
@@ -485,7 +496,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         {special(value, onChange)}
       </div>
@@ -496,7 +507,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
     <div className={"param" + (wide ? " wide" : "")}>
       <div className="param-label">
         <span>{pretty(param.name)}</span>
-        {param.help && <span className="info" data-tip={param.help}>?</span>}
+        {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
       </div>
       <div className="param-control">
         <Control param={param} value={value} onChange={onChange} />

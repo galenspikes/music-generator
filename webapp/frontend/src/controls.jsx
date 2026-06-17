@@ -4,6 +4,13 @@ import React, { useCallback, useRef, useState } from "react";
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
+// Touch devices: a vertical-drag knob fights page scroll and the target is
+// tiny. Render the slider instead — far friendlier under a thumb.
+const COARSE =
+  typeof window !== "undefined" &&
+  window.matchMedia &&
+  window.matchMedia("(pointer: coarse)").matches;
+
 function snap(v, step, min) {
   if (!step) return v;
   const n = Math.round((v - min) / step) * step + min;
@@ -200,6 +207,8 @@ export function Control({ param, value, onChange }) {
   const common = { value, onChange };
   switch (c) {
     case "knob":
+      if (COARSE)
+        return <Slider {...common} min={param.min ?? 0} max={param.max ?? 1} step={param.step ?? 0.01} />;
       return <Knob {...common} min={param.min ?? 0} max={param.max ?? 1} step={param.step ?? 0.01} />;
     case "slider":
       return <Slider {...common} min={param.min ?? 0} max={param.max ?? 100} step={param.step ?? 1} />;
