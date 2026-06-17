@@ -180,6 +180,30 @@ export default function App() {
     }
   }
 
+  // Unlock Web Audio on the first user gesture. Browsers (and especially
+  // cross-origin iframes like the Hugging Face Space embed) start the shared
+  // AudioContext suspended; without an explicit resume the midi-player reports
+  // "playing" while the audio clock never advances — i.e. play does nothing.
+  useEffect(() => {
+    const unlock = async () => {
+      try {
+        if (window.Tone) {
+          if (window.Tone.start) await window.Tone.start();
+          const ctx = window.Tone.getContext ? window.Tone.getContext().rawContext
+                                             : window.Tone.context;
+          if (ctx && ctx.state === "suspended" && ctx.resume) await ctx.resume();
+        }
+      } catch (_) { /* best-effort */ }
+    };
+    const opts = { capture: true };
+    window.addEventListener("pointerdown", unlock, opts);
+    window.addEventListener("keydown", unlock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unlock, opts);
+      window.removeEventListener("keydown", unlock, opts);
+    };
+  }, []);
+
   // Live: debounce-regenerate on any spec change.
   useEffect(() => {
     if (!spec) return;
