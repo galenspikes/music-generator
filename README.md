@@ -1,3 +1,13 @@
+---
+title: Music Generator
+emoji: 🎵
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Music Generator
 
 A Python music-generation system. A compact token DSL describes chords,
