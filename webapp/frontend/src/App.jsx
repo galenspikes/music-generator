@@ -49,6 +49,7 @@ export default function App() {
   const [tracks, setTracks] = useState([]);
   const [collapsed, setCollapsed] = useState({});
   const [downloadUrl, setDownloadUrl] = useState("");
+  const [demoMeta, setDemoMeta] = useState(null);
 
   const playerRef = useRef(null);
   const vizRef = useRef(null);
@@ -73,6 +74,21 @@ export default function App() {
         setStatus("idle");
       })
       .catch((e) => { setError(String(e)); setStatus("error"); });
+  }, []);
+
+  // Load the opening demo on mount.
+  useEffect(() => {
+    fetch("/api/preset/kiss")
+      .then((r) => r.json())
+      .then((data) => {
+        setDemoMeta(data);
+        const bytes = Uint8Array.from(atob(data.midi), (c) => c.charCodeAt(0));
+        const url = URL.createObjectURL(new Blob([bytes], { type: "audio/midi" }));
+        if (playerRef.current) playerRef.current.src = url;
+        if (vizRef.current) vizRef.current.src = url;
+        setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return url; });
+      })
+      .catch((e) => console.log("Demo load skipped:", e.message));
   }, []);
 
   const setField = (name) => (value) =>
@@ -158,6 +174,16 @@ export default function App() {
       </header>
 
       {error && <pre className="errbar">{error}</pre>}
+
+      {demoMeta && (
+        <div className="demo-banner">
+          <div className="demo-info">
+            <h2>{demoMeta.title}</h2>
+            <p>{demoMeta.composer} ({demoMeta.year})</p>
+            <p className="prompt">Press <strong>PLAY</strong> or hit <strong>SPACE</strong></p>
+          </div>
+        </div>
+      )}
 
       <section className="deck">
         <div className="player-wrap">

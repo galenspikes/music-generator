@@ -79,6 +79,21 @@ body {
   color: #ff8f8f; font-family: var(--mono); font-size: 12px; white-space: pre-wrap;
 }
 
+/* ---- demo banner ---- */
+.demo-banner {
+  margin: 0 0 14px; padding: 20px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(70, 224, 208, 0.1), rgba(106, 168, 255, 0.08));
+  border: 1px solid rgba(70, 224, 208, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.demo-info h2 {
+  margin: 0 0 6px; font-family: var(--mono); font-size: 18px; font-weight: 700;
+  color: var(--accent); letter-spacing: 0.05em;
+}
+.demo-info p { margin: 2px 0; color: var(--muted); font-size: 13px; }
+.demo-info .prompt { color: var(--text); font-size: 14px; margin-top: 10px; }
+.demo-info .prompt strong { color: var(--accent); font-weight: 600; }
+
 /* ---- deck (player) ---- */
 .deck {
   display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: start;

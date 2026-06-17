@@ -113,6 +113,24 @@ def generate(req: SpecRequest) -> dict:
     }
 
 
+@app.get("/api/preset/kiss")
+def preset_kiss() -> dict:
+    """Serve the pre-rendered Kiss On My List opening demo."""
+    demo_path = REPO_ROOT / "webapp" / "frontend" / "public" / "kiss_opening_demo.mid"
+    if not demo_path.exists():
+        raise HTTPException(status_code=404, detail="Demo MIDI not found")
+    midi_bytes = demo_path.read_bytes()
+    return {
+        "midi": base64.b64encode(midi_bytes).decode("ascii"),
+        "title": "Kiss On My List",
+        "composer": "Hall & Oates",
+        "year": 1981,
+        "bpm": 148,
+        "duration_seconds": 208,  # ~3:28 at 148 BPM
+        "mode": "arrangement",
+    }
+
+
 # Serve the built frontend if present (production single-process mode).
 _DIST = pathlib.Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if _DIST.is_dir():
