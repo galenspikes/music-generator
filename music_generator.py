@@ -3409,14 +3409,29 @@ def main():
         import arrangement
         default_slug = Path(args.song).stem
         song_out = resolve_out_path(args.out, default_slug)
-        arr_overrides: dict = {}
-        if args.instrument:
-            arr_overrides["instrument"] = args.instrument
+        arr_overrides: dict = {
+            "tempo": args.bpm,
+            "instrument": args.instrument,
+            "chord_length": args.chord_len,
+            "satb": args.satb_style,
+            "bass": {"style": args.bass_style, "step": float(args.bass_step)},
+            "perc": {"fill_rate": float(args.perc_fill_rate)},
+        }
+        if args.perc_main:
+            arr_overrides["perc"]["main"] = args.perc_main
+        if args.voice_instrument:
+            voices: dict = {}
+            for vi in args.voice_instrument:
+                if "=" in str(vi):
+                    v, instr = str(vi).split("=", 1)
+                    voices[v.strip()] = instr.strip()
+            if voices:
+                arr_overrides["voices"] = voices
         spec = arrangement.load_spec(
             args.song,
             vel_mode_chords=args.velocity_mode_chords,
             vel_mode_drums=args.velocity_mode_drums,
-            overrides=arr_overrides or None)
+            overrides=arr_overrides)
         arrangement.render(spec, song_out)
         log_file_operation(music_generator_logger, "write", song_out, True)
         print(f"Wrote {song_out}")

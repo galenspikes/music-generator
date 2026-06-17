@@ -221,9 +221,33 @@ def _generate_locked(spec: dict) -> GenerationResult:
     if args.song:
         import tempfile
         import arrangement
+
+        # Forward UI params as overrides so changes (bpm, instrument, etc.) take
+        # effect.  Params load_song() doesn't extract (chords, chords_order) keep
+        # the arrangement YAML's own defaults.
+        arr_overrides: dict = {
+            "tempo": args.bpm,
+            "instrument": args.instrument,
+            "chord_length": args.chord_len,
+            "satb": args.satb_style,
+            "bass": {"style": args.bass_style, "step": float(args.bass_step)},
+            "perc": {"fill_rate": float(args.perc_fill_rate)},
+        }
+        if args.perc_main:
+            arr_overrides["perc"]["main"] = args.perc_main
+        if args.voice_instrument:
+            voices: dict = {}
+            for vi in args.voice_instrument:
+                if "=" in str(vi):
+                    v, instr = str(vi).split("=", 1)
+                    voices[v.strip()] = instr.strip()
+            if voices:
+                arr_overrides["voices"] = voices
+
         song_spec = arrangement.load_spec(
             args.song, vel_mode_chords=args.velocity_mode_chords,
-            vel_mode_drums=args.velocity_mode_drums)
+            vel_mode_drums=args.velocity_mode_drums,
+            overrides=arr_overrides)
         with tempfile.TemporaryDirectory(prefix="mg_song_") as tmp:
             out = str(Path(tmp) / "song.mid")
             arrangement.render(song_spec, out)

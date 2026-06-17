@@ -81,13 +81,23 @@ def build_spec(raw: dict,
     defaults = _deep_merge(BASE_DEFAULTS, raw.get("defaults"))
     if overrides:
         defaults = _deep_merge(defaults, overrides)
-    defaults["tempo"] = raw.get("defaults", {}).get("tempo", global_tempo)
+    # Restore YAML tempo only when not explicitly overridden by the caller.
+    if not (overrides and "tempo" in overrides):
+        defaults["tempo"] = raw.get("defaults", {}).get("tempo", global_tempo)
+
+    # When the caller overrides tempo, scale per-section explicit tempos
+    # proportionally so the arrangement speeds up/slows down as a whole.
+    tempo_scale = (defaults["tempo"] / global_tempo
+                   if (overrides and "tempo" in overrides and global_tempo > 0)
+                   else 1.0)
 
     sections: list[dict] = []
     for i, sec in enumerate(sections_raw):
         if not isinstance(sec, dict):
             raise ValueError(f"Section #{i + 1} must be a mapping.")
         merged = _deep_merge(defaults, sec)
+        if tempo_scale != 1.0 and "tempo" in sec:
+            merged["tempo"] = max(40, round(sec["tempo"] * tempo_scale))
         merged.setdefault("name", f"section{i + 1}")
         if not merged.get("keys"):
             raise ValueError(
@@ -102,7 +112,7 @@ def build_spec(raw: dict,
 
     return SongSpec(
         title=str(raw.get("title", "untitled")),
-        tempo=global_tempo,
+        tempo=defaults["tempo"],
         soundfont=raw.get("soundfont"),
         vel_mode_chords=vel_mode_chords,
         vel_mode_drums=vel_mode_drums,
