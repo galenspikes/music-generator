@@ -44,7 +44,6 @@ export default function App() {
   const [params, setParams] = useState(null);
   const [spec, setSpec] = useState(null);
   const [grooves, setGrooves] = useState([]);
-  const [live, setLive] = useState(true);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [tracks, setTracks] = useState([]);
@@ -215,15 +214,15 @@ export default function App() {
     };
   }, []);
 
-  // Live: debounce-regenerate on any spec change.
+  // Always live: debounce-regenerate on any spec change. Text/token fields
+  // commit on blur (not per keystroke), so this won't fire mid-chord.
   useEffect(() => {
     if (!spec) return;
-    if (!live) return;
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => generate(spec), 320);
     return () => clearTimeout(debounceRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spec, live]);
+  }, [spec]);
 
   const grouped = useMemo(() => {
     if (!params) return [];
@@ -250,15 +249,10 @@ export default function App() {
           </div>
         </div>
         <div className="transport">
-          <button className="dice" title="reroll seed"
+          <button className="run" title="reroll the seed for a fresh variation"
             onClick={() => setField("seed")(Math.floor(Math.random() * 999999))}>
-            ⚄ seed
+            ⚄ new take
           </button>
-          <label className="live">
-            <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
-            live
-          </label>
-          <button className="run" onClick={() => generate(spec)}>RUN</button>
           <span className={`lamp lamp-${status}`} />
           <span className="statustext">{status}</span>
         </div>

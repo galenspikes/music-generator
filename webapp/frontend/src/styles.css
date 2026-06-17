@@ -52,14 +52,10 @@ body {
 .brand .byline a:hover { text-decoration: underline; }
 
 .transport { display: flex; align-items: center; gap: 12px; }
-.transport .live { display: flex; align-items: center; gap: 6px; color: var(--muted); font-family: var(--mono); font-size: 12px; }
-.dice, .run {
+.run {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
   border: 1px solid var(--line-hi); background: var(--panel-hi); color: var(--text);
   border-radius: 8px; padding: 8px 12px; cursor: pointer;
-}
-.dice:hover { border-color: var(--accent); }
-.run {
   background: linear-gradient(180deg, #5a7bff, #3f5be0);
   border-color: #6f8bff; color: #fff; font-weight: 700; letter-spacing: 0.12em;
   box-shadow: 0 0 18px rgba(90, 123, 255, 0.35);
@@ -502,8 +498,6 @@ midi-visualizer {
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
   }
-  .transport .live { font-size: 13px; }
-  .dice { padding: 13px 14px; font-size: 13px; }
   .run { flex: 1; padding: 14px; font-size: 14px; text-align: center; }
   .statustext { display: none; }
 

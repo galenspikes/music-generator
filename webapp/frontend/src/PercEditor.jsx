@@ -118,28 +118,34 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
   const [mode, setMode] = useState("code");
   const debounce = useRef(null);
 
+  // Draft drives the field + chip strip live; audio regeneration only fires
+  // when the committed value changes on blur (not on every keystroke).
+  const [draft, setDraft] = useState(value || "");
+  useEffect(() => { setDraft(value || ""); }, [value]);
+  const commit = () => { if (draft !== (value || "")) onChange(draft); };
+
   useEffect(() => {
     clearTimeout(debounce.current);
-    if (!value || !value.trim()) { setParsed({ ok: true, tokens: [] }); return; }
+    if (!draft || !draft.trim()) { setParsed({ ok: true, tokens: [] }); return; }
     debounce.current = setTimeout(() => {
       fetch("/api/parse-perc", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pattern: value, kind }),
+        body: JSON.stringify({ pattern: draft, kind }),
       })
         .then((r) => r.json())
         .then(setParsed)
         .catch(() => {});
     }, 220);
     return () => clearTimeout(debounce.current);
-  }, [value, kind]);
+  }, [draft, kind]);
 
   return (
     <div className="perc">
       {kind === "drums" && (
         <div className="perc-modes">
           <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")}>code</button>
-          <button className={"hm" + (mode === "grid" ? " on" : "")} onClick={() => setMode("grid")}>grid</button>
+          <button className={"hm" + (mode === "grid" ? " on" : "")} onClick={() => { commit(); setMode("grid"); }}>grid</button>
         </div>
       )}
 
@@ -149,8 +155,10 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
         <input
           className={"perc-text" + (parsed.ok ? "" : " err")}
           spellCheck={false}
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           placeholder={placeholder || (kind === "chord" ? "ec, er, sc, qr" : "qb, eg, qc, eg")}
         />
       )}

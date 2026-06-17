@@ -71,25 +71,32 @@ export default function HarmonyEditor({ value, onChange }) {
   const [parsed, setParsed] = useState({ ok: true, chords: [] });
   const debounce = useRef(null);
 
+  // Draft drives the textarea + chip strip live; the committed `keys` (and
+  // thus audio regeneration) only updates on blur, so typing a chord doesn't
+  // regenerate on every keystroke.
+  const [draft, setDraft] = useState(value || "");
+  useEffect(() => { setDraft(value || ""); }, [value]);
+  const commitKeys = () => { if (draft !== (value || "")) onChange(draft); };
+
   useEffect(() => {
     fetch("/api/vocab").then((r) => r.json()).then((d) => setRecipes(d.recipes || [])).catch(() => {});
   }, []);
 
-  // Live parse for the chip strip + inline error.
+  // Live parse for the chip strip + inline error (on the uncommitted draft).
   useEffect(() => {
     clearTimeout(debounce.current);
     debounce.current = setTimeout(() => {
       fetch("/api/parse-keys", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ keys: value || "", mode: "ostinato" }),
+        body: JSON.stringify({ keys: draft || "", mode: "ostinato" }),
       })
         .then((r) => r.json())
         .then(setParsed)
         .catch(() => {});
     }, 250);
     return () => clearTimeout(debounce.current);
-  }, [value]);
+  }, [draft]);
 
   const blocks = mode === "build" ? splitTopLevel(value || "").map(parseToken) : [];
   const setBlocks = (next) => onChange(blocksToKeys(next));
@@ -99,21 +106,22 @@ export default function HarmonyEditor({ value, onChange }) {
     setBlocks([...blocks, { kind: "chord", root: "C", recipe: "maj7", inv: "", bass: "", rep: 1 }]);
 
   const segments = parsed.segments || [];
-  const rows = Math.min(16, Math.max(3, (value || "").split("\n").length + 1));
+  const rows = Math.min(16, Math.max(3, (draft || "").split("\n").length + 1));
 
   return (
     <div className="harm">
       <div className="harm-modes">
         <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")}>code</button>
-        <button className={"hm" + (mode === "build" ? " on" : "")} onClick={() => setMode("build")}>build</button>
+        <button className={"hm" + (mode === "build" ? " on" : "")} onClick={() => { commitKeys(); setMode("build"); }}>build</button>
       </div>
 
       {mode === "code" ? (
         <textarea
           className={"harm-text" + (parsed.ok ? "" : " err")}
           rows={rows} spellCheck={false}
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitKeys}
           placeholder={"C::maj7, A::min9, D::min7, G::13\n\nrepeat sections with groups:\n[A, G]*16,  C::maj7, F::maj9, ..."}
         />
       ) : (
