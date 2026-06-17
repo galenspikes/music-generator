@@ -57,13 +57,18 @@ def vocab() -> dict:
         recipes = sorted(CHORD_RECIPES)
     except Exception:
         recipes = []
+    drums, grooves, perc_lib = {}, [], ""
     try:
-        lib = json.loads(
-            (REPO_ROOT / "library" / "percussion_library.json").read_text())
+        lib_path = REPO_ROOT / "library" / "percussion_library.json"
+        lib = json.loads(lib_path.read_text())
         drums = lib.get("drum_map", {})
+        for name, g in (lib.get("groups") or {}).items():
+            grooves.append({"name": name, "bpm": g.get("bpm_hint")})
+        perc_lib = str(lib_path)  # absolute, so groove lookups resolve server-side
     except Exception:
-        drums = {}
-    return {"recipes": recipes, "drums": drums}
+        pass
+    return {"recipes": recipes, "drums": drums,
+            "grooves": grooves, "perc_lib": perc_lib}
 
 
 @app.get("/api/schema")
