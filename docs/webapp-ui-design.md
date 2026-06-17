@@ -48,21 +48,23 @@ Toggle in top-right corner.
 ## Opening Demo: "Kiss On My List" (Hall & Oates)
 
 ### Pre-loaded Behavior
-1. On first load: auto-load "Kiss On My List" (20-min version, 148 BPM).
+1. On first load: auto-load "Kiss On My List" (complete arrangement, ~3-4 min at 148 BPM).
 2. Display: "Kiss On My List (Hall & Oates) — Press PLAY or hit SPACE"
-3. User hits PLAY → full groove streams, piano-roll visualizes in real-time.
-4. While playing, they can *edit the harmony or drums mid-stream* → live regeneration.
+3. User hits PLAY → song plays through, piano-roll visualizes in real-time.
+4. While playing, they can *edit the harmony or drums mid-stream* → live regeneration of next phrase.
 
 ### Implementation
-- Pre-render a 20-min MIDI file (`songs/kiss.yml → midi/kiss_opening_demo.mid`).
-- Store as part of `webapp/frontend/public/` (versioned, not too large for embed).
-- Backend: `/api/preset/kiss` endpoint returns the MIDI bytes + metadata (title, bpm, duration).
-- Frontend: on load, fetch and display. User can edit or hit play immediately.
+- Pre-render the full arrangement (`songs/kiss.yml → webapp/frontend/public/kiss_opening_demo.mid`).
+  - Arrangement mode runs once through: intro → verse → prechorus → chorus → solo → outro.
+  - Store as versioned MIDI asset (~100-300KB expected).
+- Backend: `/api/preset/kiss` endpoint returns the MIDI bytes + metadata (title, bpm, duration, composer).
+- Frontend: on load, fetch and auto-load. User can edit the params or hit play immediately.
 
 **Benefits:**
-- Zero latency on first interaction (MIDI is already there).
-- Demonstrates the full song structure, vocies, drums—everything you can edit.
-- Inviting: "you just made this" (because you can edit it live).
+- Zero latency on first interaction (MIDI is already rendered).
+- Demonstrates a complete, satisfying song with all musical elements (harmony, voices, drums).
+- Inviting: "you just made this" vibe (because you can edit and regenerate it live).
+- Original song length = tactile, not overwhelming.
 
 ---
 
