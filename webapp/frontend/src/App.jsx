@@ -156,7 +156,7 @@ export default function App() {
       if (myId !== reqIdRef.current) return;
       const bytes = Uint8Array.from(atob(data.midi), (c) => c.charCodeAt(0));
       const url = URL.createObjectURL(new Blob([bytes], { type: "audio/midi" }));
-      if (playerRef.current) playerRef.current.src = url;
+      if (playerRef.current) { try { playerRef.current.stop(); } catch (_) {} playerRef.current.src = url; }
       if (vizRef.current) vizRef.current.src = url;
       setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return url; });
       setTracks(data.tracks || []);
