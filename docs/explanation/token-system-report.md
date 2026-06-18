@@ -89,8 +89,9 @@ bounded by file mtimes and the first surviving commit, not by a continuous recor
   bare roots on the 15th; `--keys "G::7, C::7"` in `play_blues.sh` by the 20th.
   Exact day unrecoverable.
 - **2025-10-11** — First git commit anywhere (spatelier monorepo "Initial commit").
-  Already contains the **complete** system: `parse_colon_key_token`, **67 chord
-  recipes**, percussion `prob`/`flam`/`vel` modifiers, and both `*N` operators.
+  Already contains the **complete** system: `parse_colon_key_token`, the full
+  chord-recipe library, percussion `prob`/`flam`/`vel` modifiers, and both `*N`
+  operators.
   The recipe library has gained no new recipes since.
 - **2026-06-07** — Extracted into this standalone repo. Same day, three genuinely
   new additions: **(a)** `/bass` slash/pedal support — driven by the *Kiss On My
