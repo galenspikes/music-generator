@@ -480,7 +480,7 @@ midi-visualizer {
    untouched above this breakpoint.
    ===================================================================== */
 @media (max-width: 640px) {
-  .rack { padding: 14px 12px 96px; }
+  .rack { padding: 14px 12px 168px; }
 
   /* ---- compact topbar (transport leaves for the bottom bar) ---- */
   .topbar { margin-bottom: 12px; gap: 10px; }
@@ -506,6 +506,19 @@ midi-visualizer {
   .presets { flex-direction: row; flex-wrap: nowrap; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
   .preset { flex: 0 0 auto; white-space: nowrap; padding: 11px 14px; }
   midi-visualizer { height: 120px; }
+
+  /* Relocate the MIDI player into the bottom dock as a floating mini-player,
+     pinned just above the new-take action bar. The piano-roll, stems, and
+     MIDI download stay in the deck above. Mobile-only — desktop keeps the
+     player in the deck. The bottom offset clears the .transport row below. */
+  .player-wrap midi-player {
+    position: fixed; left: 8px; right: 8px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    width: auto; z-index: 201;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  }
+  .player-wrap midi-visualizer { margin-top: 0; }
 
   /* ---- song bar wraps cleanly ---- */
   .song-current { flex-basis: 100%; order: 3; }
