@@ -9,7 +9,7 @@ end-to-end on a single timeline; the existing engine builders are reused per
 section with a beat offset, and program/tempo changes are emitted at the
 boundaries (hard cuts in v1 — transitions/fills come later).
 
-See docs/arrangement-plan.md for the design.
+See docs/design-notes/arrangement-plan.md for the design.
 """
 
 from __future__ import annotations

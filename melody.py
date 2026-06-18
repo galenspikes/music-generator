@@ -12,7 +12,7 @@ Grammar (whitespace-separated, '|' barlines ignored; ',' = octave down):
 e.g.  "q1 q5 e5 e4 q3 | h2 q1 qr"   "q.1 e5 q3' e#7, h1"
 Operators reuse the DSL feel: token*N and [ ... ]*N chains.
 
-See docs/melody-primitive-plan.md.
+See docs/design-notes/melody-primitive-plan.md.
 """
 
 from __future__ import annotations

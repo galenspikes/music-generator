@@ -5,16 +5,18 @@ percussion → MIDI, optionally rendered to audio via FluidSynth. Modes include
 ostinato grooves, arrangements (YAML song files), fugues, and process music.
 
 ## Start here — read these docs before working
-- **`docs/architecture.md`** — module map, dependency layering, data flow. *(Read
-  first to know where code lives.)* — *added during the Tier 3 refactor; if absent,
-  the module map lives in `docs/refactor-plan.md`.*
-- **`docs/refactor-plan.md`** — the active code-health plan (monolith breakup +
-  hardening), tiered, with status. **Check this before refactoring.**
-- **`docs/token-grammar.md`** — the chord/percussion/melody mini-languages
+The docs follow the [Diátaxis](https://diataxis.fr/) layout; **`docs/index.md`** is
+the map. Key entry points:
+- **`docs/explanation/architecture.md`** — module map, dependency layering, data
+  flow. *(Read first to know where code lives.)*
+- **`docs/design-notes/refactor-plan.md`** — the active code-health plan (monolith
+  breakup + hardening), tiered, with status. **Check this before refactoring.**
+- **`docs/reference/token-grammar.md`** — the chord/percussion/melody mini-languages
   (the project's core asset). Read before touching any parser.
-- **`docs/roadmap-phase2.md`** — feature roadmap (arrangement, melody/lead, mix).
-- Design notes: `docs/arrangement-plan.md`, `docs/melody-primitive-plan.md`,
-  `docs/leadsheet-import-plan.md`. Worked songs: `songs/*.yml`, `docs/charts.md`.
+- **`docs/design-notes/roadmap-phase2.md`** — feature roadmap (arrangement,
+  melody/lead, mix).
+- Design notes live in `docs/design-notes/` (arrangement, melody-primitive,
+  leadsheet-import). Worked songs: `songs/*.yml`, `docs/reference/charts.md`.
 
 ## Dev workflow
 - Env: `python3 -m venv venv && venv/bin/pip install -r requirements.txt`
@@ -31,5 +33,5 @@ ostinato grooves, arrangements (YAML song files), fugues, and process music.
 ## Conventions
 - Commit/push only when asked; one logical change per commit; keep tests green.
 - The token DSL is the crown jewel — never edit a parser without running the token
-  tests, and update `docs/token-grammar.md` if the grammar changes.
+  tests, and update `docs/reference/token-grammar.md` if the grammar changes.
 - Big binaries (SoundFonts) and generated output are never committed.

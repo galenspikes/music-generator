@@ -23,3 +23,6 @@ log/
 
 # Lead-sheet source PDFs (inputs; often large/copyrighted/cloud-synced)
 songs/*.pdf
+
+# Private provenance / research material (kept local, never committed)
+docs/sources/

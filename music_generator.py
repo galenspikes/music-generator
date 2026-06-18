@@ -3179,7 +3179,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Scale-degree melody on the soprano voice, e.g. \"q1 q3 q5 h1\". "
         "Loops to fill the piece; key/mode inferred from the chords. "
-        "See docs/melody-grammar / docs/melody-primitive-plan.md.")
+        "See docs/reference/token-grammar.md / docs/design-notes/melody-primitive-plan.md.")
     ap.add_argument("--melody-relative", choices=["key", "chord"], default="key",
                     help="Degrees resolve against the section key, or anchor to "
                     "the current chord's root (motif fits each chord).")

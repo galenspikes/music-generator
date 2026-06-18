@@ -44,7 +44,7 @@ font/position.
 Render pages to images and have a multimodal model transcribe the chart into the
 IR (sections, chords, repeats, key, tempo). **This is unusually available here:
 Claude Code's Read tool already reads PDFs** — so a v1 can be a *workflow*, not a
-big build: "read this lead sheet, emit song.yml using docs/token-grammar.md."
+big build: "read this lead sheet, emit song.yml using docs/reference/token-grammar.md."
 - Pro: handles image PDFs, messy layouts, section/repeat structure, capo notes.
 - Pro: near-zero code to start (a documented prompt/skill).
 - Con: needs human verification (hallucination risk); not deterministic.

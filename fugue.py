@@ -13,7 +13,7 @@ related keys, and stretto/inversion/augmentation devices are v2/v3. It stands on
 the melody primitive: the answer is `transpose_diatonic(subject, +4)`, the
 default countersubject is `invert(subject)`, etc.
 
-See docs/melody-primitive-plan.md and docs/arrangement-plan.md.
+See docs/design-notes/melody-primitive-plan.md and docs/design-notes/arrangement-plan.md.
 """
 
 from __future__ import annotations

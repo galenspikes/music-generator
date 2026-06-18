@@ -134,7 +134,7 @@ with gr.Blocks(head=HEAD, title="Music Generator", theme=gr.themes.Soft()) as de
         "A token DSL for generative music. Describe chords or a melodic process, "
         "generate MIDI on the server, and play it back in your browser. "
         "Grammar reference: "
-        "[token-grammar.md](https://github.com/galenspikes/music-generator/blob/main/docs/token-grammar.md)."
+        "[token-grammar.md](https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md)."
     )
 
     with gr.Row():

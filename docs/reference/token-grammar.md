@@ -130,4 +130,4 @@ The key/mode is **inferred from the chords** (override with `--melody-key` /
 (`--melody-relative key`) or anchored to the current chord's root
 (`--melody-relative chord`, so a motif fits each chord). `--melody-transform`
 can `invert`/`retrograde`/`augment` the line (the fugal operations).
-See docs/melody-primitive-plan.md.
+See docs/design-notes/melody-primitive-plan.md.
