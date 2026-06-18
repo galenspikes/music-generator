@@ -62,8 +62,8 @@ from a dated source — treat it as such.
   interrupter `fill_rate` ([ADR-0006](0006-interrupters.md)). They compose but are
   conceptually distinct (micro- vs. phrase-variation); document them as a pair.
 - **Cost:** parser and renderer complexity; non-determinism makes output
-  non-reproducible unless the RNG is seeded.
+  non-reproducible unless the RNG is seeded — pass `--seed N` for a repeatable take.
 
 ## Status / follow-ups
 
-Accepted. Consider a `--seed` for reproducible renders if not already present.
+Accepted. Reproducibility is covered by the existing `--seed` flag.
