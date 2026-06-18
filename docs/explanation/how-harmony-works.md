@@ -67,6 +67,34 @@ This single scorer is the source of the project's signature sound, and it traces
 directly to the founding design demand (Sept 2025): *"really every note should
 change… whatever makes contrapuntal sense, but we want this to be flowing."*
 
+## A worked example
+
+Voicing `C::maj9` (pitch classes C D E G B), the engine splits the tones:
+
+```
+all pcs : C D E G B
+guide   : E B      (the 3rd and 7th — the chord's identity)
+fifth   : G        (disposable)
+color   : D         (the 9th — the interesting extension)
+root    : C         (stated by the bass; optional up top, since 5 tones > 3)
+```
+
+Now voice the progression `C::maj9 → A::min11 → F::maj7 → G::13`, soprano-first,
+tracking the actual top line (real engine output):
+
+| token | bass | tenor | alto | soprano |
+|---|---|---|---|---|
+| `C::maj9`  | C3 | E4 | D4 | **B3** |
+| `A::min11` | A2 | G3 | B3 | **C4** |
+| `F::maj7`  | F2 | E4 | C4 | **A3** |
+| `G::13`    | G2 | F4 | A3 | **B3** |
+
+Read the soprano column: **B3 → C4 → A3 → B3** — every move is a step or less, and
+each landing is a guide tone (the 7th of Cmaj9, the 3rd of Amin11, the 3rd of Fmaj7,
+the 3rd of G13). That's the `pick_soprano` scorer at work: minimal motion, guide-tone
+bonus, no static repeats. The inner voices fill the remaining tones; the bass states
+each root. This single column is the project's "flowing" sound made concrete.
+
 ## Voicing styles
 
 `realize_SATB` produces **block** chords (all voices strike together). Other

@@ -27,6 +27,25 @@ of the time, with a flam 0.1 beats after. Crucially, `prob` lives on the *note*:
 the written pattern describes a **distribution** of performances, not one fixed
 take ([ADR-0003](decisions/0003-probability-in-the-token.md)).
 
+## A worked example
+
+What the parser actually produces (real `parse_single_token` output, `→ (beats, hits)`):
+
+```text
+qb                          → (1.0, [PercHit(note=36)])                  # quarter kick
+ebg                         → (0.5, [PercHit(note=36),                   # eighth: kick
+                                      PercHit(note=42)])                 #   + closed hat, together
+er                          → (0.5, [])                                  # eighth rest (no hits)
+qb[vel+10,prob0.5,flam0.1]  → (1.0, [PercHit(note=36, vel_offset=10,
+                                              probability=0.5, flam=0.1)])
+```
+
+Three things to notice: stacked letters (`bg`) become *multiple* `PercHit`s at the
+same time; a rest is simply an *empty* hit list; and the modifiers ride on the
+individual `PercHit`, which is what lets probability and articulation vary hit by
+hit (GM note 36 = Bass Drum 1, 42 = Closed Hi-Hat — see the
+[letter map](../reference/percussion-letters.md)).
+
 ## Two tiers of variation
 
 This is the key idea to hold onto: the engine injects controlled non-repetition at

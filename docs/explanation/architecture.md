@@ -33,12 +33,21 @@ The codebase is a **core monolith with satellites**. Everything depends on
 `music_generator.py`; nothing in the core depends back on the satellites.
 
 ### Core
-- **`music_generator.py`** — the heart. Token parsing (chord colon-tokens,
-  percussion tokens, the `*N`/`[...]*N` operators), the harmony model, SATB
-  voicing and voice-leading (`pick_soprano`), the percussion engine
-  (hits, modifiers, interrupters), the event timeline, MIDI writing, and the CLI
-  (`main`). Depends only on `logging_config`. *(This is the monolith the refactor
-  plan aims to break up — see [design-notes/refactor-plan.md](../design-notes/refactor-plan.md).)*
+- **`music_generator.py`** — the heart. Token parsing, the harmony model, SATB
+  voicing and voice-leading, the percussion engine, the event timeline, MIDI
+  writing, and the CLI (`main`). Depends only on `logging_config`. *(This is the
+  monolith the refactor plan aims to break up — see
+  [design-notes/refactor-plan.md](../design-notes/refactor-plan.md).)* Key entry points:
+
+  | Concern | Function | Location |
+  |---|---|---|
+  | chord token → `ChordDef` | `parse_colon_key_token` | [music_generator.py:786](../../music_generator.py) |
+  | operator expansion (`*N`) | `parse_repetition_token` / `parse_chain_repetition` | [music_generator.py:1369](../../music_generator.py) |
+  | percussion token → hits | `parse_single_token` | [music_generator.py:1184](../../music_generator.py) |
+  | SATB voicing | `realize_SATB` | [music_generator.py:1538](../../music_generator.py) |
+  | soprano voice-leading | `pick_soprano` | [music_generator.py:861](../../music_generator.py) |
+  | interrupter substitution | `choose_perc_pattern` | [music_generator.py:1170](../../music_generator.py) |
+  | chord event timeline | `build_chord_timeline` | [music_generator.py:1746](../../music_generator.py) |
 - **`logging_config.py`** — centralized logging used across the core.
 
 ### Satellites (each depends on the core)
