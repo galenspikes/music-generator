@@ -1,3 +1,7 @@
+# demonstrates: a Bach-style descending bass line built entirely from slash
+# chords (C, C/B, Am, Am/G, F, F/E, ...) with `bass: {style: follow}` so the bass
+# tracks each written slash. Church organ, arpeggiated inner voices, a near-silent
+# kit. Showcases the slash-chord grammar carrying the whole arrangement.
 title: A Whiter Shade of Pale (Procol Harum)
 description: Bach-influenced descending bass line in C. Church organ, slow waltz feel.
 tempo: 76

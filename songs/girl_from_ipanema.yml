@@ -1,3 +1,6 @@
+# demonstrates: bossa nova and modulation — an AABA form where the bridge (B)
+# modulates up to Gb major and swaps the soprano voice for a flute lead, then
+# drops back to F for the out-head. Gentle clave percussion throughout.
 title: Girl from Ipanema (Jobim)
 description: Bossa nova with the classic Gb bridge modulation. Finger bass, gentle hihat clave.
 tempo: 128
@@ -15,17 +18,23 @@ defaults:
     fill_rate: 0.04
 
 sections:
-  - name: A
+  - name: A1
+    repeat: 2
+    satb: block
+    perc: { fill_rate: 0.0 }
+    keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"
+
+  - name: A2
     repeat: 2
     keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"
 
   - name: B
-    repeat: 1
+    repeat: 2
     voices: { bass: 32, soprano: flute }
-    perc: { fill_rate: 0.0 }
+    perc: { fill_rate: 0.02 }
     keys: "Gb::maj7, Gb::maj7, B::7, B::7, F#::min7, D::7, G::min7, Eb::7, A::min7, D::7, G::min7, C::7"
 
   - name: A_out
-    repeat: 2
+    repeat: 3
     perc: { fill_rate: 0.10 }
     keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"

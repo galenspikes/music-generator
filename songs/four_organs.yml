@@ -1,3 +1,8 @@
+# demonstrates: minimalist process music in the arrangement layer — one chord
+# (E dominant 11th) held for the whole piece while `chord_length` grows section
+# by section (e -> q -> h -> w) over an unbroken maracas pulse. Uses `bars:` for
+# exact section lengths and `fill_rate: 0.0` to never break the pulse.
+#
 # After Steve Reich, "Four Organs" (1970) — a process/impression, not a transcription.
 # One chord (E dominant 11th) for the whole piece; maracas hold an unbroken
 # eighth-note pulse; the chord AUGMENTS section by section (chord_length grows
