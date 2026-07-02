@@ -1,0 +1,606 @@
+"""MIDI writer: the :class:`MidiOut` track/event serializer.
+
+Wraps :mod:`mido` to accumulate chord/voice and drum events on a tempo-mapped
+timeline (optionally split into per-voice stems), apply velocity humanisation,
+and save a Type-1 MIDI file. Depends on :mod:`mtheory` (channels, voice order)
+and :mod:`percussion` (:class:`PercHit`).
+"""
+import random
+
+from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
+
+from mtheory import CHORD_CH, DRUM_CH, VOICE_ORDER
+from percussion import PercHit
+
+__all__ = ["MidiOut"]
+
+
+class MidiOut:
+
+    STEM_VOICES = VOICE_ORDER
+
+    def __init__(self,
+                 bpm: int,
+                 fname: str | None = None,
+                 tpb: int = 480,
+                 vel_mode_chords: str = "uniform",
+                 vel_mode_drums: str = "uniform",
+                 split_stems: bool = False) -> None:
+        self.bpm = bpm
+        self.fname = fname
+        self.tpb = tpb
+        self.vel_mode_chords = (vel_mode_chords or "uniform").lower()
+        self.vel_mode_drums = (vel_mode_drums or "uniform").lower()
+        self.split_stems = bool(split_stems)
+
+        self.mid = MidiFile(type=1, ticks_per_beat=self.tpb)
+        self.chord_tracks: dict[str, MidiTrack] = {}
+        self.chord_channels: dict[str, int] = {}
+        self.active_ch: dict[str, set[int]] = {}
+        self.voice_positions: dict[str, float] = {}
+        self.active_dr: set[int] = set()
+
+        tempo = bpm2tempo(self.bpm)
+
+        if self.split_stems:
+            for idx, voice in enumerate(self.STEM_VOICES):
+                channel = idx
+                track = MidiTrack()
+                self.mid.tracks.append(track)
+                self.chord_tracks[voice] = track
+                self.chord_channels[voice] = channel
+                self.active_ch[voice] = set()
+                self.voice_positions[voice] = 0.0
+                track.append(MetaMessage('set_tempo', tempo=tempo, time=0))
+                track.append(
+                    Message('control_change',
+                            control=7,
+                            value=96,
+                            channel=channel,
+                            time=0))
+                track.append(
+                    Message('control_change',
+                            control=11,
+                            value=110,
+                            channel=channel,
+                            time=0))
+        else:
+            track = MidiTrack()
+            self.mid.tracks.append(track)
+            self.chord_tracks["ensemble"] = track
+            self.chord_channels["ensemble"] = CHORD_CH
+            self.active_ch["ensemble"] = set()
+            self.voice_positions["ensemble"] = 0.0
+            track.append(MetaMessage('set_tempo', tempo=tempo, time=0))
+            track.append(
+                Message('control_change',
+                        control=7,
+                        value=96,
+                        channel=CHORD_CH,
+                        time=0))
+            track.append(
+                Message('control_change',
+                        control=11,
+                        value=110,
+                        channel=CHORD_CH,
+                        time=0))
+
+        # expose primary chord track for legacy accessors
+        self.tr_ch = next(iter(self.chord_tracks.values()))
+
+        self.tr_dr = MidiTrack()
+        self.mid.tracks.append(self.tr_dr)  # drums (CH10)
+        self.tr_dr.append(MetaMessage('set_tempo', tempo=tempo, time=0))
+        self.tr_dr.append(
+            Message('control_change',
+                    control=7,
+                    value=118,
+                    channel=DRUM_CH,
+                    time=0))
+        self.tr_dr.append(
+            Message('control_change',
+                    control=11,
+                    value=120,
+                    channel=DRUM_CH,
+                    time=0))
+        # harmless on ch10:
+        self.tr_dr.append(
+            Message('program_change', program=0, channel=DRUM_CH, time=0))
+
+        # Dedicated conductor track for a tempo map (set_tempo changes mid-piece,
+        # e.g. per-section tempo in arrangements). Kept separate from note tracks
+        # so it never interferes with their cursors.
+        self.tr_meta = MidiTrack()
+        self.mid.tracks.insert(0, self.tr_meta)
+        self.meta_pos = 0.0
+        self.tr_meta.append(MetaMessage('set_tempo', tempo=tempo, time=0))
+
+    def _chord_track_items(self) -> list[tuple[str, MidiTrack]]:
+        return list(self.chord_tracks.items())
+
+    def set_program(self, program: int, bank_msb: int = 0, bank_lsb: int = 0):
+        """Set one program for every chord track (back-compat)."""
+        self.set_voice_programs(None, program, bank_msb=bank_msb,
+                                bank_lsb=bank_lsb)
+
+    def set_voice_programs(self,
+                           programs: dict[str, int] | None,
+                           default_program: int,
+                           bank_msb: int = 0,
+                           bank_lsb: int = 0):
+        """Assign a GM program per chord track.
+
+        `programs` maps a voice name (soprano/alto/tenor/bass) to a GM program
+        number. Voices not listed — and the single 'ensemble' track when stems
+        are disabled — fall back to `default_program`. Per-voice instruments
+        therefore only take effect with split stems (the default).
+        """
+        programs = programs or {}
+        for key, track in self._chord_track_items():
+            channel = self.chord_channels[key]
+            program = programs.get(key, default_program)
+            # Optional bank select (helps with some SF2 layouts)
+            track.append(
+                Message('control_change',
+                        control=0,
+                        value=bank_msb,
+                        channel=channel,
+                        time=0))
+            track.append(
+                Message('control_change',
+                        control=32,
+                        value=bank_lsb,
+                        channel=channel,
+                        time=0))
+            track.append(
+                Message('program_change',
+                        program=program,
+                        channel=channel,
+                        time=0))
+
+    def ticks(self, beats: float) -> int:
+        return int(round(beats * self.tpb))
+
+    def _seek_meta(self, when_beats: float) -> None:
+        delta = when_beats - self.meta_pos
+        if delta > 0:
+            self.tr_meta.append(
+                MetaMessage('text', text='', time=self.ticks(delta)))
+            self.meta_pos = when_beats
+
+    def set_tempo_at(self, bpm: float, when_beats: float = 0.0) -> None:
+        """Insert a tempo change at a beat offset (builds a tempo map)."""
+        self._seek_meta(when_beats)
+        self.tr_meta.append(
+            MetaMessage('set_tempo', tempo=bpm2tempo(int(round(bpm))), time=0))
+
+    def program_change_at(self,
+                          voice: str,
+                          program: int,
+                          when_beats: float,
+                          bank_msb: int = 0,
+                          bank_lsb: int = 0) -> None:
+        """Change a voice's program mid-track at a beat offset (re-orchestrate
+        at section boundaries). Requires split stems (per-voice channels)."""
+        if voice not in self.chord_tracks:
+            return
+        track = self.chord_tracks[voice]
+        channel = self.chord_channels[voice]
+        self._seek_voice(voice, when_beats)
+        track.append(
+            Message('control_change', control=0, value=bank_msb,
+                    channel=channel, time=0))
+        track.append(
+            Message('control_change', control=32, value=bank_lsb,
+                    channel=channel, time=0))
+        track.append(
+            Message('program_change', program=program, channel=channel,
+                    time=0))
+
+    def _seek_voice(self, voice: str, target_beats: float) -> None:
+        current = self.voice_positions.get(voice, 0.0)
+        delta = target_beats - current
+        if delta <= 0:
+            self.voice_positions[voice] = max(current, target_beats)
+            return
+        ticks = self.ticks(delta)
+        if ticks > 0:
+            self.chord_tracks[voice].append(
+                MetaMessage('text', text='', time=ticks))
+        self.voice_positions[voice] = target_beats
+
+    def advance_ch(self, beats: float) -> None:
+        if beats <= 0:
+            return
+        for voice in self.chord_tracks.keys():
+            current = self.voice_positions.get(voice, 0.0)
+            self._seek_voice(voice, current + beats)
+
+    def advance_dr(self, beats: float) -> None:
+        self.tr_dr.append(MetaMessage('text', text='', time=self.ticks(beats)))
+
+    @staticmethod
+    def _clamp_velocity(val: float) -> int:
+        return max(1, min(127, int(round(val))))
+
+    def _compute_chord_velocity(self, when_beats: float, base: int = 78) -> int:
+        mode = self.vel_mode_chords
+        if mode == "random":
+            return self._clamp_velocity(base + random.randint(-36, 38))
+        if mode == "human":
+            beat_pos = (when_beats or 0.0) % 4.0
+            accent = 0
+            if beat_pos < 0.01:
+                accent += 10
+            elif abs(beat_pos - 2.0) < 0.01:
+                accent += 6
+            elif abs(beat_pos - 1.0) < 0.01 or abs(beat_pos - 3.0) < 0.01:
+                accent += 3
+            jitter = random.randint(-5, 5)
+            return self._clamp_velocity(base + accent + jitter)
+        return self._clamp_velocity(base)
+
+    def play_voice_note(self,
+                        voice: str,
+                        note: int,
+                        start_beats: float,
+                        duration: float,
+                        base: int = 78) -> None:
+        if duration <= 0.0:
+            return
+        if voice not in self.chord_tracks:
+            return
+        velocity = self._compute_chord_velocity(start_beats, base)
+        self._seek_voice(voice, start_beats)
+        track = self.chord_tracks[voice]
+        channel = self.chord_channels[voice]
+        track.append(
+            Message('note_on',
+                    note=note,
+                    velocity=velocity,
+                    channel=channel,
+                    time=0))
+        self.active_ch[voice].add(note)
+        ticks = max(1, self.ticks(duration))
+        track.append(
+            Message('note_off',
+                    note=note,
+                    velocity=0,
+                    channel=channel,
+                    time=ticks))
+        self.active_ch[voice].discard(note)
+        self.voice_positions[voice] = start_beats + duration
+
+    def _compute_drum_velocity(self,
+                               midi_note: int,
+                               base: int,
+                               when_beats: float) -> int:
+        mode = self.vel_mode_drums
+        if mode == "random":
+            return self._clamp_velocity(base + random.randint(-35, 35))
+        if mode == "human":
+            beat_pos = (when_beats or 0.0) % 4.0
+            accent = 0
+            if beat_pos < 0.01:
+                accent += 9
+            elif abs(beat_pos - 2.0) < 0.01:
+                accent += 6
+            elif abs(beat_pos - 1.0) < 0.01 or abs(beat_pos - 3.0) < 0.01:
+                accent += 3
+            if midi_note in (35, 36):  # kicks
+                accent += 3
+            elif midi_note in (38, 37):  # snares / rim
+                accent += 2
+            elif midi_note in (42, 46):  # hats
+                accent += 1
+            jitter = random.randint(-6, 6)
+            return self._clamp_velocity(base + accent + jitter)
+        return self._clamp_velocity(base)
+
+    def chord_block(self,
+                    notes: tuple[int, int, int, int],
+                    beats: float,
+                    when_beats: float,
+                    base: int = 78) -> None:
+        vel = self._compute_chord_velocity(when_beats, base)
+        s, a, t, b = notes
+        dur_ticks = self.ticks(beats)
+        if self.split_stems:
+            voice_to_note = {
+                "soprano": s,
+                "alto": a,
+                "tenor": t,
+                "bass": b,
+            }
+            for voice, note in voice_to_note.items():
+                self.play_voice_note(voice, note, when_beats, beats, base)
+        else:
+            track_key = "ensemble"
+            track = self.chord_tracks[track_key]
+            channel = self.chord_channels[track_key]
+            self._seek_voice(track_key, when_beats)
+            for note in (s, a, t, b):
+                track.append(
+                    Message('note_on',
+                            note=note,
+                            velocity=vel,
+                            channel=channel,
+                            time=0))
+                self.active_ch[track_key].add(note)
+            track.append(
+                Message('note_off',
+                        note=s,
+                        velocity=0,
+                        channel=channel,
+                        time=dur_ticks))
+            self.active_ch[track_key].discard(s)
+            for n in (a, t, b):
+                track.append(
+                    Message('note_off',
+                            note=n,
+                            velocity=0,
+                            channel=channel,
+                            time=0))
+                self.active_ch[track_key].discard(n)
+            self.voice_positions[track_key] = when_beats + beats
+
+    def dense_block(self,
+                    notes: list[int],
+                    beats: float,
+                    when_beats: float,
+                    base: int = 74) -> None:
+        """Emit an arbitrary-length chord (full dense voicing) on the ensemble
+        channel. Used by --voicing dense to sound every chord tone."""
+        notes = list(dict.fromkeys(int(n) for n in notes))
+        track_key = "ensemble"
+        track = self.chord_tracks[track_key]
+        channel = self.chord_channels[track_key]
+        self._seek_voice(track_key, when_beats)
+        if not notes:
+            self.voice_positions[track_key] = when_beats + beats
+            return
+        vel = self._compute_chord_velocity(when_beats, base)
+        dur_ticks = self.ticks(beats)
+        for note in notes:
+            track.append(
+                Message('note_on', note=note, velocity=vel, channel=channel,
+                        time=0))
+            self.active_ch[track_key].add(note)
+        track.append(
+            Message('note_off', note=notes[0], velocity=0, channel=channel,
+                    time=dur_ticks))
+        self.active_ch[track_key].discard(notes[0])
+        for n in notes[1:]:
+            track.append(
+                Message('note_off', note=n, velocity=0, channel=channel,
+                        time=0))
+            self.active_ch[track_key].discard(n)
+        self.voice_positions[track_key] = when_beats + beats
+
+    def drums_block(
+            self,
+            hits: list[PercHit],
+            beats: float,
+            when_beats: float,
+            velk: int = 100,
+            vels: int = 96,
+            velh: int = 78,
+            vel_o: int = 104,
+            vel_c: int = 112,
+            vel_w: int = 118,
+            vel_m: int = 96,
+            vel_p: int = 102,
+            vel_t: int = 100,
+            choke_openhat: bool = False,
+            choke_after_beats: float = 0.06) -> None:
+        if not hits:
+            self.advance_dr(beats)
+            return
+
+        def base_velocity(note: int) -> int:
+            if note == 36:
+                return velk
+            if note == 38:
+                return vels
+            if note == 42:
+                return velh
+            if note == 46:
+                return vel_o
+            if note == 49:
+                return vel_c
+            if note == 56:
+                return vel_w
+            if note == 47:
+                return vel_m
+            if note == 39:
+                return vel_p
+            if note == 37:
+                return vel_t
+            return 80
+
+        events: list[tuple[float, int, int]] = []
+
+        for hit in hits:
+            if random.random() > hit.probability:
+                continue
+            note = hit.note
+            base = base_velocity(note) + hit.vel_offset
+            vel = self._compute_drum_velocity(note, base, when_beats)
+            events.append((0.0, note, vel))
+
+            if hit.flam is not None:
+                flam_offset = max(0.0, float(hit.flam))
+                if beats > 0.0:
+                    flam_offset = min(flam_offset, max(0.0, beats))
+                flam_base = base - 14
+                flam_vel = self._compute_drum_velocity(
+                    note, flam_base, when_beats + flam_offset)
+                events.append((flam_offset, note, flam_vel))
+
+        if not events:
+            self.advance_dr(beats)
+            return
+
+        events.sort(key=lambda item: item[0])
+        current_tick = 0
+        active_notes: set[int] = set()
+        for offset, note, velocity in events:
+            ticks = max(0, self.ticks(offset))
+            delta = max(0, ticks - current_tick)
+            self.tr_dr.append(
+                Message('note_on',
+                        note=note,
+                        velocity=self._clamp_velocity(velocity),
+                        channel=DRUM_CH,
+                        time=delta))
+            current_tick = ticks
+            self.active_dr.add(note)
+            active_notes.add(note)
+
+        block_ticks = self.ticks(beats)
+        remaining_ticks = max(0, block_ticks - current_tick)
+
+        if 46 in active_notes and choke_openhat and choke_after_beats > 0:
+            choke_tick = max(1, self.ticks(min(choke_after_beats, beats)))
+            delta_to_choke = max(0, choke_tick - current_tick)
+            self.tr_dr.append(
+                Message('note_on',
+                        note=42,
+                        velocity=1,
+                        channel=DRUM_CH,
+                        time=delta_to_choke))
+            self.active_dr.add(42)
+            current_tick = max(current_tick, choke_tick)
+            rem = max(0, block_ticks - current_tick)
+            self.tr_dr.append(
+                Message('note_off',
+                        note=42,
+                        velocity=0,
+                        channel=DRUM_CH,
+                        time=rem or 1))
+            self.active_dr.discard(42)
+            for note in sorted(active_notes):
+                self.tr_dr.append(
+                    Message('note_off',
+                            note=note,
+                            velocity=0,
+                            channel=DRUM_CH,
+                            time=0))
+                self.active_dr.discard(note)
+            return
+
+        ordered_notes = sorted(active_notes)
+        if ordered_notes:
+            first_note = ordered_notes[0]
+            release_delta = remaining_ticks or 1
+            self.tr_dr.append(
+                Message('note_off',
+                        note=first_note,
+                        velocity=0,
+                        channel=DRUM_CH,
+                        time=release_delta))
+            self.active_dr.discard(first_note)
+            for note in ordered_notes[1:]:
+                self.tr_dr.append(
+                    Message('note_off',
+                            note=note,
+                            velocity=0,
+                            channel=DRUM_CH,
+                            time=0))
+                self.active_dr.discard(note)
+
+    def save(self, path: str | None = None) -> None:
+        target = path or self.fname
+        if target is None:
+            raise ValueError("MidiOut.save() needs a path (none set at init)")
+        self.mid.save(target)
+
+    def to_bytes(self) -> bytes:
+        """Serialize the MIDI to an in-memory bytes object (no disk write).
+
+        This is the seam the web API renders through: generation stays in
+        memory instead of round-tripping a file through ``output/``.
+        """
+        import io
+
+        buf = io.BytesIO()
+        self.mid.save(file=buf)
+        return buf.getvalue()
+
+    def _flush_active_chords(self) -> None:
+        for key, notes in self.active_ch.items():
+            if not notes:
+                continue
+            track = self.chord_tracks[key]
+            channel = self.chord_channels[key]
+            first = True
+            for note in list(notes):
+                track.append(
+                    Message('note_off',
+                            note=note,
+                            velocity=0,
+                            channel=channel,
+                            time=1 if first else 0))
+                first = False
+                notes.discard(note)
+
+    def _flush_active_drums(self) -> None:
+        if not self.active_dr:
+            return
+        first = True
+        for note in list(self.active_dr):
+            self.tr_dr.append(
+                Message('note_off',
+                        note=note,
+                        velocity=0,
+                        channel=DRUM_CH,
+                        time=1 if first else 0))
+            first = False
+            self.active_dr.discard(note)
+
+    def flush_to_end(self,
+                     chord_pos: float,
+                     drum_pos: float,
+                     end_beat: float) -> None:
+        """Advance tracks to end_beat, release notes, and close MIDI streams."""
+        for voice in self.chord_tracks.keys():
+            current = self.voice_positions.get(voice, 0.0)
+            if end_beat > current:
+                self._seek_voice(voice, end_beat)
+
+        drum_delta = max(0.0, end_beat - drum_pos)
+        if drum_delta > 0:
+            self.advance_dr(drum_delta)
+
+        self._flush_active_chords()
+        self._flush_active_drums()
+
+        for key, track in self._chord_track_items():
+            channel = self.chord_channels[key]
+            track.append(
+                Message('control_change',
+                        control=123,
+                        value=0,
+                        channel=channel,
+                        time=0))
+            track.append(
+                Message('control_change',
+                        control=120,
+                        value=0,
+                        channel=channel,
+                        time=0))
+            track.append(MetaMessage('end_of_track', time=0))
+
+        self.tr_dr.append(
+            Message('control_change',
+                    control=123,
+                    value=0,
+                    channel=DRUM_CH,
+                    time=0))
+        self.tr_dr.append(
+            Message('control_change',
+                    control=120,
+                    value=0,
+                    channel=DRUM_CH,
+                    time=0))
+        self.tr_dr.append(MetaMessage('end_of_track', time=0))

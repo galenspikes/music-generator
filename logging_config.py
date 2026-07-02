@@ -10,9 +10,7 @@ package that lived in a parent monorepo; that dependency has been inlined.)
 
 from __future__ import annotations
 
-import functools
 import logging
-import time
 from pathlib import Path
 
 LOG_DIR = Path(__file__).resolve().parent / "log"
@@ -53,31 +51,7 @@ def setup_logger(name: str,
     return logger
 
 
-def get_logger(name: str) -> logging.Logger:
-    """Get an existing logger or create a new configured one."""
-    logger = logging.getLogger(name)
-    if not getattr(logger, "_mg_configured", False):
-        return setup_logger(name)
-    return logger
-
-
 # ----- structured logging helpers -----
-
-def log_function_call(func=None, *, logger: logging.Logger | None = None):
-    """Decorator that logs entry/exit of a function at DEBUG level.
-
-    Usable as ``@log_function_call`` or ``@log_function_call(logger=...)``.
-    """
-    def decorate(fn):
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            lg = logger or get_logger(fn.__module__)
-            lg.debug("call %s", fn.__qualname__)
-            return fn(*args, **kwargs)
-        return wrapper
-
-    return decorate(func) if callable(func) else decorate
-
 
 def log_performance(logger: logging.Logger, label: str, duration: float) -> None:
     """Log how long an operation took (seconds)."""
@@ -105,10 +79,7 @@ def log_error(logger: logging.Logger, error: BaseException,
     logger.error("error: %s%s", error, suffix, exc_info=True)
 
 
-# Pre-configured loggers for common modules.
+# Pre-configured loggers for the modules that use them.
 music_generator_logger = setup_logger("music_generator")
 cook_song_logger = setup_logger("cook_song")
-play_music_logger = setup_logger("play_music")
 query_catalog_logger = setup_logger("query_catalog")
-cleanup_audio_logger = setup_logger("cleanup_audio")
-recreate_audio_logger = setup_logger("recreate_audio")

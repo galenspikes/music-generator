@@ -14,3 +14,5 @@ knows the basics. Recipes, not lessons.*
 - **[Render audio](render-audio.md)** — FluidSynth + ffmpeg via `render.py` /
   `play_music`.
 - **[Use the web instrument](use-the-web-instrument.md)** — run the React + FastAPI UI.
+- **[Set up for development](set-up-for-development.md)** — venv, `make` targets,
+  testing, and linting.

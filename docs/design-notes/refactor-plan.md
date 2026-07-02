@@ -86,14 +86,20 @@ functions). Working tree clean.
 - **2.3 Consolidate output layout** — one convention: `output/{midi,audio,metadata}/<slug>/`.
   Migrate `play_music`'s top-level `metadata/` into it.
 
-### Tier 3 — Break up the monolith (FINALIZED PLAN, not yet executed)
+### Tier 3 — Break up the monolith ✅ DONE
 
-Status: Tier 1 and Tier 2 are done. Tier 3 below is the agreed plan.
+Status: Tiers 1–3 are complete. `music_generator.py` went from **3,509 lines**
+to **~950** (CLI + orchestration only); the engine now lives in six layered
+modules (`mtheory` → `percussion`/`tokens`/`voicing`/`midiout` → `composition`).
+All 163 tests stayed green through every extraction (one module per commit,
+each verified with the suite plus a functional render). See the up-to-date map
+and layering in [../explanation/architecture.md](../explanation/architecture.md).
 
-Decisions (locked): **re-export for backward compat** (slim `music_generator.py`
-does `from <mod> import *` so the sibling modules keep using `mg.X` unchanged —
-migrate their imports in a later optional pass); **~7 modules**; docs =
-**module docstrings + `docs/architecture.md`** (see Documentation pass below).
+Decisions (locked, and how they landed): **re-export for backward compat** — the
+slim `music_generator.py` does `from <mod> import *` (each module defines
+`__all__`), so siblings keep using `mg.X` unchanged; **7 modules** as planned;
+`midiout.py` also imports `PercHit` from `percussion` (a runtime dependency the
+original table under-specified). Docs = module docstrings + this architecture doc.
 
 **Target module map** (dependency-layered; a module only imports ones above it):
 
@@ -126,13 +132,21 @@ the dependency layering, and the data-flow pipeline CLI → tokens → compositi
 voicing → MidiOut → render); a README architecture section; and a docstring
 sweep on public functions that still lack one.
 
-### Tier 4 — Decide & document
-- **4.1 Catalog:** finish (`query_catalog` robust + documented, surfaced in
-  README) **or** remove (`update_master_catalog` + `query_catalog.py`).
-- **4.2 Helper scripts:** keep/fix/remove `cleanup_audio`/`recreate_audio`/
-  `view_logs` (likely fold into `render.py`/CLI subcommands).
-- **4.3 Trim `logging_config`** to what's used.
-- **4.4 Add `make test` / a lint config** (ruff) + a short dev-setup doc.
+### Tier 4 — Decide & document ✅ DONE
+- **4.1 Catalog: finished + documented.** `update_master_catalog` now guards
+  against a malformed/legacy catalog shape; `query_catalog.py` resolves its path
+  script-relative (works from any CWD), tolerates missing/None fields in every
+  view, and has a top-level error guard. Covered by `tests/test_catalog.py` and
+  documented in the README.
+- **4.2 Helper scripts: removed.** Deleted `cleanup_audio.py`,
+  `recreate_audio.py`, and `view_logs.py` (untested, undocumented, overlapping
+  `render.py`).
+- **4.3 Trimmed `logging_config`.** Dropped the never-applied `log_function_call`
+  decorator + its only caller `get_logger`, and three unused pre-configured
+  loggers; kept `setup_logger` and the helpers/loggers actually in use.
+- **4.4 Added `make` + ruff + dev doc.** `Makefile` (install/test/lint/format/
+  check), ruff config in `pyproject.toml`, `ruff` in `requirements-dev.txt`, a
+  README Development section, and `docs/how-to/set-up-for-development.md`.
 
 ---
 
@@ -141,3 +155,7 @@ Tier 1 (safety net) → Tier 2.1 (de-dup render) → Tier 2.2/2.3 (de-shell +
 layout) → Tier 3 (extract modules) → Tier 4 (decide/cleanup). Tiers 1–2 give the
 biggest robustness gain for the least risk; Tier 3 is the long game, made safe by
 Tier 1's tests.
+
+**Status: Tiers 1–4 are all complete.** The code-health plan is done — the engine
+is modular and layered, the catalog is a supported feature, dead code is gone, and
+`make check` (ruff + pytest) is the pre-commit gate.

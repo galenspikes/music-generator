@@ -1,0 +1,19 @@
+# Tooling config for the music-generator project.
+# Ruff is the linter (see `make lint`); tests run under pytest (see `make test`).
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["webapp/frontend", "SoundFonts", "output"]
+
+[tool.ruff.lint]
+# High-signal defaults: pyflakes (F) + the pycodestyle error classes that catch
+# real bugs. Line-length (E501) is intentionally not enforced — the codebase has
+# some long, readable lines and wrapping them adds noise, not clarity.
+select = ["E4", "E7", "E9", "F", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# music_generator.py deliberately re-exports the engine modules via star imports
+# (F403) so callers reaching through `mg.*` keep working — see its module
+# docstring and docs/explanation/architecture.md.
+"music_generator.py" = ["F403"]

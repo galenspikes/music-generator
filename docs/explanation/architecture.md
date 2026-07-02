@@ -29,26 +29,37 @@ step turns MIDI into normalized audio via FluidSynth + ffmpeg. Several **modes**
 
 ## Module map
 
-The codebase is a **core monolith with satellites**. Everything depends on
-`music_generator.py`; nothing in the core depends back on the satellites.
+The core is a **layered set of engine modules** with a thin CLI/orchestration
+shell on top, surrounded by **satellites**. Within the core, a module imports
+only modules *above* it in the layering (no cycles). `music_generator.py`
+re-exports every public name (star imports), so callers that reach through
+`music_generator` (`mg.build_harmony_events`, etc.) keep working.
 
-### Core
-- **`music_generator.py`** — the heart. Token parsing, the harmony model, SATB
-  voicing and voice-leading, the percussion engine, the event timeline, MIDI
-  writing, and the CLI (`main`). Depends only on `logging_config`. *(This is the
-  monolith the refactor plan aims to break up — see
-  [design-notes/refactor-plan.md](../design-notes/refactor-plan.md).)* Key entry points:
+### Core (layered engine)
 
-  | Concern | Function | Location |
-  |---|---|---|
-  | chord token → `ChordDef` | `parse_colon_key_token` | [music_generator.py:786](../../music_generator.py) |
-  | operator expansion (`*N`) | `parse_repetition_token` / `parse_chain_repetition` | [music_generator.py:1369](../../music_generator.py) |
-  | percussion token → hits | `parse_single_token` | [music_generator.py:1184](../../music_generator.py) |
-  | SATB voicing | `realize_SATB` | [music_generator.py:1538](../../music_generator.py) |
-  | soprano voice-leading | `pick_soprano` | [music_generator.py:861](../../music_generator.py) |
-  | interrupter substitution | `choose_perc_pattern` | [music_generator.py:1170](../../music_generator.py) |
-  | chord event timeline | `build_chord_timeline` | [music_generator.py:1746](../../music_generator.py) |
-- **`logging_config.py`** — centralized logging used across the core.
+| Module | Responsibility | Depends on |
+|---|---|---|
+| **`mtheory.py`** | Note/pitch-class tables, duration + GM instrument maps, voice ranges + channels, `ChordDef`, key parsing, register helpers, chord-recipe loader. | — (base layer) |
+| **`percussion.py`** | Active drum map (load/set/get), the percussion-token DSL, `PercHit`/`PercStage`/`PercPlan`, grid quantisation, drum timelines, `build_perc_from_args`. | mtheory |
+| **`tokens.py`** | Chord DSL: `parse_colon_key_token`, `*N`/`[...]*N` repetition, `key_roots` expansion. | mtheory |
+| **`voicing.py`** | `realize_SATB`, `realize_dense`, `build_bass_line`, `build_arpeggio_events`, `build_counterpoint_lines` + voice-leading helpers. | mtheory |
+| **`midiout.py`** | The `MidiOut` writer — mido-backed Type-1 serializer with stem splitting, humanisation, drum/chord scheduling. | mtheory, percussion |
+| **`composition.py`** | `build_progression` + chord-family pickers, `build_chord_timeline`, `build_dense_timeline`, `build_harmony_events`. | mtheory, tokens, voicing |
+| **`music_generator.py`** | CLI/`main`, manifest + master catalog, `render_events`/`resolve_out_path`/`_apply_melody`, project paths; re-exports all of the above. | everything above |
+| **`logging_config.py`** | Centralized logging used across the core. | — |
+
+Key entry points:
+
+| Concern | Function | Location |
+|---|---|---|
+| chord token → `ChordDef` | `parse_colon_key_token` | [tokens.py:20](../../tokens.py) |
+| operator expansion (`*N`) | `parse_repetition_token` / `parse_chain_repetition` | [tokens.py:92](../../tokens.py) |
+| percussion token → hits | `parse_single_token` | [percussion.py:162](../../percussion.py) |
+| interrupter substitution | `choose_perc_pattern` | [percussion.py:152](../../percussion.py) |
+| SATB voicing | `realize_SATB` | [voicing.py:449](../../voicing.py) |
+| soprano voice-leading | `pick_soprano` | [voicing.py:397](../../voicing.py) |
+| chord event timeline | `build_chord_timeline` | [composition.py:334](../../composition.py) |
+| MIDI serialization | `MidiOut` | [midiout.py](../../midiout.py) |
 
 ### Satellites (each depends on the core)
 - **`melody.py`** → core. The scale-degree melody mini-language, its model, and the
@@ -69,8 +80,8 @@ The codebase is a **core monolith with satellites**. Everything depends on
   Consumes wrapper flags (`--sf2`, `--fx`, `--normalize`, `--boost-db`,
   `--save-wav`, …) and forwards the rest to the generator.
 - **`cook_song.py`** — convenience CLI for rendering curated song recipes.
-- **`cleanup_audio.py`, `recreate_audio.py`, `query_catalog.py`** — housekeeping
-  utilities (prune WAVs, re-render audio from existing MIDI, query the song catalog).
+- **`query_catalog.py`** — query the master catalog of generated songs
+  (`output/master_catalog.json`, written by each render).
 
 ### Web instrument
 - **`webapp/backend/`** (FastAPI: `app.py`, `engine.py`) — wraps `generator_api`
@@ -81,19 +92,32 @@ The codebase is a **core monolith with satellites**. Everything depends on
 
 ## Dependency layering (the rule)
 
+Inside the core, imports flow strictly upward through the engine layers:
+
 ```
-logging_config
-      ▲
-music_generator  ◄──────────────┐  (core; depends on nothing local but logging)
-      ▲         ▲        ▲       │
-   melody   arrangement  generator_api
-      ▲                        ▲
-  fugue, process          webapp backend ──► webapp frontend
+mtheory                              (base: no local deps)
+   ▲     ▲       ▲        ▲
+tokens percussion voicing │
+   ▲     ▲       ▲        │
+   │   midiout   │        │
+   └─────┴───────┴──► composition
+                          ▲
+                   music_generator     (CLI shell; re-exports the engine)
+                          ▲
+      ┌───────────────────┼───────────────────┐
+   melody           arrangement          generator_api
+      ▲                                        ▲
+  fugue, process                        webapp backend ──► webapp frontend
 ```
 
-**The invariant:** dependencies point *toward* the core. A satellite may import the
-core; the core must never import a satellite. Keep it that way — it's what lets the
-core be tested and reasoned about in isolation, and what the refactor plan preserves.
+**Two invariants:**
+1. *Within the core*, a module imports only layers above it — `mtheory` at the
+   base, `composition` near the top, `music_generator` on top. No cycles.
+2. *Across the boundary*, satellites may import the core; the core must never
+   import a satellite.
+
+Keep it that way — it's what lets each layer be tested and reasoned about in
+isolation.
 
 ## Data flow, in detail
 
@@ -132,5 +156,5 @@ material is chosen*:
 - [The token system](token-system-report.md) — what the notation is and where it
   came from.
 - [Design decisions (ADRs)](decisions/) — *why* the notation is shaped this way.
-- [Refactor plan](../design-notes/refactor-plan.md) — the active plan to break up
-  the `music_generator.py` monolith.
+- [Refactor plan](../design-notes/refactor-plan.md) — the code-health plan; the
+  monolith break-up (Tier 3) that produced the layered modules above is complete.

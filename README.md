@@ -281,7 +281,13 @@ venv/bin/python music_generator.py --seconds 60 --out my_song --no-play
 
 ```
 music-generator/
-  music_generator.py     # generation engine and CLI
+  music_generator.py     # CLI + orchestration; re-exports the engine below
+  mtheory.py             # note/pitch tables, key parsing, chord recipes (base layer)
+  tokens.py              # chord token DSL (colon chords, repetition, key expansion)
+  percussion.py          # drum map, percussion DSL, drum timelines
+  voicing.py             # SATB / dense / bass / arpeggio / counterpoint voicing
+  midiout.py             # MidiOut — the mido-backed MIDI writer
+  composition.py         # progressions, chord families, harmony timelines
   render.py              # audio rendering pipeline (FluidSynth, ffmpeg, metadata)
   play_music             # thin shim over render.py
   cook_song.py           # recipe system
@@ -296,15 +302,36 @@ music-generator/
   output/                # generated MIDI, audio, and metadata (gitignored)
 ```
 
-## Testing
+## Song catalog
+
+Every render appends an entry to `output/master_catalog.json` (generation args,
+timestamps, and output paths). Query it with `query_catalog.py`:
 
 ```bash
-venv/bin/python -m pytest
+venv/bin/python query_catalog.py list [limit]   # recent songs (default 10)
+venv/bin/python query_catalog.py search <query> # match keys/name/instrument/out
+venv/bin/python query_catalog.py show <name>    # full details for one song
+venv/bin/python query_catalog.py stats          # totals, instruments, BPM range
+```
+
+The catalog lives under the gitignored `output/`, so it's local to your machine.
+
+## Development
+
+A `Makefile` wraps the common tasks (all using the `./venv` interpreter):
+
+```bash
+make install   # create venv + install runtime and dev dependencies
+make test      # run the pytest suite
+make lint      # ruff check (config in pyproject.toml)
+make format    # apply ruff's safe autofixes
+make check     # lint + test — run before committing
 ```
 
 The token DSL is pinned by `tests/test_tokens.py`, and `tests/test_integration.py`
-exercises every render mode end to end. Run the suite before and after any change,
+exercises every render mode end to end. Run `make check` before and after any change,
 and update [docs/reference/token-grammar.md](docs/reference/token-grammar.md) when the grammar changes.
+See [docs/how-to/set-up-for-development.md](docs/how-to/set-up-for-development.md) for the full dev walkthrough.
 
 ## Documentation
 

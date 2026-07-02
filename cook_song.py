@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
-import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -112,7 +111,7 @@ def cook_recipe(name: str, forward: list[str], dry_run: bool) -> int:
         # Use enhanced system utilities for better error handling
         success, result = run_command_safe(cmd, cwd=str(SCRIPT_DIR))
         if not success:
-            print(f"❌ play_music failed")
+            print("❌ play_music failed")
             return 1
     except Exception as exc:
         print(f"❌ play_music failed with error: {exc}")
@@ -151,10 +150,10 @@ def main(argv: list[str] | None = None) -> int:
     from datetime import datetime
     start_time = datetime.now()
     cook_song_logger.info("Starting cook_song")
-    
+
     parser = build_parser()
     args = parser.parse_args(argv)
-    
+
     cook_song_logger.info(f"Command: {args.command}, Recipe: {getattr(args, 'name', 'N/A')}")
 
     try:
