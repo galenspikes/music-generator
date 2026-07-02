@@ -86,14 +86,20 @@ functions). Working tree clean.
 - **2.3 Consolidate output layout** — one convention: `output/{midi,audio,metadata}/<slug>/`.
   Migrate `play_music`'s top-level `metadata/` into it.
 
-### Tier 3 — Break up the monolith (FINALIZED PLAN, not yet executed)
+### Tier 3 — Break up the monolith ✅ DONE
 
-Status: Tier 1 and Tier 2 are done. Tier 3 below is the agreed plan.
+Status: Tiers 1–3 are complete. `music_generator.py` went from **3,509 lines**
+to **~950** (CLI + orchestration only); the engine now lives in six layered
+modules (`mtheory` → `percussion`/`tokens`/`voicing`/`midiout` → `composition`).
+All 163 tests stayed green through every extraction (one module per commit,
+each verified with the suite plus a functional render). See the up-to-date map
+and layering in [../explanation/architecture.md](../explanation/architecture.md).
 
-Decisions (locked): **re-export for backward compat** (slim `music_generator.py`
-does `from <mod> import *` so the sibling modules keep using `mg.X` unchanged —
-migrate their imports in a later optional pass); **~7 modules**; docs =
-**module docstrings + `docs/architecture.md`** (see Documentation pass below).
+Decisions (locked, and how they landed): **re-export for backward compat** — the
+slim `music_generator.py` does `from <mod> import *` (each module defines
+`__all__`), so siblings keep using `mg.X` unchanged; **7 modules** as planned;
+`midiout.py` also imports `PercHit` from `percussion` (a runtime dependency the
+original table under-specified). Docs = module docstrings + this architecture doc.
 
 **Target module map** (dependency-layered; a module only imports ones above it):
 
