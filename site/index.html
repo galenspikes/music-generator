@@ -220,46 +220,110 @@ q7 h1               leading tone to tonic
 
     <!-- ── EXAMPLES ───────────────────────────────────────────── -->
     <section id="examples" class="wrap">
-      <h2>Examples</h2>
+      <h2>Demo library</h2>
       <p class="muted">
-        Rendered from MIDI in your browser. Press play on any one.
+        Rendered from MIDI in your browser — no plugins, no SoundFont. Press play
+        on any one. Regenerate them all with <code>make gallery</code>; the star
+        demo is <code>make demo</code>.
       </p>
 
       <article class="example">
         <div class="example-head">
-          <h3>Jazz progression</h3>
-          <span class="ex-tag">ostinato · sevenths &amp; ninths</span>
+          <h3>★ Kiss On My List</h3>
+          <span class="ex-tag">arrangement · the demo button</span>
         </div>
-        <p>An electric-piano ostinato over a ii–V coloured progression.</p>
-        <pre><code>--mode ostinato --keys 'C::maj7, A::min9, D::min7, G::13' \
-  --chords sevenths ninths --instrument epiano</code></pre>
-        <midi-player src="assets/midi/jazz.mid" sound-font visualizer="#vis-jazz"></midi-player>
-        <midi-visualizer id="vis-jazz" type="piano-roll"></midi-visualizer>
+        <p>The flagship. A full multi-section pop arrangement with a per-section
+          tempo map, slash/pedal bass, a saw lead over the hooks, and a fill-rate
+          arc that builds and releases — it plays like a finished record.</p>
+        <pre><code>make demo          # or:
+music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
+        <midi-player src="assets/midi/kiss.mid" sound-font visualizer="#vis-kiss"></midi-player>
+        <midi-visualizer id="vis-kiss" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Autumn Leaves</h3>
+          <span class="ex-tag">arrangement · walking bass</span>
+        </div>
+        <p>Jazz voice-leading over the ii–V–I cycle: arpeggiated SATB, a walking
+          bass, brush kit, and a saw-lead solo chorus.</p>
+        <pre><code>music_generator.py --song songs/autumn_leaves.yml --out autumn --no-play</code></pre>
+        <midi-player src="assets/midi/autumn_leaves.mid" sound-font visualizer="#vis-autumn"></midi-player>
+        <midi-visualizer id="vis-autumn" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>A Whiter Shade of Pale</h3>
+          <span class="ex-tag">arrangement · descending bass</span>
+        </div>
+        <p>A Bach-style descending bass built entirely from slash chords
+          (C, C/B, Am, Am/G, …) under church organ.</p>
+        <pre><code>music_generator.py --song songs/whiter_shade_of_pale.yml --out wsop --no-play</code></pre>
+        <midi-player src="assets/midi/whiter_shade_of_pale.mid" sound-font visualizer="#vis-wsop"></midi-player>
+        <midi-visualizer id="vis-wsop" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Four Organs</h3>
+          <span class="ex-tag">process · augmentation</span>
+        </div>
+        <p>One chord (E dominant 11th) augmenting over an unbroken pulse — a tight
+          attack stretching into a vast sustained sonority. After Reich.</p>
+        <pre><code>music_generator.py --song songs/four_organs.yml --out four --no-play</code></pre>
+        <midi-player src="assets/midi/four_organs.mid" sound-font visualizer="#vis-four"></midi-player>
+        <midi-visualizer id="vis-four" type="piano-roll"></midi-visualizer>
       </article>
 
       <article class="example">
         <div class="example-head">
           <h3>Dense colour voicing</h3>
-          <span class="ex-tag">every chord tone · exotic recipes</span>
+          <span class="ex-tag">dense · exotic recipes</span>
         </div>
-        <p>Full extended and exotic chord sets sounded complete across the register.</p>
-        <pre><code>--voicing dense --instrument strings --chord-length w \
-  --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance'</code></pre>
-        <midi-player src="assets/midi/colors.mid" sound-font visualizer="#vis-colors"></midi-player>
+        <p>The token DSL as a colour organ: extended and exotic chord sets
+          (maj7#11, mystic, messiaen, quartal, 7alt) sounded complete across the
+          register.</p>
+        <pre><code>cook_song.py make dense_colors</code></pre>
+        <midi-player src="assets/midi/dense_colors.mid" sound-font visualizer="#vis-colors"></midi-player>
         <midi-visualizer id="vis-colors" type="piano-roll"></midi-visualizer>
       </article>
 
       <article class="example">
         <div class="example-head">
-          <h3>Process music</h3>
-          <span class="ex-tag">additive · after Glass</span>
+          <h3>Counterpoint study</h3>
+          <span class="ex-tag">counterpoint · suspensions</span>
         </div>
-        <p>A single cell grows a note at a time, then contracts.</p>
-        <pre><code>--mode process --process additive \
-  --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
-  --instrument organ --melody-key C</code></pre>
-        <midi-player src="assets/midi/process.mid" sound-font visualizer="#vis-process"></midi-player>
-        <midi-visualizer id="vis-process" type="piano-roll"></midi-visualizer>
+        <p>Four independent SATB lines over a ii–V cycle, with suspensions and
+          anticipations woven in.</p>
+        <pre><code>cook_song.py make counterpoint</code></pre>
+        <midi-player src="assets/midi/counterpoint.mid" sound-font visualizer="#vis-counter"></midi-player>
+        <midi-visualizer id="vis-counter" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Fugue exposition</h3>
+          <span class="ex-tag">fugal · subject &amp; answer</span>
+        </div>
+        <p>Voices enter with subject then answer (up a fifth); the prior voice
+          continues with the inverted countersubject, and a cadence closes it.</p>
+        <pre><code>cook_song.py make fugue</code></pre>
+        <midi-player src="assets/midi/fugue.mid" sound-font visualizer="#vis-fugue"></midi-player>
+        <midi-visualizer id="vis-fugue" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Percussion evolution</h3>
+          <span class="ex-tag">staged grooves · fill curve</span>
+        </div>
+        <p>One vamp; the kit grows through three library grooves (rock halftime →
+          med → fast) while the fill rate ramps up across the piece.</p>
+        <pre><code>cook_song.py make perc_evolution</code></pre>
+        <midi-player src="assets/midi/perc_evolution.mid" sound-font visualizer="#vis-perc"></midi-player>
+        <midi-visualizer id="vis-perc" type="piano-roll"></midi-visualizer>
       </article>
     </section>
 
