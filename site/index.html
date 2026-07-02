@@ -147,7 +147,7 @@ q7 h1               leading tone to tonic
 
 # transforms apply to the whole line:
 --melody-transform invert
---melody-transform transpose:5</code></pre>
+--melody-transform retrograde</code></pre>
           <p class="token-note">
             Degrees are relative to the current key, so the same melody
             tokens work over any progression.
@@ -179,7 +179,7 @@ q7 h1               leading tone to tonic
           </p>
           <pre><code>--mode ostinato \
   --keys 'C::maj7, A::min9, D::min7, G::13' \
-  --bars 32 --instrument epiano</code></pre>
+  --seconds 48 --instrument epiano</code></pre>
         </article>
 
         <article class="mode-card">
@@ -189,7 +189,7 @@ q7 h1               leading tone to tonic
             their own keys, percussion, and instrument choices. Sections are
             assembled into a full song structure.
           </p>
-          <pre><code>--mode arrangement --song songs/kiss_on_my_list.yml</code></pre>
+          <pre><code>--song songs/kiss.yml</code></pre>
         </article>
 
         <article class="mode-card">
@@ -199,9 +199,8 @@ q7 h1               leading tone to tonic
             a classical fugal exposition — subject, answer, and stretto entries
             staggered across voices.
           </p>
-          <pre><code>--mode fugue \
-  --melody 'q1 q5 e4 e3 q2 h1' \
-  --melody-key C --bars 64</code></pre>
+          <pre><code>--fugue 'q1 q5 e4 e3 q2 h1' \
+  --melody-key C --melody-mode major</code></pre>
         </article>
 
         <article class="mode-card">
@@ -211,7 +210,7 @@ q7 h1               leading tone to tonic
             after Glass), phase shifting (two copies drift apart, after Reich),
             or augmentation. Minimal input, maximal unfolding.
           </p>
-          <pre><code>--mode process --process additive \
+          <pre><code>--process additive \
   --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
   --instrument organ --melody-key C</code></pre>
         </article>
@@ -355,16 +354,16 @@ python3 -m venv venv && venv/bin/pip install -r requirements.txt</code></pre>
         </div>
         <div class="qs-step">
           <span class="qs-label">Or use the web instrument</span>
-          <pre><code>cd webapp && pip install -r requirements.txt
-uvicorn backend:app --port 8753 &
-cd frontend && npm install && npm run dev</code></pre>
+          <pre><code>venv/bin/pip install -r requirements.txt
+make webapp                       # backend → http://127.0.0.1:8753
+cd webapp/frontend && npm install && npm run dev</code></pre>
         </div>
       </div>
 
       <p class="muted">
         Output lands in <code>output/midi/</code>, <code>output/audio/</code>, and
         <code>output/metadata/</code>. Full CLI reference:
-        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/cli.md">docs/reference/cli.md</a>.
+        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/cli-reference.md">docs/reference/cli-reference.md</a>.
       </p>
     </section>
 
