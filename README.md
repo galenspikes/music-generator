@@ -204,8 +204,15 @@ Presets: `dense_colors`, `counterpoint`, `fugue`, `process_additive`,
 `rnb`, `bach_prelude`, `bach_counterpoint`.
 
 A browser-playable gallery (rendered MIDI, no SoundFont needed) lives in
-[`site/`](site/index.html) — regenerate it with `make gallery`. Add your own
-preset to `library/song_cookbook.py`:
+[`site/`](site/index.html) — regenerate it with `make gallery`.
+
+To **edit every parameter live and hear it** — chords, voicing, bass, melody,
+percussion tokens, process, seed, … — run the web editor (`make webapp`, then
+`cd webapp/frontend && npm install && npm run dev`); it builds its controls from
+the engine's own schema, so it always exposes the full feature set. See
+[`webapp/README.md`](webapp/README.md).
+
+Add your own preset to `library/song_cookbook.py`:
 
 ```python
 "my_style": {
