@@ -302,6 +302,20 @@ music-generator/
   output/                # generated MIDI, audio, and metadata (gitignored)
 ```
 
+## Song catalog
+
+Every render appends an entry to `output/master_catalog.json` (generation args,
+timestamps, and output paths). Query it with `query_catalog.py`:
+
+```bash
+venv/bin/python query_catalog.py list [limit]   # recent songs (default 10)
+venv/bin/python query_catalog.py search <query> # match keys/name/instrument/out
+venv/bin/python query_catalog.py show <name>    # full details for one song
+venv/bin/python query_catalog.py stats          # totals, instruments, BPM range
+```
+
+The catalog lives under the gitignored `output/`, so it's local to your machine.
+
 ## Testing
 
 ```bash

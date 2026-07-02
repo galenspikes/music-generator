@@ -187,14 +187,17 @@ def append_manifest_fields(sidecar: str, extra: dict):
 def update_master_catalog(manifest_path: str):
     """Update the master catalog with a new song entry."""
     catalog_path = OUTPUT_DIR / "master_catalog.json"
-    
+
     # Load existing catalog or create new one
     try:
         with open(catalog_path, "r", encoding="utf-8") as f:
             catalog = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         catalog = {"songs": [], "last_updated": None}
-    
+    # Guard against a malformed/legacy catalog missing the expected shape.
+    if not isinstance(catalog, dict) or not isinstance(catalog.get("songs"), list):
+        catalog = {"songs": [], "last_updated": None}
+
     # Load the manifest data
     try:
         with open(manifest_path, "r", encoding="utf-8") as f:
@@ -219,7 +222,8 @@ def update_master_catalog(manifest_path: str):
     }
     
     # Add to catalog (avoid duplicates)
-    existing = next((s for s in catalog["songs"] if s["manifest_file"] == manifest_path), None)
+    existing = next((s for s in catalog["songs"]
+                     if s.get("manifest_file") == manifest_path), None)
     if not existing:
         catalog["songs"].append(song_entry)
         catalog["last_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
