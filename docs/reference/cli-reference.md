@@ -46,7 +46,8 @@ usage: music_generator.py [-h] [--mode {complete,mixed,ostinato}]
                           [--seconds SECONDS] [--out OUT] [--seed SEED]
                           [--sf2 SF2] [--gain GAIN] [--reverb REVERB]
                           [--chorus CHORUS] [--poly POLY] [--no-play]
-                          [--split-stems] [--no-split-stems]
+                          [--split-stems] [--no-split-stems] [--swing SWING]
+                          [--pan-spread PAN_SPREAD]
 
 Harmony + Percussion generator (independent parts, SATB, interrupters).
 
@@ -169,6 +170,12 @@ options:
   --split-stems         Write SATB voices to separate MIDI tracks/channels
                         (default).
   --no-split-stems      Merge SATB voices into a single MIDI track.
+  --swing SWING         0–0.75. Off-beat swing: delays the 'and' of each beat
+                        (0=straight eighths, 0.5=triplet swing). Default=0.0.
+  --pan-spread PAN_SPREAD
+                        0–1. Stereo width of the SATB voices across the field
+                        (0=centred/mono, 1=widest). Needs split stems.
+                        Default=0.0.
 ```
 
 ## `render.py` — generate + render audio

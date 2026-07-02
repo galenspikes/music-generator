@@ -14,6 +14,12 @@ from percussion import PercHit
 
 __all__ = ["MidiOut"]
 
+# Stereo placement per SATB voice, as a fraction of the pan_spread (−1 = hard
+# left, +1 = hard right). Soprano/bass are pushed widest, alto/tenor sit inside;
+# scaled by ``pan_spread`` (0 keeps everyone centred). See build_parser's
+# ``--pan-spread`` and docs/design-notes/roadmap-phase2.md (Thread 4a).
+VOICE_PAN_POS = {"soprano": 1.0, "alto": 0.4, "tenor": -0.4, "bass": -1.0}
+
 
 class MidiOut:
 
@@ -25,13 +31,19 @@ class MidiOut:
                  tpb: int = 480,
                  vel_mode_chords: str = "uniform",
                  vel_mode_drums: str = "uniform",
-                 split_stems: bool = False) -> None:
+                 split_stems: bool = False,
+                 swing: float = 0.0,
+                 pan_spread: float = 0.0) -> None:
         self.bpm = bpm
         self.fname = fname
         self.tpb = tpb
         self.vel_mode_chords = (vel_mode_chords or "uniform").lower()
         self.vel_mode_drums = (vel_mode_drums or "uniform").lower()
         self.split_stems = bool(split_stems)
+        # Off-beat swing warp applied in render_events (0 = straight eighths).
+        self.swing = max(0.0, min(0.75, float(swing or 0.0)))
+        # Stereo spread of the SATB voices (0 = mono/centred, 1 = widest).
+        self.pan_spread = max(0.0, min(1.0, float(pan_spread or 0.0)))
 
         self.mid = MidiFile(type=1, ticks_per_beat=self.tpb)
         self.chord_tracks: dict[str, MidiTrack] = {}
@@ -64,6 +76,15 @@ class MidiOut:
                             value=110,
                             channel=channel,
                             time=0))
+                if self.pan_spread > 0.0:
+                    pan = VOICE_PAN_POS.get(voice, 0.0) * self.pan_spread
+                    value = max(0, min(127, round(64 + pan * 63)))
+                    track.append(
+                        Message('control_change',
+                                control=10,
+                                value=value,
+                                channel=channel,
+                                time=0))
         else:
             track = MidiTrack()
             self.mid.tracks.append(track)

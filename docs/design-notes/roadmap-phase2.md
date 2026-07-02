@@ -107,9 +107,11 @@ and the MidiOut 5th-voice change touches core.
 **Goal:** the micro-timing/velocity life that makes heads nod.
 
 ### Ideas
-- **Swing/shuffle:** delay off-beat subdivisions by a swing %. Implement as a
-  transform on event `when` keyed to position within the beat. `swing: 0.6`
-  (0.5 = straight), global and/or per-section.
+- **Swing/shuffle — SHIPPED (v1, global):** `--swing 0..0.75` warps off-beat
+  subdivisions in `render_events` via `apply_swing`/`_swing_time` (0 = straight
+  eighths, 0.5 = triplet swing). It reads `MidiOut.swing`, so it applies to
+  every render path (flat, arrangement, fugue, process); songs set it under
+  `defaults: { swing: ... }`. *Still open: per-section swing.*
 - **Pocket / micro-timing:** small per-voice timing offsets — bass slightly
   ahead, snare laid back. Per-voice `timing_offset` in ms/ticks.
 - **Bass locked to kick:** a bass style (or flag) that places bass onsets on the
@@ -137,9 +139,12 @@ needs ear-tuning.
 
 **Goal:** make renders sit right, and enable finishing in a DAW.
 
-### 4a. Per-voice pan / volume — *quick win, big perceptual payoff*
-Emit CC7 (volume) + CC10 (pan) per voice channel (and per section if wanted).
-`set_voice_programs` already iterates voices — add the CCs there.
+### 4a. Per-voice pan / volume — *pan SHIPPED*
+CC7 (volume) already goes out per voice channel at init. **Pan is now live:**
+`--pan-spread 0..1` emits CC10 per SATB voice from `VOICE_PAN_POS`
+(soprano/bass widest, alto/tenor inside; 0 = mono/centred). Songs set it under
+`defaults: { pan_spread: ... }`. *Still open: explicit per-voice pan/vol values
+and per-section mixes, e.g.*
 ```yaml
 mix: { bass: {vol: 105, pan: 64}, soprano: {pan: 84}, drums: {vol: 110} }
 ```

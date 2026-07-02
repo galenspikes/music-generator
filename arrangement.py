@@ -44,6 +44,8 @@ BASE_DEFAULTS: dict = {
     "melody_relative": "key",   # "key" (degrees vs the section scale) | "chord"
     "key": None,                # tonic name (e.g. "C", "Eb"); None -> inferred
     "mode": None,               # major/minor/dorian/...; None -> inferred
+    "swing": 0.0,               # off-beat swing warp (0=straight, 0.5=triplet)
+    "pan_spread": 0.0,          # stereo width of the SATB voices (0=centred)
 }
 
 
@@ -65,6 +67,8 @@ class SongSpec:
     vel_mode_chords: str
     vel_mode_drums: str
     sections: list[dict] = field(default_factory=list)
+    swing: float = 0.0
+    pan_spread: float = 0.0
 
 
 def build_spec(raw: dict,
@@ -125,6 +129,8 @@ def build_spec(raw: dict,
         vel_mode_chords=vel_mode_chords,
         vel_mode_drums=vel_mode_drums,
         sections=sections,
+        swing=float(defaults.get("swing", 0.0) or 0.0),
+        pan_spread=float(defaults.get("pan_spread", 0.0) or 0.0),
     )
 
 
@@ -276,7 +282,9 @@ def render(spec: SongSpec, out_path: str) -> str:
     midi = mg.MidiOut(spec.tempo, out_path,
                       vel_mode_chords=spec.vel_mode_chords,
                       vel_mode_drums=spec.vel_mode_drums,
-                      split_stems=True)
+                      split_stems=True,
+                      swing=spec.swing,
+                      pan_spread=spec.pan_spread)
 
     _t_ch, t_dr, _vmax = mg.render_events(midi, events)
     midi.flush_to_end(total, t_dr, total)
