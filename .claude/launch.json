@@ -2,6 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8790"],
+      "cwd": "site",
+      "port": 8790
+    },
+    {
       "name": "webapp-frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],

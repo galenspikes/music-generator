@@ -4,22 +4,37 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Music Generator — a token DSL for generative music</title>
-  <meta name="description" content="A Python music-generation system. A compact token DSL describes chords, percussion, and melodies; the engine realizes them into harmony, voices, and percussion, and writes MIDI." />
+  <meta name="description" content="A Python music-generation system. Write chord progressions and drum patterns as compact tokens; the engine voices them into SATB harmony, adds percussion, and writes a MIDI file." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
 </head>
 <body>
+
+  <nav class="site-nav">
+    <div class="wrap nav-inner">
+      <span class="nav-brand">Music Generator</span>
+      <ul class="nav-links">
+        <li><a href="#how-it-works">How it works</a></li>
+        <li><a href="#tokens">Tokens</a></li>
+        <li><a href="#modes">Modes</a></li>
+        <li><a href="#examples">Examples</a></li>
+        <li><a href="#quickstart">Quick start</a></li>
+        <li><a class="nav-cta" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live →</a></li>
+      </ul>
+    </div>
+  </nav>
+
   <header class="hero">
     <div class="wrap">
       <p class="eyebrow">Generative music · Python · MIDI</p>
       <h1>Music Generator</h1>
       <p class="lede">
-        A compact token language describes chords, percussion, and melodies.
-        The engine realizes them into harmony, voices, and percussion, writes a
-        MIDI file, and optionally renders audio through FluidSynth.
+        Write a chord progression as a line of text. The engine voices it into
+        four-part harmony, adds percussion and melody, and hands you a MIDI file
+        — or rendered audio.
       </p>
       <p class="actions">
         <a class="btn" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live</a>
@@ -29,54 +44,191 @@
     </div>
   </header>
 
-  <main class="wrap">
-    <section id="dsl">
-      <h2>The token DSL</h2>
+  <main>
+
+    <!-- ── HOW IT WORKS ───────────────────────────────────────── -->
+    <section id="how-it-works" class="wrap">
+      <h2>How it works</h2>
       <p>
-        The core of the project is a small mini-language. A chord is a colon
-        token, <code>root[:inversion][:recipe][/bass]</code>; percussion and
-        melody have their own grammars. A whole progression is just a sequence of
-        tokens.
+        The system is a pipeline from text to sound. You describe music in a
+        compact notation; the engine does the rest — voice leading, rhythm,
+        and rendering are all handled automatically.
       </p>
-      <div class="cards">
-        <article class="card">
-          <h3>Chords</h3>
-          <pre><code>C::maj7      C major seventh
-A:1:min9     A minor ninth, 1st inv.
-G::13        G dominant thirteenth
-G::maj/C     G major over a C pedal</code></pre>
-        </article>
-        <article class="card">
-          <h3>Melody</h3>
-          <pre><code>q1 q5 e4 e3 e2 e1 q7
-# scale degrees with
-# durations; transform
-# via invert / transpose</code></pre>
-        </article>
-        <article class="card">
-          <h3>Percussion</h3>
-          <pre><code>qk,eh,esh,eh
-# kicks, hats, snares as
-# duration+instrument
-# tokens, with fills</code></pre>
-        </article>
+
+      <div class="pipeline">
+        <div class="pipe-step">
+          <span class="pipe-num">1</span>
+          <div>
+            <strong>Write tokens</strong>
+            <p>Describe your progression, drums, and melody as compact tokens in the CLI or the web instrument.</p>
+          </div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <span class="pipe-num">2</span>
+          <div>
+            <strong>Parse &amp; expand</strong>
+            <p>Chord tokens resolve to pitch classes. Repetition groups like <code>[A::min7, G]*8</code> expand into flat event lists.</p>
+          </div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <span class="pipe-num">3</span>
+          <div>
+            <strong>Voice &amp; arrange</strong>
+            <p>The harmony engine applies voice leading and voicing rules across soprano, alto, tenor, and bass. Percussion tokens become timed hits. Melody follows scale-degree rules.</p>
+          </div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <span class="pipe-num">4</span>
+          <div>
+            <strong>MIDI out</strong>
+            <p>Events are assembled into a multi-track MIDI file. Optionally rendered to WAV/MP3 via FluidSynth and a SoundFont.</p>
+          </div>
+        </div>
       </div>
+    </section>
+
+    <!-- ── TOKEN LANGUAGE ─────────────────────────────────────── -->
+    <section id="tokens" class="wrap">
+      <h2>The token language</h2>
+      <p>
+        The heart of the project is a small notation. Each chord, drum hit, or
+        melody note is a single token. A progression is a comma-separated
+        sequence. The grammar is designed to be terse enough to type at the
+        command line but expressive enough to describe complex harmony.
+      </p>
+
+      <div class="token-grid">
+
+        <div class="token-block">
+          <h3>Chords</h3>
+          <p class="token-syntax"><code>root[:inversion][:recipe][/bass][*reps]</code></p>
+          <pre><code>C                  C major (bare triad)
+C::maj7            C major seventh
+A::min9            A minor ninth
+A:1:min9           A minor ninth, 1st inversion
+G::13              G dominant thirteenth
+G::maj7/C          G major 7 over a C pedal bass
+[A::min7, G]*8     repeat the group 8 times</code></pre>
+          <p class="token-note">
+            Recipes cover common jazz and classical voicings —
+            <code>maj7</code>, <code>min9</code>, <code>13</code>, <code>aug</code>,
+            <code>dim7</code>, <code>mystic</code>, <code>messiaen_resonance</code>,
+            and dozens more.
+          </p>
+        </div>
+
+        <div class="token-block">
+          <h3>Percussion</h3>
+          <p class="token-syntax"><code>duration + instrument[modifiers]</code></p>
+          <pre><code>qb               quarter-note kick
+eg               eighth-note hi-hat
+esc              eighth snare
+qb,eg,esc,eg     a token-per-beat groove
+
+# per-hit modifiers in brackets:
+sb[vel+20]       sixteenth kick, louder
+eg[prob.75]      hat fires 75% of the time</code></pre>
+          <p class="token-note">
+            Duration letters: <code>w</code> whole · <code>h</code> half ·
+            <code>q</code> quarter · <code>e</code> eighth · <code>s</code> sixteenth.
+            Instruments: <code>b</code> kick · <code>c</code> snare · <code>g</code> hat ·
+            <code>i</code> open hat · <code>f</code> clap · <code>k</code> ride.
+          </p>
+        </div>
+
+        <div class="token-block">
+          <h3>Melody</h3>
+          <p class="token-syntax"><code>duration + scale-degree</code></p>
+          <pre><code>q1 q5 e4 e3 e2 e1   quarter and eighth notes
+q7 h1               leading tone to tonic
+
+# transforms apply to the whole line:
+--melody-transform invert
+--melody-transform transpose:5</code></pre>
+          <p class="token-note">
+            Degrees are relative to the current key, so the same melody
+            tokens work over any progression.
+          </p>
+        </div>
+
+      </div>
+
       <p class="muted">
-        Full reference:
-        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/token-grammar.md">docs/token-grammar.md</a>.
+        Full grammar reference:
+        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md">docs/reference/token-grammar.md</a>
       </p>
     </section>
 
-    <section id="examples">
+    <!-- ── MODES ─────────────────────────────────────────────── -->
+    <section id="modes" class="wrap">
+      <h2>Generation modes</h2>
+      <p>
+        The same token language feeds four distinct compositional engines.
+        Each mode shapes how the material unfolds over time.
+      </p>
+
+      <div class="mode-grid">
+        <article class="mode-card">
+          <h3>Ostinato</h3>
+          <p>
+            A chord progression loops for as long as you specify. The workhorse
+            mode — good for groove sketches, backing tracks, and quick experiments.
+          </p>
+          <pre><code>--mode ostinato \
+  --keys 'C::maj7, A::min9, D::min7, G::13' \
+  --bars 32 --instrument epiano</code></pre>
+        </article>
+
+        <article class="mode-card">
+          <h3>Arrangement</h3>
+          <p>
+            A YAML song file defines named sections (verse, chorus, bridge) with
+            their own keys, percussion, and instrument choices. Sections are
+            assembled into a full song structure.
+          </p>
+          <pre><code>--mode arrangement --song songs/kiss_on_my_list.yml</code></pre>
+        </article>
+
+        <article class="mode-card">
+          <h3>Fugue</h3>
+          <p>
+            A subject token sequence is harmonised and then developed through
+            a classical fugal exposition — subject, answer, and stretto entries
+            staggered across voices.
+          </p>
+          <pre><code>--mode fugue \
+  --melody 'q1 q5 e4 e3 q2 h1' \
+  --melody-key C --bars 64</code></pre>
+        </article>
+
+        <article class="mode-card">
+          <h3>Process music</h3>
+          <p>
+            A short cell evolves by rule — additive (a note added each cycle,
+            after Glass), phase shifting (two copies drift apart, after Reich),
+            or augmentation. Minimal input, maximal unfolding.
+          </p>
+          <pre><code>--mode process --process additive \
+  --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
+  --instrument organ --melody-key C</code></pre>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── EXAMPLES ───────────────────────────────────────────── -->
+    <section id="examples" class="wrap">
       <h2>Examples</h2>
       <p class="muted">
-        Played in your browser from the generated MIDI. Press play on any one.
+        Rendered from MIDI in your browser. Press play on any one.
       </p>
 
       <article class="example">
         <div class="example-head">
           <h3>Jazz progression</h3>
-          <span class="tag">sevenths · ninths</span>
+          <span class="ex-tag">ostinato · sevenths &amp; ninths</span>
         </div>
         <p>An electric-piano ostinato over a ii–V coloured progression.</p>
         <pre><code>--mode ostinato --keys 'C::maj7, A::min9, D::min7, G::13' \
@@ -88,9 +240,9 @@ G::maj/C     G major over a C pedal</code></pre>
       <article class="example">
         <div class="example-head">
           <h3>Dense colour voicing</h3>
-          <span class="tag">every chord tone</span>
+          <span class="ex-tag">every chord tone · exotic recipes</span>
         </div>
-        <p>Full extended and exotic sets sounded complete across the register.</p>
+        <p>Full extended and exotic chord sets sounded complete across the register.</p>
         <pre><code>--voicing dense --instrument strings --chord-length w \
   --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance'</code></pre>
         <midi-player src="assets/midi/colors.mid" sound-font visualizer="#vis-colors"></midi-player>
@@ -100,37 +252,70 @@ G::maj/C     G major over a C pedal</code></pre>
       <article class="example">
         <div class="example-head">
           <h3>Process music</h3>
-          <span class="tag">additive, after Glass</span>
+          <span class="ex-tag">additive · after Glass</span>
         </div>
         <p>A single cell grows a note at a time, then contracts.</p>
-        <pre><code>--process additive --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
+        <pre><code>--mode process --process additive \
+  --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
   --instrument organ --melody-key C</code></pre>
         <midi-player src="assets/midi/process.mid" sound-font visualizer="#vis-process"></midi-player>
         <midi-visualizer id="vis-process" type="piano-roll"></midi-visualizer>
       </article>
     </section>
 
-    <section id="run">
-      <h2>Run it yourself</h2>
-      <pre><code>git clone https://github.com/galenspikes/music-generator
-cd music-generator
-python3 -m venv venv && venv/bin/pip install -r requirements.txt
+    <!-- ── QUICK START ────────────────────────────────────────── -->
+    <section id="quickstart" class="wrap">
+      <h2>Quick start</h2>
 
-venv/bin/python music_generator.py --mode ostinato \
-  --keys 'C::maj7, A::min9, D::min7, G::13' --out my_song --no-play</code></pre>
+      <div class="qs-steps">
+        <div class="qs-step">
+          <span class="qs-label">Clone &amp; install</span>
+          <pre><code>git clone https://github.com/galenspikes/music-generator
+cd music-generator
+python3 -m venv venv && venv/bin/pip install -r requirements.txt</code></pre>
+        </div>
+        <div class="qs-step">
+          <span class="qs-label">Generate MIDI</span>
+          <pre><code>venv/bin/python music_generator.py \
+  --mode ostinato \
+  --keys 'C::maj7, A::min9, D::min7, G::13' \
+  --out my_song --no-play</code></pre>
+        </div>
+        <div class="qs-step">
+          <span class="qs-label">Render audio <span class="qs-opt">(needs fluidsynth + ffmpeg)</span></span>
+          <pre><code>brew install fluidsynth ffmpeg   # macOS
+./play_music --save-wav --sf2 path/to/soundfont.sf2 \
+  --mode ostinato --keys 'C::maj7, A::min9, D::min7, G::13'</code></pre>
+        </div>
+        <div class="qs-step">
+          <span class="qs-label">Or use the web instrument</span>
+          <pre><code>cd webapp && pip install -r requirements.txt
+uvicorn backend:app --port 8753 &
+cd frontend && npm install && npm run dev</code></pre>
+        </div>
+      </div>
+
       <p class="muted">
-        Audio rendering additionally needs <code>fluidsynth</code> and
-        <code>ffmpeg</code>. See the
-        <a href="https://github.com/galenspikes/music-generator#readme">README</a>
-        for the full command surface.
+        Output lands in <code>output/midi/</code>, <code>output/audio/</code>, and
+        <code>output/metadata/</code>. Full CLI reference:
+        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/cli.md">docs/reference/cli.md</a>.
       </p>
     </section>
+
   </main>
 
   <footer>
-    <div class="wrap">
+    <div class="wrap footer-inner">
       <p>Music Generator · MIT licensed · built by Galen Spikes</p>
+      <p class="footer-links">
+        <a href="https://github.com/galenspikes/music-generator">GitHub</a>
+        <span>·</span>
+        <a href="https://huggingface.co/spaces/galenspikes/music-generator">Live demo</a>
+        <span>·</span>
+        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md">Token grammar</a>
+      </p>
     </div>
   </footer>
+
 </body>
 </html>

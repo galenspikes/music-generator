@@ -1,8 +1,15 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 // https://github.com/galenspikes/music-generator
-import React, { useCallback, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+// Touch devices: a vertical-drag knob fights page scroll and the target is
+// tiny. Render the slider instead — far friendlier under a thumb.
+const COARSE =
+  typeof window !== "undefined" &&
+  window.matchMedia &&
+  window.matchMedia("(pointer: coarse)").matches;
 
 function snap(v, step, min) {
   if (!step) return v;
@@ -85,11 +92,20 @@ export function Slider({ value, min = 0, max = 100, step = 1, onChange }) {
 }
 
 export function IntField({ value, min, max, onChange }) {
+  // Commit on blur / Enter so live regeneration doesn't fire on every digit.
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => { setDraft(value ?? ""); }, [value]);
+  const commit = () => {
+    const v = draft === "" ? null : Number(draft);
+    if (v !== value) onChange(v);
+  };
   return (
     <input
-      className="intfield" type="number" value={value ?? ""}
+      className="intfield" type="number" value={draft}
       min={min} max={max}
-      onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
     />
   );
 }
@@ -178,18 +194,24 @@ export function TagList({ value = [], onChange, placeholder }) {
 
 export function TextField({ value, onChange, multiline, mono = true, placeholder }) {
   const cls = "textfield" + (mono ? " mono" : "");
+  // Local draft, committed on blur (and Enter for single-line) — keeps live
+  // regeneration from firing on every keystroke.
+  const [draft, setDraft] = useState(value ?? "");
+  useEffect(() => { setDraft(value ?? ""); }, [value]);
+  const commit = () => { if (draft !== (value ?? "")) onChange(draft); };
   if (multiline) {
     return (
       <textarea
         className={cls} rows={2} spellCheck={false} placeholder={placeholder}
-        value={value ?? ""} onChange={(e) => onChange(e.target.value)}
+        value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit}
       />
     );
   }
   return (
     <input
       className={cls} spellCheck={false} placeholder={placeholder}
-      value={value ?? ""} onChange={(e) => onChange(e.target.value)}
+      value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
     />
   );
 }
@@ -200,6 +222,8 @@ export function Control({ param, value, onChange }) {
   const common = { value, onChange };
   switch (c) {
     case "knob":
+      if (COARSE)
+        return <Slider {...common} min={param.min ?? 0} max={param.max ?? 1} step={param.step ?? 0.01} />;
       return <Knob {...common} min={param.min ?? 0} max={param.max ?? 1} step={param.step ?? 0.01} />;
     case "slider":
       return <Slider {...common} min={param.min ?? 0} max={param.max ?? 100} step={param.step ?? 1} />;

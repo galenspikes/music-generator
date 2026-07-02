@@ -44,11 +44,21 @@ export default function App() {
   const [params, setParams] = useState(null);
   const [spec, setSpec] = useState(null);
   const [grooves, setGrooves] = useState([]);
-  const [live, setLive] = useState(true);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [tracks, setTracks] = useState([]);
-  const [collapsed, setCollapsed] = useState({});
+  // On phones, open only Harmony by default — the full rack expanded is an
+  // overwhelming scroll. Desktop keeps everything open.
+  const [collapsed, setCollapsed] = useState(() => {
+    const mobile =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(max-width: 640px)").matches;
+    if (!mobile) return {};
+    return Object.fromEntries(
+      GROUP_ORDER.filter((g) => g !== "Harmony").map((g) => [g, true])
+    );
+  });
   const [downloadUrl, setDownloadUrl] = useState("");
 
   const [instruments, setInstruments] = useState([]);
@@ -204,15 +214,15 @@ export default function App() {
     };
   }, []);
 
-  // Live: debounce-regenerate on any spec change.
+  // Always live: debounce-regenerate on any spec change. Text/token fields
+  // commit on blur (not per keystroke), so this won't fire mid-chord.
   useEffect(() => {
     if (!spec) return;
-    if (!live) return;
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => generate(spec), 320);
     return () => clearTimeout(debounceRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spec, live]);
+  }, [spec]);
 
   const grouped = useMemo(() => {
     if (!params) return [];
@@ -239,15 +249,10 @@ export default function App() {
           </div>
         </div>
         <div className="transport">
-          <button className="dice" title="reroll seed"
+          <button className="run" title="reroll the seed for a fresh variation"
             onClick={() => setField("seed")(Math.floor(Math.random() * 999999))}>
-            ⚄ seed
+            ⚄ new take
           </button>
-          <label className="live">
-            <input type="checkbox" checked={live} onChange={(e) => setLive(e.target.checked)} />
-            live
-          </label>
-          <button className="run" onClick={() => generate(spec)}>RUN</button>
           <span className={`lamp lamp-${status}`} />
           <span className="statustext">{status}</span>
         </div>
@@ -448,7 +453,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         <div className="param-control">
           <GrooveSelect value={value} grooves={grooves} onChange={onChange} />
@@ -461,7 +466,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         <GrooveMulti value={value} grooves={grooves} onChange={onChange} />
       </div>
@@ -472,7 +477,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         <InstrumentPicker value={value} instruments={instruments} onChange={onChange} />
       </div>
@@ -485,7 +490,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
       <div className="param wide">
         <div className="param-label">
           <span>{pretty(param.name)}</span>
-          {param.help && <span className="info" data-tip={param.help}>?</span>}
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
         {special(value, onChange)}
       </div>
@@ -496,7 +501,7 @@ function Param({ param, value, onChange, grooves, instruments }) {
     <div className={"param" + (wide ? " wide" : "")}>
       <div className="param-label">
         <span>{pretty(param.name)}</span>
-        {param.help && <span className="info" data-tip={param.help}>?</span>}
+        {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
       </div>
       <div className="param-control">
         <Control param={param} value={value} onChange={onChange} />

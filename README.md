@@ -17,7 +17,7 @@ It supports ostinato grooves, evolving long-form arrangements, fugal
 expositions, and minimalist process music.
 
 The token DSL is the core of the project; the
-[token grammar reference](docs/token-grammar.md) documents it in full.
+[token grammar reference](docs/reference/token-grammar.md) documents it in full.
 
 **Live demo:** a hosted web UI for generating and hearing pieces lives in
 [`space/`](space/) (a Gradio app for Hugging Face Spaces). A static project
@@ -209,12 +209,12 @@ venv/bin/python music_generator.py --song songs/kiss.yml --out kiss --no-play
 ```
 
 See [songs/kiss.yml](songs/kiss.yml) for a worked example and
-[docs/arrangement-plan.md](docs/arrangement-plan.md) for the design.
+[docs/design-notes/arrangement-plan.md](docs/design-notes/arrangement-plan.md) for the design.
 
 ## Fugue (experimental)
 
 Generate a fugal exposition from a melodic subject expressed in the scale-degree
-[melody grammar](docs/token-grammar.md). Voices enter one at a time with the
+[melody grammar](docs/reference/token-grammar.md). Voices enter one at a time with the
 subject (tonic) and answer (dominant, the subject up a fifth); the prior voice
 continues with the countersubject, and a cadence closes the exposition.
 
@@ -235,7 +235,7 @@ default countersubject is `invert(subject)`.
 ## Process music (experimental)
 
 Minimalist process pieces from a single melodic cell (scale-degree
-[grammar](docs/token-grammar.md)), unfolding by rule:
+[grammar](docs/reference/token-grammar.md)), unfolding by rule:
 
 - `phase` (Reich, *Piano Phase*): two voices loop the cell; the follower advances
   one note per stage, sweeping every alignment back to unison.
@@ -304,17 +304,22 @@ venv/bin/python -m pytest
 
 The token DSL is pinned by `tests/test_tokens.py`, and `tests/test_integration.py`
 exercises every render mode end to end. Run the suite before and after any change,
-and update [docs/token-grammar.md](docs/token-grammar.md) when the grammar changes.
+and update [docs/reference/token-grammar.md](docs/reference/token-grammar.md) when the grammar changes.
 
 ## Documentation
 
-- [docs/token-grammar.md](docs/token-grammar.md): the chord, percussion, and
-  melody mini-languages.
-- [docs/refactor-plan.md](docs/refactor-plan.md): the active code-health plan.
-- [docs/roadmap-phase2.md](docs/roadmap-phase2.md): the feature roadmap.
-- [docs/arrangement-plan.md](docs/arrangement-plan.md),
-  [docs/melody-primitive-plan.md](docs/melody-primitive-plan.md),
-  [docs/leadsheet-import-plan.md](docs/leadsheet-import-plan.md): design notes.
+[**docs/index.md**](docs/index.md) is the documentation home, organized by the
+[Diátaxis](https://diataxis.fr/) framework (Tutorials · How-to · Reference ·
+Explanation).
+
+- [docs/explanation/architecture.md](docs/explanation/architecture.md): module map,
+  layering, and data flow — start here.
+- [docs/reference/token-grammar.md](docs/reference/token-grammar.md): the chord,
+  percussion, and melody mini-languages.
+- [docs/explanation/](docs/explanation/): how harmony and percussion work, and the
+  design decisions behind the notation.
+- [docs/design-notes/](docs/design-notes/): forward-looking plans (refactor,
+  roadmap, arrangement, melody, lead-sheet import).
 
 ## Tips
 

@@ -1,0 +1,30 @@
+# Reference
+
+*Information-oriented. Dry, complete, accurate. Describes the machinery; does not
+explain or teach. Structured for looking things up, not reading start to finish.*
+
+## Available
+
+- **[Token grammar](token-grammar.md)** — the normative spec for the chord,
+  percussion, and melody mini-languages. *(Source of truth; pinned by
+  `tests/test_tokens.py`.)*
+- **[CLI reference](cli-reference.md)** — every flag of `music_generator.py` and
+  `render.py`. *(Generated from `--help`.)*
+- **[Chord-recipe catalog](chord-recipes.md)** — all 81 named recipes with their
+  intervals. *(Generated from `library/chord_recipes.py`.)*
+- **[Percussion letter map](percussion-letters.md)** — the full drum-letter table.
+  *(Generated from `library/percussion_library.json`.)*
+- **[Charts](charts.md)** — transcribed chord charts / worked command lines.
+
+## Planned
+
+- [ ] **Song YAML schema** — the arrangement file format.
+- [ ] **API reference** — auto-generated from docstrings *(stretch goal)*.
+
+## Regenerating
+
+The CLI, chord-recipe, and percussion docs are derived from source — do not
+hand-edit. Regenerate them whenever the flags, recipes, or drum map change
+(see the generation step in the docs build).
+
+*(See [the docs plan](../index.md).)*
