@@ -68,7 +68,8 @@ See [ADR-0003](decisions/0003-probability-in-the-token.md) /
 
 The `--process` mode (phasing, additive, augmentation) is **deliberate homage**, not
 invention: Steve Reich's phasing, Philip Glass's additive process, and Reich's *Four
-Organs* (augmentation). The `songs/four_organs.yml` piece is explicit about this.
+Organs* (augmentation). The `phase_process` and `additive_process` presets (see
+`cook_song.py list`) are the worked examples.
 
 ## The field map — Nierhaus
 

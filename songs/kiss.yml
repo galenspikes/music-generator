@@ -1,24 +1,28 @@
-# demonstrates: the flagship — a full multi-section pop song with a dynamic arc.
-# Per-section tempo map, slash/pedal bass, a saw lead brought in over the hooks,
-# percussion interrupters, and a fill-rate curve that builds and releases so the
-# piece plays like a finished record rather than a loop. This is the "press demo"
-# song. See docs/explanation/song-studies/kiss-on-my-list.md for the chart study.
+# demonstrates: the flagship — a full multi-section pop song with a real melody.
+# A deliberate vocal-style lead (verse tune, pre-chorus lift, chorus hook) rides
+# on the soprano channel over an evolving arrangement: per-section tempo map,
+# slash/pedal bass, a fill-rate arc, and a saw lead on the hooks. The melody is
+# written in the scale-degree grammar (key: C). This is the "press demo" song.
+# See docs/explanation/song-studies/kiss-on-my-list.md for the chart study.
 title: Kiss On My List (Hall & Oates)
 description: >
-  The star demo. Full arrangement — intro, two verse/pre-chorus/chorus cycles, a
-  synth solo, a breakdown, and a lifted final chorus into the outro. Electric
-  piano + electric bass, a saw lead over the hooks, and an evolving groove.
+  The star demo. A finished pop song — intro, two verse/pre-chorus/chorus cycles,
+  a synth solo, a breakdown, and a lifted final chorus. Electric piano + electric
+  bass, a sung lead that becomes a bright saw on the hooks, and an evolving groove.
 tempo: 148
 soundfont: SoundFonts/arachno.sf2
 
 # Concert pitch (capo-3 shapes + 3 semitones); the chorus rides a C pedal.
+# Melody is written as scale degrees in C major (b3/b6/b7 give the minor colour).
 defaults:
   instrument: epiano
-  voices: { bass: 33 }          # electric bass (finger)
+  voices: { bass: 33, soprano: vox }   # electric bass + a synth-voice lead
   bass: { style: octaves, step: 0.5 }
   satb: arpeggio
   chord_length: h
   chords_order: roundrobin
+  key: C
+  mode: major
   perc:
     main: "ebg,eg,ecg,eg, ebg,eg,ecg,eg"
     interrupters:
@@ -27,7 +31,7 @@ defaults:
     fill_rate: 0.18
 
 sections:
-  # ── Intro: calm, block chords, no drums ──────────────────────────────
+  # ── Intro: calm, block chords, no lead yet ───────────────────────────
   - name: intro
     tempo: 140
     repeat: 2
@@ -36,12 +40,13 @@ sections:
     perc: { fill_rate: 0.0 }
     keys: "G::maj, C::maj, G::maj, Eb::maj, F::maj, C::maj"
 
-  # ── Verse 1: gentle groove opens up ──────────────────────────────────
+  # ── Verse 1: the tune enters (sung lead) ─────────────────────────────
   - name: verse1
     tempo: 148
     repeat: 2
     bass: { style: root }
     perc: { fill_rate: 0.10 }
+    melody: "e5 e5 qb3 q5 hb6 q5 eb3 e4 h5 hr e5 e5 qb3 q1 h2 qb3 q2 h1 h1"
     keys: "C::min, F::min7, Ab::maj, Ab::maj/Bb, C::maj, C::min, F::min9, F::min, Ab::maj, Ab::maj/Bb, C::maj"
 
   # ── Pre-chorus 1: the lift into the hook ─────────────────────────────
@@ -49,15 +54,17 @@ sections:
     tempo: 148
     repeat: 1
     perc: { fill_rate: 0.18 }
+    melody: "q4 q5 q6 h5 q5 q6 q7 h1' q7 q6 h5 q5 h4"
     keys: "F::min7, G::sus4/D, F::min7, G::sus4/D, F::min7, G::sus4/D, F::min7, F::maj/G, G::7"
 
-  # ── Chorus 1: peak — octave bass, saw lead, busy drums ───────────────
+  # ── Chorus 1: the hook — bright saw lead, busy drums ─────────────────
   - name: chorus1
     tempo: 150
     repeat: 2
     bass: { style: octaves }
-    voices: { bass: 33, soprano: saw }   # bring the lead in over the chorus
+    voices: { bass: 33, soprano: saw }
     perc: { fill_rate: 0.30 }
+    melody: "q5 q5 h6 q5 q3 h1 q5 q5 h6 q5 q6 h5 q3 q5 q3 q2 h1 h5 hr"
     keys: "G::maj, C::maj, G::maj/C, F::maj/C, G::maj/C, C::min, Bb::maj/C, C::min, F::maj, G::maj/C, C::maj, G::maj/C, C::maj"
 
   # ── Verse 2: reprise, one pass ───────────────────────────────────────
@@ -66,34 +73,38 @@ sections:
     repeat: 1
     bass: { style: root }
     perc: { fill_rate: 0.12 }
+    melody: "e5 e5 qb3 q5 hb6 q5 eb3 e4 h5 hr e5 e5 qb3 q1 h2 qb3 q2 h1 h1"
     keys: "C::min, F::min7, Ab::maj, Ab::maj/Bb, C::maj, C::min, F::min9, F::min, Ab::maj, Ab::maj/Bb, C::maj"
 
-  # ── Pre-chorus 2: the D::min11 variant (Bm7add11) ────────────────────
+  # ── Pre-chorus 2: the D::min11 variant ───────────────────────────────
   - name: prechorus2
     tempo: 148
     repeat: 1
     perc: { fill_rate: 0.20 }
+    melody: "q4 q5 q6 h5 q5 q6 q7 h1' q7 q6 h5 q5 h4"
     keys: "F::min7, G::sus4/D, F::min7, G::sus4/D, D::min11, G::sus4/D, F::min7, F::maj/G, G::7"
 
-  # ── Chorus 2: peak again ─────────────────────────────────────────────
+  # ── Chorus 2: the hook again ─────────────────────────────────────────
   - name: chorus2
     tempo: 150
     repeat: 2
     bass: { style: octaves }
     voices: { bass: 33, soprano: saw }
     perc: { fill_rate: 0.32 }
+    melody: "q5 q5 h6 q5 q3 h1 q5 q5 h6 q5 q6 h5 q3 q5 q3 q2 h1 h5 hr"
     keys: "G::maj, C::maj, G::maj/C, F::maj/C, G::maj/C, C::min, Bb::maj/C, C::min, F::maj, G::maj/C, C::maj, G::maj/C, C::maj"
 
-  # ── Solo: saw takes over, walking bass ───────────────────────────────
+  # ── Solo: saw takes a lyrical line, walking bass ─────────────────────
   - name: solo
     tempo: 152
     repeat: 1
     instrument: saw
     bass: { style: walking, step: 1.0 }
     perc: { fill_rate: 0.22 }
+    melody: "q1 q3 q5 e6 e5 h5 q3 q5 e1' e7 h6 q5 q3 h2 q1 q3 q5 e6 e5 h5 q6 q5 e3 e5 h6 q5 q3 q2 h1 hr"
     keys: "C::maj7, C::maj7, F::maj7, F::maj7, F::7/Eb, F::7/Eb, G::sus4/D, G::sus4add7, C::maj7, C::maj7, F::maj7, F::maj7, F::7/Eb, F::7/Eb, D::min7, G::sus4add7"
 
-  # ── Breakdown: thin, minor, lets the song breathe ────────────────────
+  # ── Breakdown: thin, minor, no lead — lets it breathe ────────────────
   - name: breakdown
     tempo: 146
     repeat: 1
@@ -109,6 +120,7 @@ sections:
     bass: { style: octaves }
     voices: { bass: 33, soprano: saw }
     perc: { fill_rate: 0.35 }
+    melody: "q5 q5 h6 q5 q3 h1 q5 q5 h6 q5 q6 h5 q3 q5 q3 q2 h1 h5 hr"
     keys: "G::maj, C::maj, G::maj/C, F::maj/C, G::maj/C, C::min, Bb::maj/C, C::min, F::maj, G::maj/C, C::maj, G::maj/C, C::maj"
 
   # ── Outro: settle out ────────────────────────────────────────────────

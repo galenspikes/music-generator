@@ -104,7 +104,7 @@ Toggle in top-right corner.
 6. User hits PLAY or it auto-plays (configurable).
 
 ### Presets & Save
-- **Load**: Dropdown or gallery of `.yml` songs (`songs/kiss.yml`, `songs/four_organs.yml`…).
+- **Load**: Dropdown or gallery of `.yml` songs (`songs/kiss.yml`, `songs/autumn_leaves.yml`…).
 - **Save**: "My Groove" dialog → download MIDI + JSON snapshot of params.
 - **Quick save**: Seed-based (user hits "Save Seed" → shows "Groove #1537").
 

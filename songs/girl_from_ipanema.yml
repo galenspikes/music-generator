@@ -8,11 +8,13 @@ soundfont: SoundFonts/arachno.sf2
 
 defaults:
   instrument: piano
-  voices: { bass: 32 }
+  voices: { bass: 32, soprano: sax }
   bass: { style: root, step: 0.5 }
   satb: arpeggio
   chord_length: h
   chords_order: roundrobin
+  key: F
+  mode: major
   perc:
     main: "qb,eg,eg, qb,eg,eg"
     fill_rate: 0.04
@@ -22,19 +24,24 @@ sections:
     repeat: 2
     satb: block
     perc: { fill_rate: 0.0 }
+    melody: "q3 q3 q3 h3 q2 q2 q2 h2 q1 q1 hb7 h1"
     keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"
 
   - name: A2
     repeat: 2
+    melody: "q3 q3 q3 h3 q2 q2 q2 h2 q1 q1 hb7 h1"
     keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"
 
   - name: B
     repeat: 2
     voices: { bass: 32, soprano: flute }
     perc: { fill_rate: 0.02 }
+    melody: "q1 q2 q3 h5 q3 q2 h1 q1 q2 q3 h5 q3 q2 h1"
+    melody_relative: chord
     keys: "Gb::maj7, Gb::maj7, B::7, B::7, F#::min7, D::7, G::min7, Eb::7, A::min7, D::7, G::min7, C::7"
 
   - name: A_out
     repeat: 3
     perc: { fill_rate: 0.10 }
+    melody: "q3 q3 q3 h3 q2 q2 q2 h2 q1 q1 hb7 h1"
     keys: "F::maj7, F::maj7, G::7, G::7, G::min7, Gb::7, F::maj7, F::maj7"
