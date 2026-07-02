@@ -80,11 +80,20 @@ GALLERY: list[tuple[str, str]] = [
     ("song", "kiss"),
     ("song", "isnt_she_lovely"),
     ("song", "autumn_leaves"),
+    ("song", "girl_from_ipanema"),
+    ("song", "yesterday"),
+    ("song", "riders_on_the_storm"),
     ("song", "whiter_shade_of_pale"),
     ("preset", "dense_colors"),
     ("preset", "counterpoint"),
+    ("preset", "bach_prelude"),
     ("preset", "fugue"),
+    ("preset", "process_additive"),
+    ("preset", "process_phase"),
     ("preset", "perc_evolution"),
+    ("preset", "salsa"),
+    ("preset", "rock"),
+    ("preset", "rnb"),
 ]
 
 

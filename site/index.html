@@ -215,6 +215,13 @@ q7 h1               leading tone to tonic
   --instrument organ --melody-key C</code></pre>
         </article>
       </div>
+
+      <p class="muted">
+        Two feel controls cut across every mode: <code>--swing</code> (0–0.75)
+        delays the off-beats for a shuffle, and <code>--pan-spread</code> (0–1)
+        fans the voices from soprano to bass across the stereo field. Both are
+        written into the MIDI and appear as knobs in the web instrument.
+      </p>
     </section>
 
     <!-- ── EXAMPLES ───────────────────────────────────────────── -->
@@ -225,6 +232,15 @@ q7 h1               leading tone to tonic
         on any one. Regenerate them all with <code>make gallery</code>; the star
         demo is <code>make demo</code>.
       </p>
+      <div class="player-cta">
+        <div>
+          <strong>Want to tweak them?</strong>
+          <p>Open the interactive player — swap the instrument on any voice, dial
+            swing and stereo spread, then copy a link that reopens your exact
+            settings.</p>
+        </div>
+        <a class="btn" href="https://claude.ai/code/artifact/4a87e4db-47a9-4b9f-a715-524c2729f740">Open the player →</a>
+      </div>
 
       <article class="example">
         <div class="example-head">
@@ -279,6 +295,45 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
 
       <article class="example">
         <div class="example-head">
+          <h3>Girl from Ipanema</h3>
+          <span class="ex-tag">arrangement · bossa modulation</span>
+        </div>
+        <p>A bossa AABA where the bridge modulates up to G&flat; major and swaps
+          the soprano for a flute lead, then drops back to F for the out-head —
+          gentle clave percussion throughout.</p>
+        <pre><code>music_generator.py --song songs/girl_from_ipanema.yml --out ipanema --no-play</code></pre>
+        <midi-player src="assets/midi/girl_from_ipanema.mid" sound-font visualizer="#vis-ipanema"></midi-player>
+        <midi-visualizer id="vis-ipanema" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Yesterday</h3>
+          <span class="ex-tag">arrangement · lead-sheet ballad</span>
+        </div>
+        <p>A verse tune sung by a nylon guitar over an F-major Real Book chart,
+          with arpeggiated inner voices and acoustic bass — and a flute taking
+          the bridge.</p>
+        <pre><code>music_generator.py --song songs/yesterday.yml --out yesterday --no-play</code></pre>
+        <midi-player src="assets/midi/yesterday.mid" sound-font visualizer="#vis-yesterday"></midi-player>
+        <midi-visualizer id="vis-yesterday" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Riders on the Storm</h3>
+          <span class="ex-tag">arrangement · brooding vamp</span>
+        </div>
+        <p>A slow, brooding Dm7 vamp: a walking bass wanders under sparse
+          percussion and a rock organ, then an organ solo swaps the lead patch
+          and lifts the fill rate. Restraint as the feature.</p>
+        <pre><code>music_generator.py --song songs/riders_on_the_storm.yml --out riders --no-play</code></pre>
+        <midi-player src="assets/midi/riders_on_the_storm.mid" sound-font visualizer="#vis-riders"></midi-player>
+        <midi-visualizer id="vis-riders" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
           <h3>Dense colour voicing</h3>
           <span class="ex-tag">dense · exotic recipes</span>
         </div>
@@ -304,6 +359,18 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
 
       <article class="example">
         <div class="example-head">
+          <h3>Prelude in C style</h3>
+          <span class="ex-tag">arpeggio · harpsichord</span>
+        </div>
+        <p>A flowing homage to Bach's Well-Tempered Clavier Prelude in C — steady
+          arpeggiated motion and gentle harmonic shifts, voiced as harpsichord.</p>
+        <pre><code>cook_song.py make bach_prelude</code></pre>
+        <midi-player src="assets/midi/bach_prelude.mid" sound-font visualizer="#vis-bach"></midi-player>
+        <midi-visualizer id="vis-bach" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
           <h3>Fugue exposition</h3>
           <span class="ex-tag">fugal · subject &amp; answer</span>
         </div>
@@ -312,6 +379,32 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
         <pre><code>cook_song.py make fugue</code></pre>
         <midi-player src="assets/midi/fugue.mid" sound-font visualizer="#vis-fugue"></midi-player>
         <midi-visualizer id="vis-fugue" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Additive process</h3>
+          <span class="ex-tag">process · after Glass</span>
+        </div>
+        <p>A melodic cell grows a note at a time, then contracts — watch the
+          phrase lengthen and fold back. An arching two-register cell on
+          vibraphone.</p>
+        <pre><code>cook_song.py make process_additive</code></pre>
+        <midi-player src="assets/midi/process_additive.mid" sound-font visualizer="#vis-additive"></midi-player>
+        <midi-visualizer id="vis-additive" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Phase process</h3>
+          <span class="ex-tag">process · after Reich</span>
+        </div>
+        <p>Two voices loop the same cell; the follower advances one note per
+          stage, sweeping every rhythmic alignment before snapping back to
+          unison. Marimba, brisk pulse.</p>
+        <pre><code>cook_song.py make process_phase</code></pre>
+        <midi-player src="assets/midi/process_phase.mid" sound-font visualizer="#vis-phase"></midi-player>
+        <midi-visualizer id="vis-phase" type="piano-roll"></midi-visualizer>
       </article>
 
       <article class="example">
@@ -325,6 +418,42 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
         <pre><code>cook_song.py make perc_evolution</code></pre>
         <midi-player src="assets/midi/perc_evolution.mid" sound-font visualizer="#vis-perc"></midi-player>
         <midi-visualizer id="vis-perc" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Salsa Brava</h3>
+          <span class="ex-tag">groove · clave &amp; brass</span>
+        </div>
+        <p>A bright salsa progression with a brass lead, clave-driven
+          percussion, and lively counterpoint lines.</p>
+        <pre><code>cook_song.py make salsa</code></pre>
+        <midi-player src="assets/midi/salsa.mid" sound-font visualizer="#vis-salsa"></midi-player>
+        <midi-visualizer id="vis-salsa" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Arena Rock Pulse</h3>
+          <span class="ex-tag">groove · distorted guitar</span>
+        </div>
+        <p>A driving anthem with distorted guitar, a high-energy kit, and
+          round-robin chord movement.</p>
+        <pre><code>cook_song.py make rock</code></pre>
+        <midi-player src="assets/midi/rock.mid" sound-font visualizer="#vis-rock"></midi-player>
+        <midi-visualizer id="vis-rock" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Midnight R&amp;B</h3>
+          <span class="ex-tag">groove · electric piano</span>
+        </div>
+        <p>A smooth electric-piano vibe with extended chords, humanized
+          dynamics, and soulful counterpoint.</p>
+        <pre><code>cook_song.py make rnb</code></pre>
+        <midi-player src="assets/midi/rnb.mid" sound-font visualizer="#vis-rnb"></midi-player>
+        <midi-visualizer id="vis-rnb" type="piano-roll"></midi-visualizer>
       </article>
     </section>
 

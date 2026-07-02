@@ -290,7 +290,35 @@ h3 {
 
 .mode-card pre { margin: 0; }
 
+/* Let grid/flex cards shrink below their content so long <pre> command lines
+   scroll inside their own box (overflow-x:auto) instead of widening the page. */
+.mode-card, .token-block, .example { min-width: 0; }
+pre { max-width: 100%; }
+
 /* ── Examples ───────────────────────────────────────────────── */
+.player-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  background: linear-gradient(120% 140% at 100% 0%, #2a2420 0%, var(--bg-soft) 55%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin: 20px 0 8px;
+}
+.player-cta strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+  color: var(--accent-soft);
+  margin-bottom: 4px;
+}
+.player-cta p { margin: 0; color: var(--ink-soft); font-size: 0.95rem; max-width: 52ch; }
+.player-cta .btn { white-space: nowrap; flex-shrink: 0; }
+
 .example {
   background: var(--bg-soft);
   border: 1px solid var(--line);
