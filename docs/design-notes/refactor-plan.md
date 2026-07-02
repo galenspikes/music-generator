@@ -132,13 +132,21 @@ the dependency layering, and the data-flow pipeline CLI → tokens → compositi
 voicing → MidiOut → render); a README architecture section; and a docstring
 sweep on public functions that still lack one.
 
-### Tier 4 — Decide & document
-- **4.1 Catalog:** finish (`query_catalog` robust + documented, surfaced in
-  README) **or** remove (`update_master_catalog` + `query_catalog.py`).
-- **4.2 Helper scripts:** keep/fix/remove `cleanup_audio`/`recreate_audio`/
-  `view_logs` (likely fold into `render.py`/CLI subcommands).
-- **4.3 Trim `logging_config`** to what's used.
-- **4.4 Add `make test` / a lint config** (ruff) + a short dev-setup doc.
+### Tier 4 — Decide & document ✅ DONE
+- **4.1 Catalog: finished + documented.** `update_master_catalog` now guards
+  against a malformed/legacy catalog shape; `query_catalog.py` resolves its path
+  script-relative (works from any CWD), tolerates missing/None fields in every
+  view, and has a top-level error guard. Covered by `tests/test_catalog.py` and
+  documented in the README.
+- **4.2 Helper scripts: removed.** Deleted `cleanup_audio.py`,
+  `recreate_audio.py`, and `view_logs.py` (untested, undocumented, overlapping
+  `render.py`).
+- **4.3 Trimmed `logging_config`.** Dropped the never-applied `log_function_call`
+  decorator + its only caller `get_logger`, and three unused pre-configured
+  loggers; kept `setup_logger` and the helpers/loggers actually in use.
+- **4.4 Added `make` + ruff + dev doc.** `Makefile` (install/test/lint/format/
+  check), ruff config in `pyproject.toml`, `ruff` in `requirements-dev.txt`, a
+  README Development section, and `docs/how-to/set-up-for-development.md`.
 
 ---
 
@@ -147,3 +155,7 @@ Tier 1 (safety net) → Tier 2.1 (de-dup render) → Tier 2.2/2.3 (de-shell +
 layout) → Tier 3 (extract modules) → Tier 4 (decide/cleanup). Tiers 1–2 give the
 biggest robustness gain for the least risk; Tier 3 is the long game, made safe by
 Tier 1's tests.
+
+**Status: Tiers 1–4 are all complete.** The code-health plan is done — the engine
+is modular and layered, the catalog is a supported feature, dead code is gone, and
+`make check` (ruff + pytest) is the pre-commit gate.
