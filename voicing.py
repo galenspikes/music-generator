@@ -202,7 +202,6 @@ def build_counterpoint_lines(
                 pending_hold[voice] = 0
 
             suspension_applied = False
-            anticipation_applied = False
 
             if next_exists and segments >= 2:
                 if random.random() < suspension_prob:
@@ -217,7 +216,6 @@ def build_counterpoint_lines(
                 seq[-1] = target_pitch
                 if len(seq) >= 3:
                     seq[-2] = target_pitch
-                anticipation_applied = True
 
             seq[-1] = clamp_to_range(seq[-1], *VOICE_RANGE_MAP[voice])
 

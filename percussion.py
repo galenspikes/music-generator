@@ -143,7 +143,6 @@ def set_active_drum_map(source: str | Path | None) -> dict[str, int]:
 
 
 def get_drum_map() -> dict[str, int]:
-    global _DRUM_MAP_CACHE
     if _DRUM_MAP_CACHE is None:
         set_active_drum_map(None)
     return _DRUM_MAP_CACHE
@@ -348,7 +347,6 @@ def build_drum_timeline_from_main(
     """
     if not main_pat:
         return []
-    motif_len = sum(b for b, _ in main_pat)
     out = []
     pos = 0.0
     while pos < beats_total:
