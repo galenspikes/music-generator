@@ -80,8 +80,8 @@ Key entry points:
   Consumes wrapper flags (`--sf2`, `--fx`, `--normalize`, `--boost-db`,
   `--save-wav`, …) and forwards the rest to the generator.
 - **`cook_song.py`** — convenience CLI for rendering curated song recipes.
-- **`cleanup_audio.py`, `recreate_audio.py`, `query_catalog.py`** — housekeeping
-  utilities (prune WAVs, re-render audio from existing MIDI, query the song catalog).
+- **`query_catalog.py`** — query the master catalog of generated songs
+  (`output/master_catalog.json`, written by each render).
 
 ### Web instrument
 - **`webapp/backend/`** (FastAPI: `app.py`, `engine.py`) — wraps `generator_api`
