@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Music Generator — a token DSL for generative music</title>
-  <meta name="description" content="A Python music-generation system. Write chord progressions and drum patterns as compact tokens; the engine voices them into SATB harmony, adds percussion, and writes a MIDI file." />
+  <title>Music Generator — a token grammar for generative composition</title>
+  <meta name="description" content="A compact token grammar for generative music composition. Progressions, counterpoint, and percussion are written as terse symbolic notation; the engine realizes them with voice-leading rules into multi-track MIDI. Ostinato, arrangement, fugue, and process-music engines." />
+  <meta name="theme-color" content="#f7f8fb" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
 </head>
@@ -22,22 +23,23 @@
         <li><a href="#modes">Modes</a></li>
         <li><a href="#examples">Examples</a></li>
         <li><a href="#quickstart">Quick start</a></li>
-        <li><a class="nav-cta" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live →</a></li>
+        <li><a class="nav-cta" href="https://huggingface.co/spaces/gsp87/music-generator">Try it live →</a></li>
       </ul>
     </div>
   </nav>
 
   <header class="hero">
     <div class="wrap">
-      <p class="eyebrow">Generative music · Python · MIDI</p>
+      <p class="eyebrow">Generative composition · symbolic notation · MIDI</p>
       <h1>Music Generator</h1>
       <p class="lede">
-        Write a chord progression as a line of text. The engine voices it into
-        four-part harmony, adds percussion and melody, and hands you a MIDI file
-        — or rendered audio.
+        A compact token grammar for generative composition. Harmony,
+        counterpoint, and rhythm are written as terse symbolic notation; the
+        engine realizes them under explicit voice-leading rules into multi-track
+        MIDI — from ostinato grooves to fugal expositions and process music.
       </p>
       <p class="actions">
-        <a class="btn" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live</a>
+        <a class="btn" href="https://huggingface.co/spaces/gsp87/music-generator">Try it live</a>
         <a class="btn btn-ghost" href="https://github.com/galenspikes/music-generator">View on GitHub</a>
         <a class="btn btn-ghost" href="#examples">Hear examples</a>
       </p>
@@ -226,11 +228,13 @@ q7 h1               leading tone to tonic
 
     <!-- ── EXAMPLES ───────────────────────────────────────────── -->
     <section id="examples" class="wrap">
-      <h2>Demo library</h2>
+      <h2>Worked examples</h2>
       <p class="muted">
-        Rendered from MIDI in your browser — no plugins, no SoundFont. Press play
-        on any one. Regenerate them all with <code>make gallery</code>; the star
-        demo is <code>make demo</code>.
+        Each is rendered from the engine's own MIDI, played in your browser — no
+        plugins, no SoundFont. They span idiomatic covers, four-voice
+        counterpoint, a fugal exposition, and process music. Regenerate the set
+        with
+        <code>make gallery</code>; the flagship is <code>make demo</code>.
       </p>
       <div class="player-cta">
         <div>
@@ -504,7 +508,7 @@ cd webapp/frontend && npm install && npm run dev</code></pre>
       <p class="footer-links">
         <a href="https://github.com/galenspikes/music-generator">GitHub</a>
         <span>·</span>
-        <a href="https://huggingface.co/spaces/galenspikes/music-generator">Live demo</a>
+        <a href="https://huggingface.co/spaces/gsp87/music-generator">Live demo</a>
         <span>·</span>
         <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md">Token grammar</a>
       </p>
