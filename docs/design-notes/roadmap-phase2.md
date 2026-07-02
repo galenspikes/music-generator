@@ -175,6 +175,29 @@ support, is the natural home. Worth doing before/with Thread 4.
 
 ---
 
+## Thread 5 — Fugue lab (exploration + teaching)
+
+The `--fugue` mode is only an *exposition* today (subject, tonal-ish answer,
+inverted countersubject, cadence — see `fugue.py`), but it's the most-liked demo
+and points at two futures worth pursuing:
+
+- **A real fugue generator.** Grow past the exposition: episodes (sequenced
+  fragments of the subject), middle entries in related keys, and the classic
+  devices — stretto, invertible counterpoint, augmentation/diminution of the
+  subject. The melody primitive already gives us `transpose_diatonic` / `invert` /
+  `retrograde` / `augment` (`melody.py`), so the transforms are in hand; what's
+  missing is the *form* controller that schedules entries and episodes.
+- **An educational tool.** A guided "build a fugue" surface (in the webapp or a
+  notebook): type a subject, watch each voice enter, and toggle each device on/off
+  to *hear* what an episode or a stretto does. The scale-degree notation and the
+  piano-roll make the structure legible — a genuinely good way to teach fugue.
+
+**Effort:** generator medium–large; teaching UI medium. **Risk:** medium (real
+fugal writing is hard to get consistently musical). **Why:** high-delight, and it
+doubles as a showcase and a learning aid.
+
+---
+
 ## Suggested sequencing toward the EP
 1. **Quick wins:** Thread 4a (pan/volume) + Thread 3 v1 (swing/feel) — immediate
    audible upgrade to everything.

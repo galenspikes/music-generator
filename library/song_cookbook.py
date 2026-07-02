@@ -42,7 +42,7 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             "C::maj9, A::min11, F::maj7#11, G::13, "
             "E::mystic, Ab::messiaen_resonance, Db::quartal, G::7alt, C::maj9",
             "--voicing", "dense",
-            "--instrument", "strings",
+            "--instrument", "slowstrings",
             "--chord-length", "w",
             "--bpm", "64",
             "--perc-main", "wr",
@@ -69,7 +69,7 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             "--counterpoint-step", "0.25",
             "--counterpoint-suspension-prob", "0.35",
             "--counterpoint-anticipation-prob", "0.30",
-            "--instrument", "harpsi",
+            "--instrument", "choir",
             "--chord-length", "w",
             "--bpm", "88",
             "--perc-main", "wr",
@@ -101,27 +101,48 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
     "process_additive": {
         "title": "Additive Process (after Glass)",
         "description": (
-            "Minimalist process music: a single melodic cell grows a note at a"
-            " time, then contracts. Steady organ, hypnotic unfolding from minimal"
-            " input."
+            "Minimalist process music: a melodic cell grows a note at a time,"
+            " then contracts — watch the phrase lengthen and fold back. An arching"
+            " two-register cell on vibraphone. ~2 min."
         ),
         "args": [
             "--process", "additive",
-            "--process-cell", "e1 e2 e3 e5 e7 e5 e3 e2",
+            "--process-cell", "e1 e2 e3 e5 e6 e1' e6 e5 e3 e2",
+            "--process-reps", "5",
             "--melody-key", "C",
             "--melody-mode", "major",
-            "--instrument", "organ",
-            "--bpm", "126",
+            "--instrument", "vibes",
+            "--bpm", "120",
         ],
         "aliases": ["additive", "glass"],
         "tags": ["demo", "process", "minimalism", "generative"],
+    },
+    "process_additive_long": {
+        "title": "Additive Process — Long Form (~8 min)",
+        "description": (
+            "The additive process taken to full length on a complex, two-octave"
+            " arching cell: fourteen notes grow one at a time and contract, an"
+            " ~8-minute slow unfolding on vibraphone."
+        ),
+        "args": [
+            "--process", "additive",
+            "--process-cell",
+            "e1 e2 e3 e5 e6 e1' e2' e3' e2' e1' e6 e5 e3 e2",
+            "--process-reps", "11",
+            "--melody-key", "C",
+            "--melody-mode", "major",
+            "--instrument", "vibes",
+            "--bpm", "132",
+        ],
+        "aliases": ["additive_long", "glass_long"],
+        "tags": ["process", "minimalism", "generative", "longform"],
     },
     "process_phase": {
         "title": "Phase Process (after Reich)",
         "description": (
             "Two voices loop the same cell; the follower advances one note per"
             " stage, sweeping every rhythmic alignment before snapping back to"
-            " unison. Marimba, brisk pulse."
+            " unison. Marimba, brisk pulse. ~30 s."
         ),
         "args": [
             "--process", "phase",
@@ -129,11 +150,48 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             "--process-reps", "4",
             "--melody-key", "E",
             "--melody-mode", "minor",
-            "--instrument", "12",
+            "--instrument", "marimba",
             "--bpm", "160",
         ],
         "aliases": ["phase", "reich"],
         "tags": ["demo", "process", "minimalism", "generative"],
+    },
+    "process_phase_5min": {
+        "title": "Phase Process — 5 Minutes",
+        "description": (
+            "The full Reich phasing sweep at ~5 minutes: each alignment held long"
+            " enough to settle before the follower advances. Marimba."
+        ),
+        "args": [
+            "--process", "phase",
+            "--process-cell", "s1 s2 s3 s5 s6 s5 s3 s2",
+            "--process-reps", "45",
+            "--melody-key", "E",
+            "--melody-mode", "minor",
+            "--instrument", "marimba",
+            "--bpm", "160",
+        ],
+        "aliases": ["phase_5", "phase_5min"],
+        "tags": ["process", "minimalism", "generative", "longform"],
+    },
+    "process_phase_20min": {
+        "title": "Phase Process — 20 Minutes",
+        "description": (
+            "The phasing process at full 20-minute length — every rhythmic"
+            " alignment of the cell dwelt on at length, on vibraphone. A whole"
+            " side of a record from eight notes."
+        ),
+        "args": [
+            "--process", "phase",
+            "--process-cell", "s1 s2 s3 s5 s6 s5 s3 s2",
+            "--process-reps", "178",
+            "--melody-key", "E",
+            "--melody-mode", "minor",
+            "--instrument", "vibes",
+            "--bpm", "160",
+        ],
+        "aliases": ["phase_20", "phase_20min"],
+        "tags": ["process", "minimalism", "generative", "longform"],
     },
     "melody_transforms": {
         "title": "Melody + Transform",
@@ -163,23 +221,25 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
     "perc_evolution": {
         "title": "Percussion Evolution",
         "description": (
-            "One vamp, a drum kit that grows through three library grooves"
-            " (rock halftime -> med -> fast) via --perc-stages, with a fill-rate"
-            " curve ramping the fills up across the piece."
+            "A drum kit built up in four obvious stages over a held vamp: kick +"
+            " hats, then a backbeat snare, then busy off-beat open hats, then a"
+            " full 16th-note kit with fills — and the fill rate ramps 0 -> 0.6"
+            " across the piece so the groove keeps opening up."
         ),
         "args": [
             "--mode", "ostinato",
             "--keys", "A::min9, A::min9, F::maj9, G::13",
-            "--instrument", "epiano",
-            "--perc-lib", "library/percussion_library.json",
+            "--instrument", "pad",
+            "--chord-length", "w",
             "--perc-stages",
-            "48:@rock:4/4:halftime",
-            "48:@rock:4/4:med",
-            "48:@rock:4/4:fast",
-            "--perc-fill-curve", "0.05:0.40",
+            "48:eb,eg,er,eg,eb,eg,er,eg",
+            "48:eb,eg,ec,eg,eb,eg,ec,eg",
+            "48:eb,eig,ec,eg,eb,eg,ec,eig|sb,sc,sb,sc,eg,eg",
+            "48:sb,sg,sc,sg,sb,sg,sc,sg|sb,sb,sc,sc,st,st,su,sj|ec,ec,ec,ec,qj",
+            "--perc-fill-curve", "0.0:0.6",
             "--velocity-mode-drums", "human",
-            "--bpm", "120",
-            "--seconds", "90",
+            "--bpm", "104",
+            "--seconds", "110",
         ],
         "aliases": ["percussion", "drums", "groove_evolution"],
         "tags": ["demo", "percussion", "groove"],
@@ -309,7 +369,7 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             "G#::dim7, G::7, C:2:maj, G::9, G::7, G::7b9, C:2:maj, G::9, "
             "G::7, C::7, F:2:maj, G::7b9, C::maj",
             "--bpm", "80",
-            "--instrument", "saw",
+            "--instrument", "harpsi",
             "--chords", "triads", "sevenths", "add6",
             "--chords-order", "roundrobin",
             "--chord-length", "w",

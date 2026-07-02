@@ -195,11 +195,13 @@ python cook_song.py make fugue -- --sf2 SoundFonts/arachno.sf2   # forward args
 ```
 
 Songs: `kiss`, `autumn_leaves`, `girl_from_ipanema`, `isnt_she_lovely`,
-`riders_on_the_storm`, `whiter_shade_of_pale`, `four_organs`, `yesterday`.
+`riders_on_the_storm`, `whiter_shade_of_pale`, `yesterday`. Several carry a real
+melody line (scale-degree grammar) on top of the arrangement.
 
 Presets: `dense_colors`, `counterpoint`, `fugue`, `process_additive`,
-`process_phase`, `melody_transforms`, `perc_evolution`, `salsa`, `rock`, `rnb`,
-`bach_prelude`, `bach_counterpoint`.
+`process_additive_long` (~8 min), `process_phase`, `process_phase_5min`,
+`process_phase_20min`, `melody_transforms`, `perc_evolution`, `salsa`, `rock`,
+`rnb`, `bach_prelude`, `bach_counterpoint`.
 
 A browser-playable gallery (rendered MIDI, no SoundFont needed) lives in
 [`site/`](site/index.html) — regenerate it with `make gallery`. Add your own

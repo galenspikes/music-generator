@@ -78,9 +78,9 @@ FLAGSHIP = "kiss"
 # (kind, name) where kind is "song" or "preset"; the output file is <name>.mid.
 GALLERY: list[tuple[str, str]] = [
     ("song", "kiss"),
+    ("song", "isnt_she_lovely"),
     ("song", "autumn_leaves"),
     ("song", "whiter_shade_of_pale"),
-    ("song", "four_organs"),
     ("preset", "dense_colors"),
     ("preset", "counterpoint"),
     ("preset", "fugue"),
