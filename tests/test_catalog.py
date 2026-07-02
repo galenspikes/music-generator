@@ -5,7 +5,6 @@ robustness of both against missing fields / malformed files.
 
 import json
 
-import pytest
 
 import music_generator as mg
 import query_catalog as qc

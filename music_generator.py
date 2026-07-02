@@ -35,10 +35,13 @@ from composition import *  # noqa: F401,F403
 
 # Names used directly in this module (also imported via * above; listed
 # explicitly so static tools can see them and to document the dependency).
-from mtheory import VOICE_ORDER, DUR_MAP, parse_key_name, resolve_instrument  # noqa: F401
+from mtheory import (  # noqa: F401
+    VOICE_ORDER, DUR_MAP, SOP_RANGE, parse_key_name, resolve_instrument,
+)
 from percussion import (  # noqa: F401
     build_perc_from_args, build_drum_timeline_stages,
-    build_drum_timeline_with_fills, parse_chord_interrupters,
+    build_drum_timeline_with_fills, build_drum_timeline_from_main,
+    parse_chord_interrupters, set_active_drum_map,
 )
 from tokens import key_roots  # noqa: F401
 from voicing import BASS_STYLES  # noqa: F401
@@ -46,6 +49,7 @@ from midiout import MidiOut  # noqa: F401
 from composition import (  # noqa: F401
     build_progression, build_chord_timeline, build_dense_timeline,
     build_harmony_events, fill_chords_to_end, truncate_timeline_to,
+    next_mode_picker,
 )
 
 # --- project folders (relative to the script location) ---
@@ -147,7 +151,7 @@ def write_manifest(out_path: str, args_ns) -> str:
     slug = Path(out_path).parent.name
     audio_path = str(AUDIO_DIR / slug / f"{base_name}.wav")
     metadata_path = str(META_DIR / slug / f"{base_name}.json")
-    
+
     data = {
         "generated_utc":
             datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -204,7 +208,7 @@ def update_master_catalog(manifest_path: str):
             manifest = json.load(f)
     except Exception:
         return  # Skip if manifest can't be read
-    
+
     # Add song entry
     song_entry = {
         "base_name": manifest.get("file_catalog", {}).get("base_name", "unknown"),
@@ -220,18 +224,18 @@ def update_master_catalog(manifest_path: str):
         "instrument": manifest.get("args", {}).get("instrument", ""),
         "out": manifest.get("args", {}).get("out", "")
     }
-    
+
     # Add to catalog (avoid duplicates)
     existing = next((s for s in catalog["songs"]
                      if s.get("manifest_file") == manifest_path), None)
     if not existing:
         catalog["songs"].append(song_entry)
         catalog["last_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        
+
         # Keep only last 100 songs to prevent catalog from growing too large
         if len(catalog["songs"]) > 100:
             catalog["songs"] = catalog["songs"][-100:]
-        
+
         # Write updated catalog
         with open(catalog_path, "w", encoding="utf-8") as f:
             json.dump(catalog, f, indent=2)
@@ -942,7 +946,7 @@ def main():
     #     subprocess.run(cmd)
 
     print(f"Wrote {out_path}")
-    
+
     # Log completion
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()

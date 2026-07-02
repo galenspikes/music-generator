@@ -1,7 +1,6 @@
 """Tests for the fugue exposition generator."""
 
 import melody as mel
-import music_generator as mg
 import fugue as F
 
 

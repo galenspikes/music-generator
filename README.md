@@ -316,15 +316,22 @@ venv/bin/python query_catalog.py stats          # totals, instruments, BPM range
 
 The catalog lives under the gitignored `output/`, so it's local to your machine.
 
-## Testing
+## Development
+
+A `Makefile` wraps the common tasks (all using the `./venv` interpreter):
 
 ```bash
-venv/bin/python -m pytest
+make install   # create venv + install runtime and dev dependencies
+make test      # run the pytest suite
+make lint      # ruff check (config in pyproject.toml)
+make format    # apply ruff's safe autofixes
+make check     # lint + test — run before committing
 ```
 
 The token DSL is pinned by `tests/test_tokens.py`, and `tests/test_integration.py`
-exercises every render mode end to end. Run the suite before and after any change,
+exercises every render mode end to end. Run `make check` before and after any change,
 and update [docs/reference/token-grammar.md](docs/reference/token-grammar.md) when the grammar changes.
+See [docs/how-to/set-up-for-development.md](docs/how-to/set-up-for-development.md) for the full dev walkthrough.
 
 ## Documentation
 

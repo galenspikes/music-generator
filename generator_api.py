@@ -285,11 +285,15 @@ def _split_top_level(s: str) -> list[tuple[str, int]]:
     start = 0
     for i, ch in enumerate(s):
         if ch == "[":
-            depth += 1; cur += ch
+            depth += 1
+            cur += ch
         elif ch == "]":
-            depth -= 1; cur += ch
+            depth -= 1
+            cur += ch
         elif ch == "," and depth == 0:
-            parts.append((cur, start)); cur = ""; start = i + 1
+            parts.append((cur, start))
+            cur = ""
+            start = i + 1
         else:
             if cur == "":
                 start = i
