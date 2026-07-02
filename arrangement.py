@@ -15,9 +15,11 @@ See docs/design-notes/arrangement-plan.md for the design.
 from __future__ import annotations
 
 import copy
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import melody as mel
 import music_generator as mg
 
 BEATS_PER_BAR = 4.0  # v1 assumes 4/4 for `bars`-based section lengths
@@ -36,6 +38,12 @@ BASE_DEFAULTS: dict = {
     "perc": {"main": "qb,qc,qb,qc", "interrupters": [], "fill_rate": 0.0},
     "counterpoint": {"step": 0.25, "suspension_prob": 0.0,
                      "anticipation_prob": 0.0},
+    # A real tune on top (scale-degree grammar). When set on a section it plays
+    # on the soprano channel and replaces the SATB soprano for that section.
+    "melody": None,
+    "melody_relative": "key",   # "key" (degrees vs the section scale) | "chord"
+    "key": None,                # tonic name (e.g. "C", "Eb"); None -> inferred
+    "mode": None,               # major/minor/dorian/...; None -> inferred
 }
 
 
@@ -137,6 +145,32 @@ def _section_beats(sec: dict, seq_len: int, chord_len: float) -> float:
     return float(sec.get("repeat", 1)) * natural
 
 
+def _section_key(sec: dict, seq: list) -> tuple[int, str]:
+    """Resolve (tonic_pc, mode) for a section's melody. Explicit key/mode win;
+    otherwise infer from the section's chords."""
+    kname = sec.get("key")
+    mode = sec.get("mode")
+    if kname:
+        pc, is_minor = mg.parse_key_name(str(kname))
+        return pc, (mode or ("minor" if is_minor else "major"))
+    ikey, imode = mel.infer_key(seq)
+    return ikey, (mode or imode)
+
+
+def _chord_root_spans(seq: list, chord_len: float,
+                      sec_beats: float) -> list[tuple[float, float, int]]:
+    """Root pitch-class per chord slot across the section (for chord-relative
+    melody). Mirrors build_chord_timeline's straight stepping."""
+    spans: list[tuple[float, float, int]] = []
+    pos, i = 0.0, 0
+    while pos < sec_beats and seq:
+        root = seq[i % len(seq)].root_pc
+        spans.append((pos, min(pos + chord_len, sec_beats), root))
+        pos += chord_len
+        i += 1
+    return spans
+
+
 def build_events(spec: SongSpec) -> tuple[list, float]:
     """Build the full, time-sorted event stream for the arrangement.
 
@@ -179,15 +213,45 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
             split_stems=True,
             when_offset=start,
         )
+        mel_text = sec.get("melody")
+        has_melody = bool(mel_text and str(mel_text).strip())
+
         # arrange always routes per-voice (so programs apply per voice); expand
-        # any block 'chord' events into the four voices.
+        # any block 'chord' events into the four voices. When a melody is set it
+        # takes over the soprano channel, so the SATB soprano is dropped here.
         for ev in h_events:
             if ev[0] == "chord":
                 _, when, dur, notes = ev
                 for voice, note in zip(mg.VOICE_ORDER, notes):
+                    if has_melody and voice == "soprano":
+                        continue
                     events.append(("voice", when, dur, (voice, note)))
+            elif has_melody and ev[0] == "voice" and ev[3][0] == "soprano":
+                continue
             else:
                 events.append(ev)
+
+        # melody: a real tune on the soprano channel, tiled to fill the section
+        if has_melody:
+            mel_notes = mel.parse_melody(str(mel_text))
+            mel_beats = sum(n.beats for n in mel_notes)
+            if mel_beats > 0:
+                key_pc, mode = _section_key(sec, seq)
+                relative = sec.get("melody_relative", "key")
+                chord_roots = (_chord_root_spans(seq, chord_len, sec_beats)
+                               if relative == "chord" else None)
+                reps = max(1, int(math.ceil(sec_beats / mel_beats)))
+                lo, hi = mg.SOP_RANGE
+                realized = mel.realize_melody(
+                    mel_notes * reps, key_pc, mode, base_octave=5,
+                    lo=lo, hi=hi, relative=relative, chord_roots=chord_roots)
+                for when, dur, note in realized:
+                    if when >= sec_beats:
+                        break
+                    dur = min(dur, sec_beats - when)
+                    if dur > 0:
+                        events.append(
+                            ("voice", start + when, dur, ("soprano", note)))
 
         # percussion
         perc = sec.get("perc") or {}

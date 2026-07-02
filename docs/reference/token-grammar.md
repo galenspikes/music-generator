@@ -111,8 +111,9 @@ These let you write long charts compactly, e.g. a 32-bar pedal section as
 ## 4. Melody tokens (`--melody`)
 
 A monophonic line written as **scale degrees** (relative to a key+mode), used by
-`--melody` today and the future fugue/lead generators. Whitespace-separated;
-`|` barlines are ignored.
+`--melody`, the fugue/process modes, and a section's `melody:` field in a song
+file (see [how-to: add a melody](../how-to/create-an-arrangement.md#add-a-melody)).
+Whitespace-separated; `|` barlines are ignored.
 
 Form: **`<duration>[.] ( [#|b]<1-7>['|,]* | r )`**
 - **duration**: `w h q e s t` (as above); trailing `.` = dotted (×1.5).
