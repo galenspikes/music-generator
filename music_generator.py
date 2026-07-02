@@ -1,101 +1,51 @@
 #!/usr/bin/env python3
 # Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 # https://github.com/galenspikes/music-generator
+"""Music Generator — CLI entry point and render orchestration.
+
+The slim top layer of the package. It parses CLI args, resolves output paths,
+writes run manifests / the master catalog, applies optional melody, and drives
+the render pipeline (tokens → composition → voicing → MidiOut). The music
+engine itself lives in the sibling modules, layered by dependency:
+
+    mtheory → percussion / tokens / voicing / midiout → composition → (here)
+
+Public names from those modules are re-imported here so existing callers that
+reach through ``music_generator`` (e.g. ``mg.build_harmony_events``) keep
+working. See ``docs/architecture.md`` for the full module map and data flow.
+"""
 import argparse
-import importlib.util
 import json
-import math
 import random
-import subprocess
-import shlex
-import sys
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
 
-from logging_config import music_generator_logger, log_function_call, log_performance, log_file_operation, log_music_generation, log_error
-from mtheory import (
-    ChordDef,
-    CHORD_CH,
-    DRUM_CH,
-    BASS_RANGE,
-    TENOR_RANGE,
-    ALTO_RANGE,
-    SOP_RANGE,
-    VOICE_ORDER,
-    VOICE_RANGE_MAP,
-    GM_ALIASES,
-    NOTE_TO_PC,
-    DUR_MAP,
-    parse_key_name,
-    resolve_instrument,
-    clamp_to_range,
-    nearest_in_register,
-    pc,
-    load_chord_recipes,
-    get_chord_recipe,
+from logging_config import music_generator_logger, log_performance, log_file_operation, log_music_generation
+
+# The music engine lives in the layered sibling modules below. They are
+# re-exported here (star imports, each module defines __all__) so existing
+# callers reaching through ``music_generator`` (e.g. ``mg.build_harmony_events``)
+# keep working. See docs/architecture.md for the module map and data flow.
+from mtheory import *  # noqa: F401,F403
+from percussion import *  # noqa: F401,F403
+from tokens import *  # noqa: F401,F403
+from voicing import *  # noqa: F401,F403
+from midiout import *  # noqa: F401,F403
+from composition import *  # noqa: F401,F403
+
+# Names used directly in this module (also imported via * above; listed
+# explicitly so static tools can see them and to document the dependency).
+from mtheory import VOICE_ORDER, DUR_MAP, parse_key_name, resolve_instrument  # noqa: F401
+from percussion import (  # noqa: F401
+    build_perc_from_args, build_drum_timeline_stages,
+    build_drum_timeline_with_fills, parse_chord_interrupters,
 )
-from percussion import (
-    PercHit,
-    PercStage,
-    PercPlan,
-    DEFAULT_PERC_LIB,
-    FALLBACK_DRUM_MAP,
-    load_drum_map_from,
-    set_active_drum_map,
-    get_drum_map,
-    choose_perc_pattern,
-    parse_single_token,
-    parse_pattern,
-    parse_many_patterns,
-    GRID_STEP,
-    quantize_to_grid,
-    build_drum_timeline_from_main,
-    build_drum_timeline_with_fills,
-    build_drum_segment,
-    build_drum_timeline_stages,
-    parse_chord_interrupters,
-    build_perc_from_args,
-)
-from tokens import (
-    parse_colon_key_token,
-    parse_repetition_token,
-    parse_chain_repetition,
-    key_roots,
-)
-from voicing import (
-    build_counterpoint_lines,
-    build_arpeggio_events,
-    BASS_STYLES,
-    build_bass_line,
-    pick_soprano,
-    pick_in_part_range,
-    recenter_if_needed,
-    realize_SATB,
-    realize_dense,
-)
-from midiout import MidiOut
-from composition import (
-    fill_chords_to_end,
-    make_triad,
-    make_seventh,
-    make_ninth,
-    make_quartal,
-    make_sus,
-    make_add6,
-    make_lyd_dom,
-    chromatic_mediant_from_key,
-    next_mode_picker,
-    compute_max_gap_beats,
-    truncate_timeline_to,
-    invert_chord,
-    make_extended_chord,
-    circle_of_fifths_sequence,
-    build_progression,
-    build_chord_timeline,
-    build_dense_timeline,
-    build_harmony_events,
+from tokens import key_roots  # noqa: F401
+from voicing import BASS_STYLES  # noqa: F401
+from midiout import MidiOut  # noqa: F401
+from composition import (  # noqa: F401
+    build_progression, build_chord_timeline, build_dense_timeline,
+    build_harmony_events, fill_chords_to_end, truncate_timeline_to,
 )
 
 # --- project folders (relative to the script location) ---
