@@ -37,3 +37,11 @@ format: ## Apply ruff's safe autofixes
 
 .PHONY: check
 check: lint test ## Lint then test — run before committing
+
+.PHONY: demo
+demo: ## Play the flagship demo (Kiss On My List) — the "press demo" button
+	$(PY) cook_song.py make kiss
+
+.PHONY: gallery
+gallery: ## Render the demo highlight set to committable MIDI (site/assets/midi)
+	$(PY) cook_song.py gallery
