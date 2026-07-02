@@ -5,6 +5,10 @@ metadata/
 # --- Large binary assets (not tracked; keep locally / download separately) ---
 SoundFonts/
 
+# --- Build output (generated; regenerable from source) ---
+webapp/frontend/dist/
+node_modules/
+
 # --- Python ---
 venv/
 venv_new/
