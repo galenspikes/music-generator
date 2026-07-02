@@ -76,7 +76,7 @@ options:
                         Number of stages (for --process augment).
   --keys KEYS           Comma list of keys (Eb,Bb,...) for ostinato
   --keys-preset KEYS_PRESET
-                        Name of preset from metadata/keys_presets.json
+                        Name of preset from library/keys_presets.json
   --chords {chromatic-mediants,extended-chords,triads,sevenths,ninths,quartal,sus,add6,lyd-dom} [{chromatic-mediants,extended-chords,triads,sevenths,ninths,quartal,sus,add6,lyd-dom} ...]
                         Chord families to use.
   --chords-order {random,roundrobin}

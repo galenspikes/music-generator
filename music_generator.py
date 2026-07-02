@@ -17,6 +17,7 @@ working. See ``docs/architecture.md`` for the full module map and data flow.
 import argparse
 import json
 import random
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,7 +67,7 @@ _KEY_PRESETS_CACHE: dict[str, list[str]] | None = None
 
 
 def load_key_presets(force_reload: bool = False) -> dict[str, list[str]]:
-    """Load key presets from metadata/keys_presets.json (cached)."""
+    """Load key presets from library/keys_presets.json (cached)."""
 
     global _KEY_PRESETS_CACHE
     if _KEY_PRESETS_CACHE is not None and not force_reload:
@@ -583,7 +584,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--keys-preset",
                     type=str,
                     default=None,
-                    help="Name of preset from metadata/keys_presets.json")
+                    help="Name of preset from library/keys_presets.json")
     ap.add_argument("--chords",
                     nargs="+",
                     default=["triads"],
@@ -860,16 +861,43 @@ def main():
         import arrangement
         default_slug = Path(args.song).stem
         song_out = resolve_out_path(args.out, default_slug)
-        arr_overrides: dict = {
-            "tempo": args.bpm,
-            "instrument": args.instrument,
-            "chord_length": args.chord_len,
-            "satb": args.satb_style,
-            "bass": {"style": args.bass_style, "step": float(args.bass_step)},
-            "perc": {"fill_rate": float(args.perc_fill_rate)},
-        }
+        # Only override a song's YAML defaults with a CLI flag the user actually
+        # set. Otherwise argparse defaults (--bpm 120, --chord-length e, ...)
+        # would silently clobber the authored arrangement — forcing every song
+        # to 120 bpm and eighth-note chords. A flag counts as "set" when its
+        # value differs from the parser default or it appears in argv (so an
+        # explicit value that happens to equal the default still applies).
+        argv_tokens = sys.argv[1:]
+
+        def _cli_set(dest: str, *flags: str) -> bool:
+            if getattr(args, dest) != ap.get_default(dest):
+                return True
+            return any(tok == f or tok.startswith(f + "=")
+                       for tok in argv_tokens for f in flags)
+
+        arr_overrides: dict = {}
+        if _cli_set("bpm", "--bpm"):
+            arr_overrides["tempo"] = args.bpm
+        if _cli_set("instrument", "--instrument"):
+            arr_overrides["instrument"] = args.instrument
+        if _cli_set("chord_len", "--chord-length"):
+            arr_overrides["chord_length"] = args.chord_len
+        if _cli_set("satb_style", "--satb-style"):
+            arr_overrides["satb"] = args.satb_style
+        bass_over: dict = {}
+        if _cli_set("bass_style", "--bass-style"):
+            bass_over["style"] = args.bass_style
+        if _cli_set("bass_step", "--bass-step"):
+            bass_over["step"] = float(args.bass_step)
+        if bass_over:
+            arr_overrides["bass"] = bass_over
+        perc_over: dict = {}
+        if _cli_set("perc_fill_rate", "--perc-fill-rate"):
+            perc_over["fill_rate"] = float(args.perc_fill_rate)
         if args.perc_main:
-            arr_overrides["perc"]["main"] = args.perc_main
+            perc_over["main"] = args.perc_main
+        if perc_over:
+            arr_overrides["perc"] = perc_over
         if args.voice_instrument:
             voices: dict = {}
             for vi in args.voice_instrument:
