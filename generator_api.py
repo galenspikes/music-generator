@@ -201,7 +201,9 @@ def _generate_locked(spec: dict) -> GenerationResult:
             countersubject=args.fugue_countersubject)
         midi = mg.build_generated(args.bpm, events, total, args.instrument,
                                   args.velocity_mode_chords,
-                                  args.velocity_mode_drums)
+                                  args.velocity_mode_drums,
+                                  swing=getattr(args, "swing", 0.0),
+                                  pan_spread=getattr(args, "pan_spread", 0.0))
         return _result(midi, total, "fugue")
 
     # ----- process music -----
@@ -214,7 +216,9 @@ def _generate_locked(spec: dict) -> GenerationResult:
             reps=args.process_reps, stages=args.process_stages)
         midi = mg.build_generated(args.bpm, events, total, args.instrument,
                                   args.velocity_mode_chords,
-                                  args.velocity_mode_drums)
+                                  args.velocity_mode_drums,
+                                  swing=getattr(args, "swing", 0.0),
+                                  pan_spread=getattr(args, "pan_spread", 0.0))
         return _result(midi, total, f"process:{args.process}")
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
@@ -232,6 +236,8 @@ def _generate_locked(spec: dict) -> GenerationResult:
             "satb": args.satb_style,
             "bass": {"style": args.bass_style, "step": float(args.bass_step)},
             "perc": {"fill_rate": float(args.perc_fill_rate)},
+            "swing": float(getattr(args, "swing", 0.0)),
+            "pan_spread": float(getattr(args, "pan_spread", 0.0)),
         }
         if args.perc_main:
             arr_overrides["perc"]["main"] = args.perc_main
@@ -594,6 +600,8 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     # Dynamics
     "velocity_mode_chords": {"group": "Dynamics", "control": "segmented"},
     "velocity_mode_drums": {"group": "Dynamics", "control": "segmented"},
+    "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01},
+    "pan_spread": {"group": "Dynamics", "control": "knob", "min": 0, "max": 1, "step": 0.01},
     # Process / fugue
     "process": {"group": "Process", "control": "segmented"},
     "process_cell": {"group": "Process", "control": "text", "multiline": True},

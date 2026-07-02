@@ -1,15 +1,21 @@
+# demonstrates: a jazz head with a real sax melody over walking bass and
+# arpeggiated SATB on the ii-V-i cycle, then a saw-lead solo chorus that lifts the
+# fill rate and doubles the walk (arpeggiated — an improvised contrast to the
+# sung head). A showcase of the arrangement layer's per-section texture changes.
 title: Autumn Leaves (jazz standard)
-description: Classic ii-V-I cycle in E minor. Walking bass, arpeggio voicing, jazz brushes.
+description: Classic ii-V-i cycle in E minor. Sax melody on the head, walking bass, arpeggio voicing, jazz brushes.
 tempo: 116
 soundfont: SoundFonts/arachno.sf2
 
 defaults:
   instrument: epiano
-  voices: { bass: 32 }
+  voices: { bass: 32, soprano: sax }
   bass: { style: walking, step: 0.5 }
   satb: arpeggio
   chord_length: h
   chords_order: roundrobin
+  key: E
+  mode: minor
   perc:
     main: "er,eg,er,eg, er,eg,er,ei"
     fill_rate: 0.08
@@ -17,6 +23,7 @@ defaults:
 sections:
   - name: head
     repeat: 2
+    melody: "e5 e6 e7 h1' q7 h5 e4 e5 e6 h7 q6 h4 e3 e4 e5 h6 q5 h3 e2 e3 e4 h5 h2 h1"
     keys: "A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min7, E::min7, A::min7, D::7, G::maj7, C::maj7, F#::min7, B::7, E::min, E::min"
 
   - name: solo

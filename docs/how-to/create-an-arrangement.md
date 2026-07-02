@@ -47,6 +47,32 @@ sections:
     keys: "A::min7, D::7, G::min, G::min"
 ```
 
+## Add a melody
+
+A section can carry a real tune on top of the harmony. Set `melody` to a line in
+the [scale-degree grammar](../reference/token-grammar.md) (`q1 e2 e3 q5 …`); it
+plays on the **soprano** channel and replaces the SATB soprano for that section,
+so the top line is the melody rather than an arpeggio. Give it its own patch with
+`voices: { soprano: … }`.
+
+```yaml
+defaults:
+  key: C            # tonic for the melody (else inferred from the chords)
+  mode: major       # major | minor | dorian | …
+  voices: { soprano: sax }   # the lead patch
+
+sections:
+  - name: head
+    melody: "q5 q6 q7 h1' q7 q6 h5"   # scale degrees; b3/#4 for accidentals
+    keys: "A::min7, D::7, G::maj7, C::maj7"
+```
+
+The melody tiles to fill the section, so write one phrase and let `repeat` loop it.
+Use `melody_relative: chord` to have a short motif re-fit each chord (degree 1
+lands on the current chord's root) — nice for solos over changes. Sections without
+a `melody` keep their SATB top voice as before. Worked example:
+[`songs/kiss.yml`](../../songs/kiss.yml).
+
 ## The pattern
 
 The arrangement layer is where the *evolution* lives: keep `keys` similar across

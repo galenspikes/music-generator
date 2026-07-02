@@ -107,9 +107,11 @@ and the MidiOut 5th-voice change touches core.
 **Goal:** the micro-timing/velocity life that makes heads nod.
 
 ### Ideas
-- **Swing/shuffle:** delay off-beat subdivisions by a swing %. Implement as a
-  transform on event `when` keyed to position within the beat. `swing: 0.6`
-  (0.5 = straight), global and/or per-section.
+- **Swing/shuffle — SHIPPED (v1, global):** `--swing 0..0.75` warps off-beat
+  subdivisions in `render_events` via `apply_swing`/`_swing_time` (0 = straight
+  eighths, 0.5 = triplet swing). It reads `MidiOut.swing`, so it applies to
+  every render path (flat, arrangement, fugue, process); songs set it under
+  `defaults: { swing: ... }`. *Still open: per-section swing.*
 - **Pocket / micro-timing:** small per-voice timing offsets — bass slightly
   ahead, snare laid back. Per-voice `timing_offset` in ms/ticks.
 - **Bass locked to kick:** a bass style (or flag) that places bass onsets on the
@@ -137,9 +139,12 @@ needs ear-tuning.
 
 **Goal:** make renders sit right, and enable finishing in a DAW.
 
-### 4a. Per-voice pan / volume — *quick win, big perceptual payoff*
-Emit CC7 (volume) + CC10 (pan) per voice channel (and per section if wanted).
-`set_voice_programs` already iterates voices — add the CCs there.
+### 4a. Per-voice pan / volume — *pan SHIPPED*
+CC7 (volume) already goes out per voice channel at init. **Pan is now live:**
+`--pan-spread 0..1` emits CC10 per SATB voice from `VOICE_PAN_POS`
+(soprano/bass widest, alto/tenor inside; 0 = mono/centred). Songs set it under
+`defaults: { pan_spread: ... }`. *Still open: explicit per-voice pan/vol values
+and per-section mixes, e.g.*
 ```yaml
 mix: { bass: {vol: 105, pan: 64}, soprano: {pan: 84}, drums: {vol: 110} }
 ```
@@ -172,6 +177,29 @@ Threads 4b (stems), 4c (per-section FX), and album batch-rendering all get much
 easier in Python than in the shell wrapper (which already cost us 3 bug fixes).
 A `render.py` that does generate → FluidSynth → ffmpeg, with stem and batch
 support, is the natural home. Worth doing before/with Thread 4.
+
+---
+
+## Thread 5 — Fugue lab (exploration + teaching)
+
+The `--fugue` mode is only an *exposition* today (subject, tonal-ish answer,
+inverted countersubject, cadence — see `fugue.py`), but it's the most-liked demo
+and points at two futures worth pursuing:
+
+- **A real fugue generator.** Grow past the exposition: episodes (sequenced
+  fragments of the subject), middle entries in related keys, and the classic
+  devices — stretto, invertible counterpoint, augmentation/diminution of the
+  subject. The melody primitive already gives us `transpose_diatonic` / `invert` /
+  `retrograde` / `augment` (`melody.py`), so the transforms are in hand; what's
+  missing is the *form* controller that schedules entries and episodes.
+- **An educational tool.** A guided "build a fugue" surface (in the webapp or a
+  notebook): type a subject, watch each voice enter, and toggle each device on/off
+  to *hear* what an episode or a stretto does. The scale-degree notation and the
+  piano-roll make the structure legible — a genuinely good way to teach fugue.
+
+**Effort:** generator medium–large; teaching UI medium. **Risk:** medium (real
+fugal writing is hard to get consistently musical). **Why:** high-delight, and it
+doubles as a showcase and a learning aid.
 
 ---
 

@@ -16,7 +16,9 @@ working. See ``docs/architecture.md`` for the full module map and data flow.
 """
 import argparse
 import json
+import math
 import random
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -66,7 +68,7 @@ _KEY_PRESETS_CACHE: dict[str, list[str]] | None = None
 
 
 def load_key_presets(force_reload: bool = False) -> dict[str, list[str]]:
-    """Load key presets from metadata/keys_presets.json (cached)."""
+    """Load key presets from library/keys_presets.json (cached)."""
 
     global _KEY_PRESETS_CACHE
     if _KEY_PRESETS_CACHE is not None and not force_reload:
@@ -338,6 +340,34 @@ def resolve_out_path(out_arg: str | None, default_slug: str) -> str:
     return str(subdir / ts_filename(slug))
 
 
+def _swing_time(t: float, s: float) -> float:
+    """Warp a beat position ``t`` for a swing amount ``s`` (0 = straight).
+
+    Each beat is split at its midpoint into two eighths; the on-beat eighth is
+    stretched by ``(1 + s)`` and the off-beat compressed by ``(1 - s)``, so the
+    "and" is delayed toward the back of the beat while beat boundaries (whole
+    numbers) stay put. At ``s = 0.5`` the off-beat lands on the triplet (0.75).
+    """
+    b = math.floor(t)
+    f = t - b
+    if f < 0.5:
+        return b + f * (1.0 + s)
+    return b + 0.5 * (1.0 + s) + (f - 0.5) * (1.0 - s)
+
+
+def apply_swing(events: list, s: float) -> list:
+    """Return ``events`` with every start (and end, to keep durations honest)
+    warped by :func:`_swing_time`. A no-op when ``s`` is zero."""
+    if not s:
+        return events
+    out = []
+    for kind, when, dur, payload in events:
+        w0 = _swing_time(when, s)
+        w1 = _swing_time(when + dur, s)
+        out.append((kind, w0, max(0.0, w1 - w0), payload))
+    return out
+
+
 def render_events(midi: "MidiOut",
                   events: list) -> tuple[float, float, float]:
     """Dispatch a time-sorted event stream onto a MidiOut. Handles every event
@@ -347,6 +377,7 @@ def render_events(midi: "MidiOut",
     Shared by the flat render, the arrangement renderer, and the fugue/process
     modes — one dispatch loop instead of several copies.
     """
+    events = apply_swing(events, getattr(midi, "swing", 0.0))
     t_ch = 0.0
     t_dr = 0.0
     voice_max = 0.0
@@ -387,12 +418,14 @@ def render_events(midi: "MidiOut",
 
 def build_generated(bpm: int, voice_events: list, total: float,
                     instrument: str, vel_chords: str,
-                    vel_drums: str) -> "MidiOut":
+                    vel_drums: str, swing: float = 0.0,
+                    pan_spread: float = 0.0) -> "MidiOut":
     """Create a single-timbre MidiOut for the fugue/process modes and return it
     in memory (no save). They emit raw (voice, when, dur, note) tuples — wrap
     them into the standard ('voice', when, dur, (voice, note)) event form."""
     midi = MidiOut(bpm, None, vel_mode_chords=vel_chords,
-                   vel_mode_drums=vel_drums, split_stems=True)
+                   vel_mode_drums=vel_drums, split_stems=True,
+                   swing=swing, pan_spread=pan_spread)
     midi.set_program(resolve_instrument(instrument))
     events = [("voice", when, dur, (voice, note))
               for (voice, when, dur, note) in voice_events]
@@ -402,10 +435,11 @@ def build_generated(bpm: int, voice_events: list, total: float,
 
 
 def _render_generated(out_path: str, bpm: int, voice_events: list, total: float,
-                      instrument: str, vel_chords: str, vel_drums: str) -> None:
+                      instrument: str, vel_chords: str, vel_drums: str,
+                      swing: float = 0.0, pan_spread: float = 0.0) -> None:
     """Build the fugue/process MIDI and save it to ``out_path`` (CLI path)."""
     build_generated(bpm, voice_events, total, instrument, vel_chords,
-                    vel_drums).save(out_path)
+                    vel_drums, swing=swing, pan_spread=pan_spread).save(out_path)
 
 
 def build_flat_midi(args) -> tuple["MidiOut", dict]:
@@ -468,7 +502,9 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     midi = MidiOut(args.bpm, None, tpb=tpb,
                    vel_mode_chords=args.velocity_mode_chords,
                    vel_mode_drums=args.velocity_mode_drums,
-                   split_stems=args.split_stems)
+                   split_stems=args.split_stems,
+                   swing=getattr(args, "swing", 0.0),
+                   pan_spread=getattr(args, "pan_spread", 0.0))
 
     program = resolve_instrument(args.instrument)
 
@@ -583,7 +619,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--keys-preset",
                     type=str,
                     default=None,
-                    help="Name of preset from metadata/keys_presets.json")
+                    help="Name of preset from library/keys_presets.json")
     ap.add_argument("--chords",
                     nargs="+",
                     default=["triads"],
@@ -757,6 +793,19 @@ def build_parser() -> argparse.ArgumentParser:
                     dest="split_stems",
                     action="store_false",
                     help="Merge SATB voices into a single MIDI track.")
+    ap.add_argument(
+        "--swing",
+        type=float,
+        default=0.0,
+        help="0–0.75. Off-beat swing: delays the 'and' of each beat "
+             "(0=straight eighths, 0.5=triplet swing). Default=0.0.")
+    ap.add_argument(
+        "--pan-spread",
+        dest="pan_spread",
+        type=float,
+        default=0.0,
+        help="0–1. Stereo width of the SATB voices across the field "
+             "(0=centred/mono, 1=widest). Needs split stems. Default=0.0.")
 
     return ap
 
@@ -833,7 +882,8 @@ def main():
         fug_events, total = fug.build_fugue(subject, key_pc, fmode,
                                             countersubject=args.fugue_countersubject)
         _render_generated(fug_out, args.bpm, fug_events, total, args.instrument,
-                          args.velocity_mode_chords, args.velocity_mode_drums)
+                          args.velocity_mode_chords, args.velocity_mode_drums,
+                          swing=args.swing, pan_spread=args.pan_spread)
         log_file_operation(music_generator_logger, "write", fug_out, True)
         print(f"Wrote {fug_out}")
         return 0
@@ -850,7 +900,8 @@ def main():
             reps=args.process_reps, stages=args.process_stages)
         _render_generated(proc_out, args.bpm, proc_events, total,
                           args.instrument, args.velocity_mode_chords,
-                          args.velocity_mode_drums)
+                          args.velocity_mode_drums,
+                          swing=args.swing, pan_spread=args.pan_spread)
         log_file_operation(music_generator_logger, "write", proc_out, True)
         print(f"Wrote {proc_out}")
         return 0
@@ -860,16 +911,47 @@ def main():
         import arrangement
         default_slug = Path(args.song).stem
         song_out = resolve_out_path(args.out, default_slug)
-        arr_overrides: dict = {
-            "tempo": args.bpm,
-            "instrument": args.instrument,
-            "chord_length": args.chord_len,
-            "satb": args.satb_style,
-            "bass": {"style": args.bass_style, "step": float(args.bass_step)},
-            "perc": {"fill_rate": float(args.perc_fill_rate)},
-        }
+        # Only override a song's YAML defaults with a CLI flag the user actually
+        # set. Otherwise argparse defaults (--bpm 120, --chord-length e, ...)
+        # would silently clobber the authored arrangement — forcing every song
+        # to 120 bpm and eighth-note chords. A flag counts as "set" when its
+        # value differs from the parser default or it appears in argv (so an
+        # explicit value that happens to equal the default still applies).
+        argv_tokens = sys.argv[1:]
+
+        def _cli_set(dest: str, *flags: str) -> bool:
+            if getattr(args, dest) != ap.get_default(dest):
+                return True
+            return any(tok == f or tok.startswith(f + "=")
+                       for tok in argv_tokens for f in flags)
+
+        arr_overrides: dict = {}
+        if _cli_set("bpm", "--bpm"):
+            arr_overrides["tempo"] = args.bpm
+        if _cli_set("instrument", "--instrument"):
+            arr_overrides["instrument"] = args.instrument
+        if _cli_set("chord_len", "--chord-length"):
+            arr_overrides["chord_length"] = args.chord_len
+        if _cli_set("satb_style", "--satb-style"):
+            arr_overrides["satb"] = args.satb_style
+        if _cli_set("swing", "--swing"):
+            arr_overrides["swing"] = float(args.swing)
+        if _cli_set("pan_spread", "--pan-spread"):
+            arr_overrides["pan_spread"] = float(args.pan_spread)
+        bass_over: dict = {}
+        if _cli_set("bass_style", "--bass-style"):
+            bass_over["style"] = args.bass_style
+        if _cli_set("bass_step", "--bass-step"):
+            bass_over["step"] = float(args.bass_step)
+        if bass_over:
+            arr_overrides["bass"] = bass_over
+        perc_over: dict = {}
+        if _cli_set("perc_fill_rate", "--perc-fill-rate"):
+            perc_over["fill_rate"] = float(args.perc_fill_rate)
         if args.perc_main:
-            arr_overrides["perc"]["main"] = args.perc_main
+            perc_over["main"] = args.perc_main
+        if perc_over:
+            arr_overrides["perc"] = perc_over
         if args.voice_instrument:
             voices: dict = {}
             for vi in args.voice_instrument:

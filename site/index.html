@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Music Generator — a token DSL for generative music</title>
-  <meta name="description" content="A Python music-generation system. Write chord progressions and drum patterns as compact tokens; the engine voices them into SATB harmony, adds percussion, and writes a MIDI file." />
+  <title>Music Generator — a token grammar for generative composition</title>
+  <meta name="description" content="A compact token grammar for generative music composition. Progressions, counterpoint, and percussion are written as terse symbolic notation; the engine realizes them with voice-leading rules into multi-track MIDI. Ostinato, arrangement, fugue, and process-music engines." />
+  <meta name="theme-color" content="#f7f8fb" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/combine/npm/tone@14.7.77,npm/@magenta/music@1.23.1/es6/core.js,npm/focus-visible@5,npm/html-midi-player@1.5.0"></script>
 </head>
@@ -22,22 +23,23 @@
         <li><a href="#modes">Modes</a></li>
         <li><a href="#examples">Examples</a></li>
         <li><a href="#quickstart">Quick start</a></li>
-        <li><a class="nav-cta" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live →</a></li>
+        <li><a class="nav-cta" href="https://huggingface.co/spaces/gsp87/music-generator">Try it live →</a></li>
       </ul>
     </div>
   </nav>
 
   <header class="hero">
     <div class="wrap">
-      <p class="eyebrow">Generative music · Python · MIDI</p>
+      <p class="eyebrow">Generative composition · symbolic notation · MIDI</p>
       <h1>Music Generator</h1>
       <p class="lede">
-        Write a chord progression as a line of text. The engine voices it into
-        four-part harmony, adds percussion and melody, and hands you a MIDI file
-        — or rendered audio.
+        A compact token grammar for generative composition. Harmony,
+        counterpoint, and rhythm are written as terse symbolic notation; the
+        engine realizes them under explicit voice-leading rules into multi-track
+        MIDI — from ostinato grooves to fugal expositions and process music.
       </p>
       <p class="actions">
-        <a class="btn" href="https://huggingface.co/spaces/galenspikes/music-generator">Try it live</a>
+        <a class="btn" href="https://huggingface.co/spaces/gsp87/music-generator">Try it live</a>
         <a class="btn btn-ghost" href="https://github.com/galenspikes/music-generator">View on GitHub</a>
         <a class="btn btn-ghost" href="#examples">Hear examples</a>
       </p>
@@ -147,7 +149,7 @@ q7 h1               leading tone to tonic
 
 # transforms apply to the whole line:
 --melody-transform invert
---melody-transform transpose:5</code></pre>
+--melody-transform retrograde</code></pre>
           <p class="token-note">
             Degrees are relative to the current key, so the same melody
             tokens work over any progression.
@@ -179,7 +181,7 @@ q7 h1               leading tone to tonic
           </p>
           <pre><code>--mode ostinato \
   --keys 'C::maj7, A::min9, D::min7, G::13' \
-  --bars 32 --instrument epiano</code></pre>
+  --seconds 48 --instrument epiano</code></pre>
         </article>
 
         <article class="mode-card">
@@ -189,7 +191,7 @@ q7 h1               leading tone to tonic
             their own keys, percussion, and instrument choices. Sections are
             assembled into a full song structure.
           </p>
-          <pre><code>--mode arrangement --song songs/kiss_on_my_list.yml</code></pre>
+          <pre><code>--song songs/kiss.yml</code></pre>
         </article>
 
         <article class="mode-card">
@@ -199,9 +201,8 @@ q7 h1               leading tone to tonic
             a classical fugal exposition — subject, answer, and stretto entries
             staggered across voices.
           </p>
-          <pre><code>--mode fugue \
-  --melody 'q1 q5 e4 e3 q2 h1' \
-  --melody-key C --bars 64</code></pre>
+          <pre><code>--fugue 'q1 q5 e4 e3 q2 h1' \
+  --melody-key C --melody-mode major</code></pre>
         </article>
 
         <article class="mode-card">
@@ -211,55 +212,252 @@ q7 h1               leading tone to tonic
             after Glass), phase shifting (two copies drift apart, after Reich),
             or augmentation. Minimal input, maximal unfolding.
           </p>
-          <pre><code>--mode process --process additive \
+          <pre><code>--process additive \
   --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
   --instrument organ --melody-key C</code></pre>
         </article>
       </div>
+
+      <p class="muted">
+        Two feel controls cut across every mode: <code>--swing</code> (0–0.75)
+        delays the off-beats for a shuffle, and <code>--pan-spread</code> (0–1)
+        fans the voices from soprano to bass across the stereo field. Both are
+        written into the MIDI and appear as knobs in the web instrument.
+      </p>
     </section>
 
     <!-- ── EXAMPLES ───────────────────────────────────────────── -->
     <section id="examples" class="wrap">
-      <h2>Examples</h2>
+      <h2>Worked examples</h2>
       <p class="muted">
-        Rendered from MIDI in your browser. Press play on any one.
+        Each is rendered from the engine's own MIDI, played in your browser — no
+        plugins, no SoundFont. They span idiomatic covers, four-voice
+        counterpoint, a fugal exposition, and process music. Regenerate the set
+        with
+        <code>make gallery</code>; the flagship is <code>make demo</code>.
       </p>
+      <div class="player-cta">
+        <div>
+          <strong>Want to tweak them?</strong>
+          <p>Open the interactive player — swap the instrument on any voice, dial
+            swing and stereo spread, then copy a link that reopens your exact
+            settings.</p>
+        </div>
+        <a class="btn" href="https://claude.ai/code/artifact/4a87e4db-47a9-4b9f-a715-524c2729f740">Open the player →</a>
+      </div>
 
       <article class="example">
         <div class="example-head">
-          <h3>Jazz progression</h3>
-          <span class="ex-tag">ostinato · sevenths &amp; ninths</span>
+          <h3>★ Kiss On My List</h3>
+          <span class="ex-tag">arrangement · the demo button</span>
         </div>
-        <p>An electric-piano ostinato over a ii–V coloured progression.</p>
-        <pre><code>--mode ostinato --keys 'C::maj7, A::min9, D::min7, G::13' \
-  --chords sevenths ninths --instrument epiano</code></pre>
-        <midi-player src="assets/midi/jazz.mid" sound-font visualizer="#vis-jazz"></midi-player>
-        <midi-visualizer id="vis-jazz" type="piano-roll"></midi-visualizer>
+        <p>The flagship. A full multi-section pop arrangement with a real sung
+          lead (verse tune, pre-chorus lift, chorus hook) that turns to a bright
+          saw on the choruses, over slash/pedal bass, a per-section tempo map, and
+          a fill-rate arc that builds and releases — it plays like a record.</p>
+        <pre><code>make demo          # or:
+music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
+        <midi-player src="assets/midi/kiss.mid" sound-font visualizer="#vis-kiss"></midi-player>
+        <midi-visualizer id="vis-kiss" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Autumn Leaves</h3>
+          <span class="ex-tag">arrangement · walking bass</span>
+        </div>
+        <p>A sax head melody over walking bass and arpeggiated SATB on the ii–V–i
+          cycle, jazz brushes, then a saw-lead solo chorus.</p>
+        <pre><code>music_generator.py --song songs/autumn_leaves.yml --out autumn --no-play</code></pre>
+        <midi-player src="assets/midi/autumn_leaves.mid" sound-font visualizer="#vis-autumn"></midi-player>
+        <midi-visualizer id="vis-autumn" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>A Whiter Shade of Pale</h3>
+          <span class="ex-tag">arrangement · descending bass</span>
+        </div>
+        <p>A Bach-style descending bass built entirely from slash chords
+          (C, C/B, Am, Am/G, …) under church organ.</p>
+        <pre><code>music_generator.py --song songs/whiter_shade_of_pale.yml --out wsop --no-play</code></pre>
+        <midi-player src="assets/midi/whiter_shade_of_pale.mid" sound-font visualizer="#vis-wsop"></midi-player>
+        <midi-visualizer id="vis-wsop" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Isn't She Lovely</h3>
+          <span class="ex-tag">arrangement · sung melody</span>
+        </div>
+        <p>A funk-soul groove with a real verse melody on top — a sung lead over
+          octave bass and a syncopated kit, then a harmonica solo on the bridge.</p>
+        <pre><code>music_generator.py --song songs/isnt_she_lovely.yml --out lovely --no-play</code></pre>
+        <midi-player src="assets/midi/isnt_she_lovely.mid" sound-font visualizer="#vis-lovely"></midi-player>
+        <midi-visualizer id="vis-lovely" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Girl from Ipanema</h3>
+          <span class="ex-tag">arrangement · bossa modulation</span>
+        </div>
+        <p>A bossa AABA where the bridge modulates up to G&flat; major and swaps
+          the soprano for a flute lead, then drops back to F for the out-head —
+          gentle clave percussion throughout.</p>
+        <pre><code>music_generator.py --song songs/girl_from_ipanema.yml --out ipanema --no-play</code></pre>
+        <midi-player src="assets/midi/girl_from_ipanema.mid" sound-font visualizer="#vis-ipanema"></midi-player>
+        <midi-visualizer id="vis-ipanema" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Yesterday</h3>
+          <span class="ex-tag">arrangement · lead-sheet ballad</span>
+        </div>
+        <p>A verse tune sung by a nylon guitar over an F-major Real Book chart,
+          with arpeggiated inner voices and acoustic bass — and a flute taking
+          the bridge.</p>
+        <pre><code>music_generator.py --song songs/yesterday.yml --out yesterday --no-play</code></pre>
+        <midi-player src="assets/midi/yesterday.mid" sound-font visualizer="#vis-yesterday"></midi-player>
+        <midi-visualizer id="vis-yesterday" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Riders on the Storm</h3>
+          <span class="ex-tag">arrangement · brooding vamp</span>
+        </div>
+        <p>A slow, brooding Dm7 vamp: a walking bass wanders under sparse
+          percussion and a rock organ, then an organ solo swaps the lead patch
+          and lifts the fill rate. Restraint as the feature.</p>
+        <pre><code>music_generator.py --song songs/riders_on_the_storm.yml --out riders --no-play</code></pre>
+        <midi-player src="assets/midi/riders_on_the_storm.mid" sound-font visualizer="#vis-riders"></midi-player>
+        <midi-visualizer id="vis-riders" type="piano-roll"></midi-visualizer>
       </article>
 
       <article class="example">
         <div class="example-head">
           <h3>Dense colour voicing</h3>
-          <span class="ex-tag">every chord tone · exotic recipes</span>
+          <span class="ex-tag">dense · exotic recipes</span>
         </div>
-        <p>Full extended and exotic chord sets sounded complete across the register.</p>
-        <pre><code>--voicing dense --instrument strings --chord-length w \
-  --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance'</code></pre>
-        <midi-player src="assets/midi/colors.mid" sound-font visualizer="#vis-colors"></midi-player>
+        <p>The token DSL as a colour organ: extended and exotic chord sets
+          (maj7#11, mystic, messiaen, quartal, 7alt) sounded complete across the
+          register.</p>
+        <pre><code>cook_song.py make dense_colors</code></pre>
+        <midi-player src="assets/midi/dense_colors.mid" sound-font visualizer="#vis-colors"></midi-player>
         <midi-visualizer id="vis-colors" type="piano-roll"></midi-visualizer>
       </article>
 
       <article class="example">
         <div class="example-head">
-          <h3>Process music</h3>
-          <span class="ex-tag">additive · after Glass</span>
+          <h3>Counterpoint study</h3>
+          <span class="ex-tag">counterpoint · suspensions</span>
         </div>
-        <p>A single cell grows a note at a time, then contracts.</p>
-        <pre><code>--mode process --process additive \
-  --process-cell 'e1 e2 e3 e5 e7 e5 e3 e2' \
-  --instrument organ --melody-key C</code></pre>
-        <midi-player src="assets/midi/process.mid" sound-font visualizer="#vis-process"></midi-player>
-        <midi-visualizer id="vis-process" type="piano-roll"></midi-visualizer>
+        <p>Four independent SATB lines over a ii–V cycle, with suspensions and
+          anticipations woven in — voiced as a choir.</p>
+        <pre><code>cook_song.py make counterpoint</code></pre>
+        <midi-player src="assets/midi/counterpoint.mid" sound-font visualizer="#vis-counter"></midi-player>
+        <midi-visualizer id="vis-counter" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Prelude in C style</h3>
+          <span class="ex-tag">arpeggio · harpsichord</span>
+        </div>
+        <p>A flowing homage to Bach's Well-Tempered Clavier Prelude in C — steady
+          arpeggiated motion and gentle harmonic shifts, voiced as harpsichord.</p>
+        <pre><code>cook_song.py make bach_prelude</code></pre>
+        <midi-player src="assets/midi/bach_prelude.mid" sound-font visualizer="#vis-bach"></midi-player>
+        <midi-visualizer id="vis-bach" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Fugue exposition</h3>
+          <span class="ex-tag">fugal · subject &amp; answer</span>
+        </div>
+        <p>Voices enter with subject then answer (up a fifth); the prior voice
+          continues with the inverted countersubject, and a cadence closes it.</p>
+        <pre><code>cook_song.py make fugue</code></pre>
+        <midi-player src="assets/midi/fugue.mid" sound-font visualizer="#vis-fugue"></midi-player>
+        <midi-visualizer id="vis-fugue" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Additive process</h3>
+          <span class="ex-tag">process · after Glass</span>
+        </div>
+        <p>A melodic cell grows a note at a time, then contracts — watch the
+          phrase lengthen and fold back. An arching two-register cell on
+          vibraphone.</p>
+        <pre><code>cook_song.py make process_additive</code></pre>
+        <midi-player src="assets/midi/process_additive.mid" sound-font visualizer="#vis-additive"></midi-player>
+        <midi-visualizer id="vis-additive" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Phase process</h3>
+          <span class="ex-tag">process · after Reich</span>
+        </div>
+        <p>Two voices loop the same cell; the follower advances one note per
+          stage, sweeping every rhythmic alignment before snapping back to
+          unison. Marimba, brisk pulse.</p>
+        <pre><code>cook_song.py make process_phase</code></pre>
+        <midi-player src="assets/midi/process_phase.mid" sound-font visualizer="#vis-phase"></midi-player>
+        <midi-visualizer id="vis-phase" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Percussion evolution</h3>
+          <span class="ex-tag">staged grooves · fill curve</span>
+        </div>
+        <p>Over a held vamp the kit builds in four obvious stages — kick + hats →
+          + backbeat snare → + off-beat open hats → full 16th-note kit with fills —
+          while the fill rate ramps 0 → 0.6 across the piece.</p>
+        <pre><code>cook_song.py make perc_evolution</code></pre>
+        <midi-player src="assets/midi/perc_evolution.mid" sound-font visualizer="#vis-perc"></midi-player>
+        <midi-visualizer id="vis-perc" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Salsa Brava</h3>
+          <span class="ex-tag">groove · clave &amp; brass</span>
+        </div>
+        <p>A bright salsa progression with a brass lead, clave-driven
+          percussion, and lively counterpoint lines.</p>
+        <pre><code>cook_song.py make salsa</code></pre>
+        <midi-player src="assets/midi/salsa.mid" sound-font visualizer="#vis-salsa"></midi-player>
+        <midi-visualizer id="vis-salsa" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Arena Rock Pulse</h3>
+          <span class="ex-tag">groove · distorted guitar</span>
+        </div>
+        <p>A driving anthem with distorted guitar, a high-energy kit, and
+          round-robin chord movement.</p>
+        <pre><code>cook_song.py make rock</code></pre>
+        <midi-player src="assets/midi/rock.mid" sound-font visualizer="#vis-rock"></midi-player>
+        <midi-visualizer id="vis-rock" type="piano-roll"></midi-visualizer>
+      </article>
+
+      <article class="example">
+        <div class="example-head">
+          <h3>Midnight R&amp;B</h3>
+          <span class="ex-tag">groove · electric piano</span>
+        </div>
+        <p>A smooth electric-piano vibe with extended chords, humanized
+          dynamics, and soulful counterpoint.</p>
+        <pre><code>cook_song.py make rnb</code></pre>
+        <midi-player src="assets/midi/rnb.mid" sound-font visualizer="#vis-rnb"></midi-player>
+        <midi-visualizer id="vis-rnb" type="piano-roll"></midi-visualizer>
       </article>
     </section>
 
@@ -289,16 +487,16 @@ python3 -m venv venv && venv/bin/pip install -r requirements.txt</code></pre>
         </div>
         <div class="qs-step">
           <span class="qs-label">Or use the web instrument</span>
-          <pre><code>cd webapp && pip install -r requirements.txt
-uvicorn backend:app --port 8753 &
-cd frontend && npm install && npm run dev</code></pre>
+          <pre><code>venv/bin/pip install -r requirements.txt
+make webapp                       # backend → http://127.0.0.1:8753
+cd webapp/frontend && npm install && npm run dev</code></pre>
         </div>
       </div>
 
       <p class="muted">
         Output lands in <code>output/midi/</code>, <code>output/audio/</code>, and
         <code>output/metadata/</code>. Full CLI reference:
-        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/cli.md">docs/reference/cli.md</a>.
+        <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/cli-reference.md">docs/reference/cli-reference.md</a>.
       </p>
     </section>
 
@@ -310,7 +508,7 @@ cd frontend && npm install && npm run dev</code></pre>
       <p class="footer-links">
         <a href="https://github.com/galenspikes/music-generator">GitHub</a>
         <span>·</span>
-        <a href="https://huggingface.co/spaces/galenspikes/music-generator">Live demo</a>
+        <a href="https://huggingface.co/spaces/gsp87/music-generator">Live demo</a>
         <span>·</span>
         <a href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md">Token grammar</a>
       </p>

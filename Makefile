@@ -37,3 +37,18 @@ format: ## Apply ruff's safe autofixes
 
 .PHONY: check
 check: lint test ## Lint then test — run before committing
+
+.PHONY: demo
+demo: ## Play the flagship demo (Kiss On My List) — the "press demo" button
+	$(PY) cook_song.py make kiss
+
+.PHONY: gallery
+gallery: ## Render the demo highlight set to committable MIDI (site/assets/midi)
+	$(PY) cook_song.py gallery
+
+.PHONY: webapp
+webapp: ## Run the web editor backend (edit every parameter live and hear it)
+	@echo "Backend → http://127.0.0.1:8753"
+	@echo "In another terminal start the UI:"
+	@echo "  cd webapp/frontend && npm install && npm run dev   # → http://localhost:5173"
+	PYTHONPATH=$(CURDIR) $(VENV)/bin/uvicorn app:app --app-dir webapp/backend --port 8753

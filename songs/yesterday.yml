@@ -1,8 +1,9 @@
-# Auto-transcribed from a "Yesterday" (Lennon/McCartney) Real Book lead sheet.
-# Key: F major. Chords read from the chart; harmonic rhythm approximated at the
-# half-note (chord_length: h). REVIEW/EDIT — this is a first-pass import.
-title: Yesterday (import)
-description: Lennon/McCartney. Nylon guitar + acoustic bass. Flute joins on the bridge.
+# demonstrates: a lead-sheet ballad with a real melody — the verse tune sung by
+# a nylon guitar over an F-major Real Book chart, arpeggiated inner voices and
+# acoustic bass, with a flute taking the bridge. Harmonic rhythm sits at the half
+# note. A good example of turning a jazz/pop lead sheet into a playable song.
+title: Yesterday (Lennon/McCartney)
+description: Lennon/McCartney. Nylon-guitar melody + acoustic bass. Flute takes the bridge.
 tempo: 96
 soundfont: SoundFonts/arachno.sf2
 
@@ -13,6 +14,8 @@ defaults:
   satb: arpeggio
   chord_length: h
   chords_order: roundrobin
+  key: F
+  mode: major
   perc:
     main: "er,eg,er,eg, er,eg,er,eg"   # gentle hats
     fill_rate: 0.05
@@ -27,16 +30,19 @@ sections:
   - name: verse
     repeat: 2
     # F | E-7 A7 | D- | D-/C Bb | C7 | Bb/F F | C/E D- | G | Bb F
+    melody: "h2 q1 h1 hr q3 q4 q5 h5 q4 q3 q4 h2 q1 h1 hr h6 q5 q4 h3 q2 q1 h2 h1"
     keys: "F::maj, E::min7, A::7, D::min, D::min/C, Bb::maj, C::7, Bb::maj/F, F::maj, C::maj/E, D::min, G::maj, Bb::maj, F::maj"
 
   - name: bridge
     repeat: 2
-    voices: { bass: 32, soprano: 73 }   # flute joins on the bridge
+    voices: { bass: 32, soprano: 73 }   # flute takes the bridge
     # E-7 A7 | D- D-/C Bb D-/A | G-6 | C7 | F
+    melody: "q5 q5 q4 h3 q4 q3 q2 h1 q5 q4 h3 q2 h1"
     keys: "E::min7, A::7, D::min, D::min/C, Bb::maj, D::min/A, G::minadd6, C::7, F::maj"
 
   - name: verse_out
     repeat: 1
+    melody: "h2 q1 h1 hr q3 q4 q5 h5 q4 q3 q4 h2 q1 h1 hr h6 q5 q4 h3 q2 q1 h2 h1"
     keys: "F::maj, E::min7, A::7, D::min, D::min/C, Bb::maj, C::7, Bb::maj/F, F::maj, C::maj/E, D::min, G::maj, Bb::maj, F::maj"
 
   - name: coda

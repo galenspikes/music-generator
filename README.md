@@ -173,18 +173,46 @@ dedicated bass patch (`--voice-instrument bass=33`). Requires split stems.
 --satb-style arpeggio --counterpoint-step 0.125     # arpeggiated patterns
 ```
 
-## Recipe system
+## Demo library
 
-The project includes a recipe system of pre-configured styles.
+Press the demo button. `cook_song.py` is one catalog over two kinds of demo:
+
+- **Songs** — full multi-section arrangements in `songs/*.yml` (the "press demo"
+  tunes). The flagship is **Kiss On My List**.
+- **Presets** — capability showcases in `library/song_cookbook.py` that demo the
+  things a song file can't: fugue, process music, dense/exotic voicing, melody
+  transforms, and evolving percussion.
 
 ```bash
-python cook_song.py list          # list available recipes
-python cook_song.py show rock     # show recipe details
-python cook_song.py make rock     # generate a pre-configured song
+make demo                          # play the flagship (Kiss On My List)
+make gallery                       # render the highlight set to site/assets/midi
+
+python cook_song.py list           # every demo (songs + presets)
+python cook_song.py show kiss      # details for one demo
+python cook_song.py make kiss      # render + play a song
+python cook_song.py make fugue     # render + play a preset
+python cook_song.py make fugue -- --sf2 SoundFonts/arachno.sf2   # forward args
 ```
 
-Representative styles include `rock`, `jazz`, `classical`, `funk`, `ambient`,
-and `metal`. Add your own to `library/song_cookbook.py`:
+Songs: `kiss`, `autumn_leaves`, `girl_from_ipanema`, `isnt_she_lovely`,
+`riders_on_the_storm`, `whiter_shade_of_pale`, `yesterday`. Several carry a real
+melody line (scale-degree grammar) on top of the arrangement.
+
+Presets: `dense_colors`, `counterpoint`, `fugue`, `process_additive`,
+`process_additive_long` (~8 min), `process_phase`, `process_phase_5min`,
+`process_phase_20min`, `melody_transforms`, `perc_evolution`, `salsa`, `rock`,
+`rnb`, `bach_prelude`, `bach_counterpoint`.
+
+A browser-playable gallery (rendered MIDI, no SoundFont needed) lives in
+[`site/`](site/index.html) — regenerate it with `make gallery`.
+
+To **edit every parameter live and hear it** — chords, voicing, bass, melody,
+percussion tokens, process, seed, … — run the web editor (`make webapp`, then
+`cd webapp/frontend && npm install && npm run dev`); it builds its controls from
+the engine's own schema, so it always exposes the full feature set. See
+[`webapp/README.md`](webapp/README.md).
+
+Add your own preset to `library/song_cookbook.py`:
 
 ```python
 "my_style": {
@@ -290,7 +318,7 @@ music-generator/
   composition.py         # progressions, chord families, harmony timelines
   render.py              # audio rendering pipeline (FluidSynth, ffmpeg, metadata)
   play_music             # thin shim over render.py
-  cook_song.py           # recipe system
+  cook_song.py           # demo library CLI (songs + presets, gallery batch)
   arrangement.py         # YAML song-file arrangements
   fugue.py               # fugal exposition generator
   process.py             # minimalist process music
