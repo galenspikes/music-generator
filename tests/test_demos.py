@@ -16,6 +16,7 @@ from pathlib import Path
 import mido
 import pytest
 
+import arrangement as arr
 import music_generator as mg
 
 OUT = mg.MIDI_DIR
@@ -105,3 +106,77 @@ def test_cli_bpm_override_still_scales(slug):
     mid = _load_midi(slug)
     tempos = _tempos(mid)
     assert max(tempos) <= 100, f"expected scaled-down tempos, got {tempos}"
+
+
+# --- claims must match reality -------------------------------------------
+def _recipe_argv(name, slug, extra=()):
+    return [str(a) for a in COOKBOOK[name]["args"]] + list(extra) + \
+        ["--no-play", "--seed", "1", "--out", slug]
+
+
+PROCESS_MINUTES = {              # the label each preset advertises
+    "process_additive": 2.08,
+    "process_additive_long": 8.17,
+    "process_phase_5min": 5.06,
+    "process_phase_20min": 20.02,
+}
+
+
+@pytest.mark.parametrize("name,minutes", list(PROCESS_MINUTES.items()))
+def test_process_length_matches_label(name, minutes, slug):
+    _run(_recipe_argv(name, slug))          # process ignores --seconds
+    got = _load_midi(slug).length / 60.0
+    assert abs(got - minutes) < 0.4, f"{name}: {got:.2f} min vs ~{minutes} min"
+
+
+PRESET_PROGRAM = {               # preset -> a GM program its description promises
+    "counterpoint": 52,          # choir
+    "bach_counterpoint": 6,      # harpsichord
+    "bach_prelude": 0,           # piano
+    "dense_colors": 50,          # slow strings
+    "process_additive": 11,      # vibraphone
+    "fugue": 16,                 # organ
+}
+
+
+@pytest.mark.parametrize("name,prog", list(PRESET_PROGRAM.items()))
+def test_preset_instrument_matches_description(name, prog, slug):
+    _run(_recipe_argv(name, slug, extra=("--seconds", "6")))
+    mid = _load_midi(slug)
+    progs = {m.program for tr in mid.tracks for m in tr
+             if m.type == "program_change"}
+    assert prog in progs, f"{name}: expected GM {prog}, got {sorted(progs)}"
+
+
+def test_perc_evolution_actually_builds(slug):
+    _run(_recipe_argv("perc_evolution", slug))
+    mid = _load_midi(slug)
+    t, hits = 0.0, []
+    for msg in mid:
+        t += msg.time
+        if msg.type == "note_on" and msg.velocity > 0 and msg.channel == 9:
+            hits.append(t)
+    assert hits, "no drum hits"
+    end = max(hits)
+    q = [0, 0, 0, 0]
+    for h in hits:
+        q[min(3, int(h / end * 4))] += 1
+    # four stages of rising density — each quarter busier than the last
+    assert q[0] < q[1] < q[2] < q[3], f"perc doesn't build across stages: {q}"
+
+
+def _song_files_with_melody():
+    return [p for p in SONG_FILES if "melody:" in p.read_text(encoding="utf-8")]
+
+
+@pytest.mark.parametrize("song", _song_files_with_melody(),
+                         ids=lambda p: p.stem)
+def test_song_melody_is_monophonic(song):
+    # A song that declares a melody must play it as a single soprano line — if
+    # the SATB soprano weren't suppressed, melody + arpeggio would overlap.
+    events, _ = arr.build_events(arr.load_spec(str(song)))
+    sop = sorted((w, d) for (k, w, d, p) in events
+                 if k == "voice" for (v, n) in [p] if v == "soprano")
+    assert all(sop[i][0] >= sop[i - 1][0] + sop[i - 1][1] - 1e-6
+               for i in range(1, len(sop))), \
+        f"{song.stem}: soprano not monophonic (melody doubled with SATB?)"

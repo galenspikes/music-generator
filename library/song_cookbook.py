@@ -56,9 +56,9 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
     "counterpoint": {
         "title": "Counterpoint Study",
         "description": (
-            "Four independent SATB lines over a ii-V cycle, with suspensions and"
-            " anticipations woven in. Shows --satb-style counterpoint and the"
-            " suspension/anticipation probabilities."
+            "Four independent SATB lines over a ii-V cycle, voiced as a choir,"
+            " with suspensions and anticipations woven in. Shows --satb-style"
+            " counterpoint and the suspension/anticipation probabilities."
         ),
         "args": [
             "--mode", "ostinato",
@@ -357,8 +357,8 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
     "bach_counterpoint": {
         "title": "Prelude Counterpoint Study",
         "description": (
-            "A contrapuntal exploration of the Prelude in C harmony,"
-            " voiced with independent SATB motion and subtle suspensions."
+            "A contrapuntal exploration of the Prelude in C harmony on"
+            " harpsichord, with independent SATB motion and subtle suspensions."
         ),
         "args": [
             "--mode", "complete",

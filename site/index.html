@@ -232,9 +232,10 @@ q7 h1               leading tone to tonic
           <h3>★ Kiss On My List</h3>
           <span class="ex-tag">arrangement · the demo button</span>
         </div>
-        <p>The flagship. A full multi-section pop arrangement with a per-section
-          tempo map, slash/pedal bass, a saw lead over the hooks, and a fill-rate
-          arc that builds and releases — it plays like a finished record.</p>
+        <p>The flagship. A full multi-section pop arrangement with a real sung
+          lead (verse tune, pre-chorus lift, chorus hook) that turns to a bright
+          saw on the choruses, over slash/pedal bass, a per-section tempo map, and
+          a fill-rate arc that builds and releases — it plays like a record.</p>
         <pre><code>make demo          # or:
 music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
         <midi-player src="assets/midi/kiss.mid" sound-font visualizer="#vis-kiss"></midi-player>
@@ -246,8 +247,8 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
           <h3>Autumn Leaves</h3>
           <span class="ex-tag">arrangement · walking bass</span>
         </div>
-        <p>Jazz voice-leading over the ii–V–I cycle: arpeggiated SATB, a walking
-          bass, brush kit, and a saw-lead solo chorus.</p>
+        <p>A sax head melody over walking bass and arpeggiated SATB on the ii–V–i
+          cycle, jazz brushes, then a saw-lead solo chorus.</p>
         <pre><code>music_generator.py --song songs/autumn_leaves.yml --out autumn --no-play</code></pre>
         <midi-player src="assets/midi/autumn_leaves.mid" sound-font visualizer="#vis-autumn"></midi-player>
         <midi-visualizer id="vis-autumn" type="piano-roll"></midi-visualizer>
@@ -296,7 +297,7 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
           <span class="ex-tag">counterpoint · suspensions</span>
         </div>
         <p>Four independent SATB lines over a ii–V cycle, with suspensions and
-          anticipations woven in.</p>
+          anticipations woven in — voiced as a choir.</p>
         <pre><code>cook_song.py make counterpoint</code></pre>
         <midi-player src="assets/midi/counterpoint.mid" sound-font visualizer="#vis-counter"></midi-player>
         <midi-visualizer id="vis-counter" type="piano-roll"></midi-visualizer>
@@ -319,8 +320,9 @@ music_generator.py --song songs/kiss.yml --out kiss --no-play</code></pre>
           <h3>Percussion evolution</h3>
           <span class="ex-tag">staged grooves · fill curve</span>
         </div>
-        <p>One vamp; the kit grows through three library grooves (rock halftime →
-          med → fast) while the fill rate ramps up across the piece.</p>
+        <p>Over a held vamp the kit builds in four obvious stages — kick + hats →
+          + backbeat snare → + off-beat open hats → full 16th-note kit with fills —
+          while the fill rate ramps 0 → 0.6 across the piece.</p>
         <pre><code>cook_song.py make perc_evolution</code></pre>
         <midi-player src="assets/midi/perc_evolution.mid" sound-font visualizer="#vis-perc"></midi-player>
         <midi-visualizer id="vis-perc" type="piano-roll"></midi-visualizer>
