@@ -79,6 +79,15 @@ _OCTATONIC = [
     frozenset({2, 3, 5, 6, 8, 9, 11, 0}),
 ]
 
+# Aggregate dyadic consonance weights per interval class ic1..ic6, from
+# David Huron, "Interval-Class Content in Equally Tempered Pitch-Class Sets"
+# (Music Perception 11/3, 1994). Higher = more consonant. Used to rank chords
+# on a consonant..dissonant axis in the reference.
+HURON_WEIGHTS = [-1.428, -0.582, 0.594, 0.386, 1.240, -0.453]
+_H_LO, _H_HI = min(HURON_WEIGHTS), max(HURON_WEIGHTS)
+_CONSONANCE_BANDS = [(0.28, "consonant"), (0.42, "mild"), (0.58, "tense"),
+                     (0.75, "dissonant"), (1.01, "harsh")]
+
 
 def pitch_classes(offsets: list[int]) -> list[int]:
     """Sorted, de-duplicated pitch-class set (mod 12)."""
@@ -92,6 +101,28 @@ def interval_class_vector(pcs: list[int]) -> list[int]:
         d = abs(a - b)
         vec[min(d, 12 - d) - 1] += 1
     return vec
+
+
+def consonance(pcs: list[int]) -> dict:
+    """Rate the chord on a consonant..dissonant axis via Huron's aggregate
+    dyadic consonance. Returns the mean per-dyad ``score`` (Huron units), a
+    normalised dissonance ``index`` (0 consonant .. 1 dissonant), a ``band``
+    label, and a plain-language ``reading`` of the sharp dissonances."""
+    icv = interval_class_vector(pcs)
+    pairs = sum(icv)
+    if pairs == 0:
+        return {"score": 0.0, "index": 0.0, "band": "—", "reading": "a single tone"}
+    score = sum(w * c for w, c in zip(HURON_WEIGHTS, icv)) / pairs
+    index = (_H_HI - score) / (_H_HI - _H_LO)
+    band = next(name for hi, name in _CONSONANCE_BANDS if index < hi)
+    parts = []
+    if icv[0]:
+        parts.append(f"{icv[0]} semitone{'s' if icv[0] != 1 else ''}")
+    if icv[5]:
+        parts.append(f"{icv[5]} tritone{'s' if icv[5] != 1 else ''}")
+    reading = ", ".join(parts) if parts else "no semitones or tritones"
+    return {"score": round(score, 3), "index": round(index, 3),
+            "band": band, "reading": reading}
 
 
 def normal_form(pcs: list[int]) -> list[int]:
@@ -247,4 +278,5 @@ def analyze(offsets: list[int], root_pc: int = 0,
         "icv": interval_class_vector(pcs),
         "intervals": stacked_intervals(offsets),
         "flags": character_flags(offsets),
+        "consonance": consonance(pcs),
     }

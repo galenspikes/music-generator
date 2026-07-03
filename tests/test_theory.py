@@ -117,3 +117,24 @@ def test_analyze_uses_flats_for_minor_degrees():
 
 def test_stacked_intervals_of_a_seventh_chord():
     assert T.stacked_intervals(CHORD_RECIPES["maj7"]) == ["M3", "m3", "M3"]
+
+
+# --- consonance / dissonance (Huron 1994) -------------------------------------
+
+def test_consonance_bands_and_ordering():
+    def con(n):
+        return T.consonance(_pcs(n))
+    assert con("maj")["band"] == "consonant"
+    assert con("quartal")["band"] == "consonant"      # fourths score high
+    assert con("tone_cluster_3")["band"] == "harsh"
+    # more clash => higher dissonance index
+    order = ["maj", "7", "7b9", "tone_cluster_3"]
+    idx = [con(n)["index"] for n in order]
+    assert idx == sorted(idx), idx
+    assert all(0.0 <= v <= 1.0 for v in idx)
+
+
+def test_consonance_reading_names_the_sharp_intervals():
+    assert T.consonance(_pcs("maj"))["reading"] == "no semitones or tritones"
+    r = T.consonance(_pcs("7"))["reading"]           # dominant 7th: one tritone
+    assert "1 tritone" in r

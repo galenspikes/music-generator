@@ -165,6 +165,7 @@ Columns: **recipe**, semitone **offsets**, **notes** on C, **prime form**, **For
 [^forte]: Allen Forte, The Structure of Atonal Music (New Haven: Yale University Press, 1973). Source of the set-class names (“Forte numbers”) and the interval-class vector.
 [^rahn]: John Rahn, Basic Atonal Theory (New York: Longman, 1980). Prime form by the “most packed to the left” selection used here.
 [^straus]: Joseph N. Straus, Introduction to Post-Tonal Theory, 4th ed. (New York: W. W. Norton, 2016). Normal-form / prime-form procedure.
+[^huron]: David Huron, “Interval-Class Content in Equally Tempered Pitch-Class Sets: Common Scales Exhibit Optimum Tonal Consonance,” Music Perception 11/3 (1994): 289&ndash;305. The aggregate dyadic consonance measure used for the consonance/dissonance rating.
 [^messiaen]: Olivier Messiaen, Technique de mon langage musical (Paris: Alphonse Leduc, 1944). Modes of limited transposition (whole-tone = mode 1; octatonic = mode 2).
 [^aldwell]: Edward Aldwell & Carl Schachter, Harmony and Voice Leading, 4th ed. (Boston: Schirmer, 2011). Augmented-sixth and Neapolitan chords.
 [^persichetti]: Vincent Persichetti, Twentieth-Century Harmony (New York: W. W. Norton, 1961). Quartal / quintal harmony.

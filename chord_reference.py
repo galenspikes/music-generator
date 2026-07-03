@@ -17,6 +17,7 @@ footnoted; see REFERENCES.
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import re
 from pathlib import Path
@@ -40,6 +41,11 @@ REFERENCES: list[tuple[str, str]] = [
     ("straus",
      "Joseph N. Straus, <em>Introduction to Post-Tonal Theory</em>, 4th ed. "
      "(New York: W. W. Norton, 2016). Normal-form / prime-form procedure."),
+    ("huron",
+     "David Huron, &ldquo;Interval-Class Content in Equally Tempered "
+     "Pitch-Class Sets: Common Scales Exhibit Optimum Tonal Consonance,&rdquo; "
+     "<em>Music Perception</em> 11/3 (1994): 289&ndash;305. The aggregate "
+     "dyadic consonance measure used for the consonance/dissonance rating."),
     ("messiaen",
      "Olivier Messiaen, <em>Technique de mon langage musical</em> "
      "(Paris: Alphonse Leduc, 1944). Modes of limited transposition "
@@ -174,6 +180,50 @@ CATEGORIES: list[tuple[str, list[str]]] = [
 ]
 
 
+_TENSIONS = ("♭9", "♯9", "♯11", "♭5", "♯5", "♭13")
+
+
+def _join(items: list[str]) -> str:
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return ", ".join(items[:-1]) + f", and {items[-1]}"
+
+
+def describe(gloss: str, offsets: list[int], notes: list[dict],
+             flags: list[str], con: dict) -> str:
+    """Compose a plain-language description for any recipe from its analysis."""
+    sents: list[str] = []
+    base = gloss.strip()
+    if base:
+        base = html.escape(base[0].upper() + base[1:])
+        sents.append(base if base.endswith(".") else base + ".")
+
+    if "quartal / quintal" in flags:
+        sents.append("It is built by stacking fourths rather than thirds.")
+    elif "chromatic cluster" in flags:
+        sents.append("It is a chromatic cluster of adjacent semitones.")
+    elif len(offsets) > 2 and all(
+            3 <= b - a <= 4 for a, b in zip(sorted(offsets), sorted(offsets)[1:])):
+        sents.append("It stacks in thirds.")
+
+    if "transpositionally symmetric" in flags:
+        sents.append("It divides the octave evenly, so no single note is heard "
+                     "as the root.")
+    elif "inversionally symmetric" in flags:
+        sents.append("It is symmetric under inversion.")
+
+    seen: set[str] = set()
+    tensions = [d for d in (n["degree"] for n in notes)
+                if d in _TENSIONS and not (d in seen or seen.add(d))]
+    if tensions:
+        sents.append("Its colour comes from the " + _join(tensions) + ".")
+
+    sents.append(f"Its dyads are {con['band']} &mdash; {con['reading']}.")
+    return " ".join(sents)
+
+
 def parse_glosses() -> dict[str, str]:
     """Per-entry gloss text from the trailing ``# comment`` on each recipe line."""
     glosses: dict[str, str] = {}
@@ -212,6 +262,9 @@ def build_catalog() -> dict:
     for name, offs in CHORD_RECIPES.items():
         a = theory.analyze(offs)
         aliases = [n for n in by_offsets[tuple(offs)] if n != name]
+        gloss = glosses.get(name, "")
+        curated = CURATED.get(name, "")
+        auto = describe(gloss, offs, a["notes"], a["flags"], a["consonance"])
         recipes[name] = {
             "name": name,
             "category": cat_of.get(name, ""),
@@ -222,12 +275,15 @@ def build_catalog() -> dict:
             "icv": a["icv"],
             "intervals": a["intervals"],
             "flags": a["flags"],
-            "gloss": glosses.get(name, ""),
-            "curated": CURATED.get(name, ""),
+            "consonance": a["consonance"],
+            "gloss": gloss,
+            "curated": curated,
+            "description": auto + (" " + curated if curated else ""),
             "aliases": aliases,
         }
     order = [{"title": t, "names": ns} for t, ns in cats]
-    return {"recipes": recipes, "categories": order}
+    return {"recipes": recipes, "categories": order,
+            "huron_ref": REF_NUM["huron"]}
 
 
 # --- rendering ----------------------------------------------------------------
@@ -460,16 +516,33 @@ sup.fn a{color:var(--accent);padding:0 1px;font-family:var(--mono);}
 .note-chip i{font-family:var(--mono);font-size:0.64rem;font-style:normal;
   color:var(--muted);}
 
-.play-row{display:flex;align-items:center;gap:10px;margin-bottom:18px;
+.transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;
   padding-bottom:18px;border-bottom:1px solid var(--line);}
-.pbtn{font-family:var(--mono);font-size:0.76rem;font-weight:500;color:#fff;
-  background:var(--accent);border:1px solid var(--accent);border-radius:3px;
-  padding:9px 16px;cursor:pointer;}
-.pbtn:hover{background:var(--accent-deep);border-color:var(--accent-deep);}
-.play-hint{font-family:var(--mono);font-size:0.68rem;color:var(--muted);
-  text-transform:uppercase;letter-spacing:0.06em;}
+.pbtn{font-family:var(--mono);font-size:0.75rem;font-weight:500;color:var(--accent-deep);
+  background:var(--surface);border:1px solid var(--line-2);border-radius:3px;
+  padding:8px 13px;cursor:pointer;transition:background 0.1s ease;}
+.pbtn:hover{background:var(--accent-wash);border-color:var(--accent);}
+.pbtn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+.pbtn.stop{color:var(--muted);}
+.pbtn.stop:hover{color:#a53a24;border-color:#d8a99e;background:#fbeeea;}
+.play-hint{font-family:var(--mono);font-size:0.66rem;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.06em;margin-left:4px;}
 
-.d-prose{font-size:0.98rem;color:var(--ink-2);margin:0 0 18px;max-width:64ch;}
+.d-desc{font-size:0.98rem;color:var(--ink-2);margin:0 0 20px;max-width:66ch;}
+
+.cons{margin:0 0 22px;max-width:520px;}
+.cons-head{display:flex;justify-content:space-between;align-items:baseline;
+  font-family:var(--mono);font-size:0.66rem;font-weight:600;letter-spacing:0.06em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.cons-band{color:var(--accent-deep);}
+.cons-track{position:relative;height:10px;border-radius:5px;border:1px solid var(--line);
+  background:linear-gradient(90deg,#2f8f6b 0%,#c9a13a 52%,#b4462f 100%);}
+.cons-marker{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;
+  background:var(--ink);box-shadow:0 0 0 2px rgba(255,255,255,0.85);transform:translateX(-1.5px);}
+.cons-ends{display:flex;justify-content:space-between;font-family:var(--mono);
+  font-size:0.6rem;color:var(--muted);margin-top:5px;text-transform:uppercase;
+  letter-spacing:0.05em;}
+.cons-read{font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-top:8px;}
 .d-analysis{display:grid;grid-template-columns:auto 1fr;gap:9px 20px;margin:0;
   align-items:baseline;}
 .d-analysis dt{font-family:var(--mono);font-size:0.66rem;font-weight:600;
@@ -528,24 +601,43 @@ _PAGE_JS = """
   function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
   var state={name:null,root:0};
 
-  var AC=null;
-  function ensureAudio(){ if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();}
-    if(AC.state!=="running")AC.resume(); return AC; }
-  function tone(midi,t0,dur,mul){
-    var f=440*Math.pow(2,(midi-69)/12);
-    var o=AC.createOscillator(); o.type="triangle"; o.frequency.value=f;
-    var g=AC.createGain(); var peak=0.15*(mul||1);
-    g.gain.setValueAtTime(0.0001,t0);
-    g.gain.exponentialRampToValueAtTime(peak,t0+0.012);
-    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
-    o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0+dur+0.05);
+  var AC=null,master=null,active=[],loopTimer=null,mode=null;
+  function ensureAudio(){
+    if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)();
+      master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination); }
+    if(AC.state!=="running")AC.resume(); return AC;
   }
-  function voiced(){ var r=RECIPES[state.name]; var base=48+ROOTS[state.root].pc;
+  function voice(midi,t0,sustain,dur,mul){
+    var o=AC.createOscillator(); o.type="triangle";
+    o.frequency.value=440*Math.pow(2,(midi-69)/12);
+    var g=AC.createGain(), peak=0.13*(mul||1);
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(peak,t0+0.014);
+    o.connect(g); g.connect(master); o.start(t0);
+    if(sustain){ g.gain.exponentialRampToValueAtTime(peak*0.72,t0+0.5); active.push({o:o,g:g}); }
+    else { g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); o.stop(t0+dur+0.06); }
+  }
+  function setMode(m){ mode=m;
+    document.querySelectorAll(".pbtn[data-mode]").forEach(function(b){
+      b.classList.toggle("on",b.dataset.mode===m); }); }
+  function stopAll(){
+    if(loopTimer){clearInterval(loopTimer);loopTimer=null;}
+    if(AC){ var now=AC.currentTime;
+      active.forEach(function(v){ try{ v.g.gain.cancelScheduledValues(now);
+        v.g.gain.setValueAtTime(Math.max(0.0001,v.g.gain.value),now);
+        v.g.gain.exponentialRampToValueAtTime(0.0001,now+0.2); v.o.stop(now+0.24);}catch(e){} }); }
+    active=[]; setMode(null);
+  }
+  function voiced(){ var r=RECIPES[state.name], base=48+ROOTS[state.root].pc;
     return r.offsets.map(function(o){return base+o;}); }
-  function playBlock(){ ensureAudio(); var t0=AC.currentTime+0.03;
-    voiced().forEach(function(m){tone(m,t0,1.5,0.85);}); }
-  function playArp(){ ensureAudio(); var t0=AC.currentTime+0.03;
-    voiced().forEach(function(m,i){tone(m,t0+i*0.16,1.1,1.0);}); }
+  function doStrike(){ ensureAudio(); stopAll(); var t0=AC.currentTime+0.02;
+    voiced().forEach(function(m){voice(m,t0,false,0.55,0.85);}); }
+  function doSustain(){ ensureAudio(); stopAll(); var t0=AC.currentTime+0.02;
+    voiced().forEach(function(m){voice(m,t0,true,0,0.68);}); setMode("sustain"); }
+  function doArp(loop){ ensureAudio(); stopAll(); var ns=voiced(), i=0;
+    function step(){ voice(ns[i%ns.length],AC.currentTime+0.01,false,0.42,0.95); i++;
+      if(!loop && i>=ns.length && loopTimer){clearInterval(loopTimer);loopTimer=null;} }
+    step(); loopTimer=setInterval(step,175); if(loop)setMode("loop"); }
 
   var LOW=48,HIGH=84,WHITE=[0,2,4,5,7,9,11];
   function drawKeyboard(container,voicedMidis,degByMidi){
@@ -588,8 +680,16 @@ _PAGE_JS = """
     var icv=r.icv.map(function(v,i){return '<span class="icv-cell" title="'+IC[i]+'"><b>'+v+'</b><i>'+(i+1)+'</i></span>';}).join("");
     var flags=r.flags.map(function(f){return '<span class="flag">'+esc(f)+'</span>';}).join("");
     var aliases=r.aliases.length?'<div class="d-alias">identical set to '+r.aliases.map(function(a){return '<code>'+esc(a)+'</code>';}).join(", ")+'</div>':"";
-    var prose=r.curated||(r.gloss?esc(r.gloss)+".":"");
     var pcs=r.notes.map(function(n){return n.pc;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(x,y){return x-y;});
+    var c=r.consonance, cp=Math.round(c.index*100);
+    var hf='<sup class="fn"><a href="#ref-'+DATA.huron_ref+'">'+DATA.huron_ref+'</a></sup>';
+    var meter='<div class="cons">'+
+      '<div class="cons-head"><span>Consonance / dissonance'+hf+'</span>'+
+        '<span class="cons-band">'+esc(c.band)+'</span></div>'+
+      '<div class="cons-track"><div class="cons-marker" style="left:'+cp+'%"></div></div>'+
+      '<div class="cons-ends"><span>consonant</span><span>dissonant</span></div>'+
+      '<div class="cons-read">'+esc(c.reading)+' \\u00b7 Huron '+(c.score>=0?"+":"")+c.score.toFixed(2)+'/dyad</div>'+
+      '</div>';
     $("detail").innerHTML=
       '<div class="d-head"><div><h2 class="d-name">'+esc(r.name)+'</h2>'+
         '<div class="d-sub">'+esc(r.category)+'</div>'+aliases+'</div>'+
@@ -597,10 +697,15 @@ _PAGE_JS = """
         '<span class="badge">Forte '+esc(r.forte)+'</span></div></div>'+
       '<div class="kbd" id="kbd"></div>'+
       '<div class="note-row">'+chips+'</div>'+
-      '<div class="play-row"><button class="pbtn" id="pblock">\\u25b6 Block</button>'+
-        '<button class="pbtn" id="parp">\\u25b6 Arpeggio</button>'+
+      '<div class="transport">'+
+        '<button class="pbtn" id="p-strike" title="One short chord">\\u25b7 Short</button>'+
+        '<button class="pbtn" data-mode="sustain" id="p-sustain" title="Hold the chord">\\u25b7 Sustain</button>'+
+        '<button class="pbtn" id="p-arp" title="Arpeggiate once">\\u25b7 Arpeggio</button>'+
+        '<button class="pbtn" data-mode="loop" id="p-loop" title="Repeat the arpeggio">\\u21bb Loop</button>'+
+        '<button class="pbtn stop" id="p-stop" title="Stop">\\u25a0</button>'+
         '<span class="play-hint">root '+esc(root.n)+'</span></div>'+
-      (prose?'<p class="d-prose">'+prose+'</p>':"")+
+      (r.description?'<div class="d-desc">'+r.description+'</div>':"")+
+      meter+
       '<dl class="d-analysis">'+
         '<dt>Pitch-class set</dt><dd>{'+pcs.join(", ")+'}</dd>'+
         '<dt>Prime form</dt><dd>'+esc(r.prime)+'</dd>'+
@@ -610,8 +715,11 @@ _PAGE_JS = """
         (flags?'<dt>Character</dt><dd class="flag-row">'+flags+'</dd>':"")+
       '</dl>';
     drawKeyboard($("kbd"),vm,degByMidi);
-    $("pblock").addEventListener("click",playBlock);
-    $("parp").addEventListener("click",playArp);
+    $("p-strike").onclick=doStrike;
+    $("p-sustain").onclick=doSustain;
+    $("p-arp").onclick=function(){doArp(false);};
+    $("p-loop").onclick=function(){ if(mode==="loop")stopAll(); else doArp(true); };
+    $("p-stop").onclick=stopAll;
     var btns=document.querySelectorAll(".idx-item");
     for(var i=0;i<btns.length;i++)btns[i].classList.toggle("active",btns[i].dataset.name===state.name);
   }
@@ -628,7 +736,7 @@ _PAGE_JS = """
       });
     });
   }
-  function select(name){ if(!RECIPES[name])return; state.name=name; renderDetail();
+  function select(name){ if(!RECIPES[name])return; stopAll(); state.name=name; renderDetail();
     var el=document.querySelector('.idx-item[data-name="'+name+'"]');
     if(el&&el.scrollIntoView)el.scrollIntoView({block:"nearest"});
     if(history.replaceState)history.replaceState(null,"","#"+name);
@@ -636,7 +744,7 @@ _PAGE_JS = """
   function buildRoots(){
     var sel=$("root");
     ROOTS.forEach(function(r,i){var o=document.createElement("option");o.value=i;o.textContent=r.n;sel.appendChild(o);});
-    sel.addEventListener("change",function(){state.root=+this.value;renderDetail();});
+    sel.addEventListener("change",function(){state.root=+this.value;stopAll();renderDetail();});
   }
   function wireFilter(){
     $("filter").addEventListener("input",function(){

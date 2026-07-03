@@ -31,6 +31,18 @@ def test_aliases_are_symmetric_for_identical_offsets():
     assert "m7b5" in cat["hdim7"]["aliases"]
 
 
+def test_every_recipe_has_a_description_and_consonance():
+    cat = cr.build_catalog()["recipes"]
+    for name, r in cat.items():
+        assert r["description"].strip(), name
+        assert r["consonance"]["band"] in (
+            "consonant", "mild", "tense", "dissonant", "harsh"), name
+    # a plain (non-iconic) chord still gets a composed description
+    assert "dyads are" in cat["min7"]["description"]
+    # iconic chords append their cited note to the auto description
+    assert 'href="#ref-' in cat["mystic"]["description"]
+
+
 def test_iconic_chords_have_curated_notes_with_citations():
     cat = cr.build_catalog()["recipes"]
     for name in ("tristan", "mystic", "petrushka", "whole_tone"):
