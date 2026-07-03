@@ -302,38 +302,59 @@ def render_html(catalog: dict, *, full_document: bool) -> str:
     data_json = json.dumps(catalog, separators=(",", ":"))
     refs_html = render_references_html()
     intro = (
-        "Every chord recipe in the generator, analysed. Pick one to see its "
-        "notes on the keyboard, hear it, and read its pitch-class set "
-        f"&mdash; normal and prime form{cite('rahn', 'straus')}, Forte "
-        f"number{cite('forte')}, and interval-class vector{cite('forte')}.")
+        "Every chord recipe in the generator, analysed. Pick one from the rack to "
+        "light its notes on the keyboard, hear it (short, sustained, or "
+        "arpeggiated), and read its pitch-class set &mdash; normal and prime "
+        f"form{cite('rahn', 'straus')}, Forte number{cite('forte')}, "
+        f"interval-class vector{cite('forte')}, and a consonance rating after "
+        f"Huron{cite('huron')}.")
     body = f"""
-  <header class="chd-hero">
-    <div class="wrap">
-      <p class="eyebrow">Reference &middot; pitch-class set analysis</p>
-      <h1>Chord recipe reference</h1>
-      <p class="lede">{intro}</p>
-      <div class="chd-controls">
-        <label class="ctl">Root
-          <select id="root"></select>
-        </label>
-        <label class="ctl">Filter
-          <input id="filter" type="search" placeholder="name, Forte, or flag&hellip;" />
-        </label>
+  <header class="rack-head">
+    <div class="wrap head-inner">
+      <div class="brand-plate">
+        <div class="brand-name">CHORD&nbsp;RECIPES</div>
+        <div class="brand-sub">pitch-class set analyser</div>
+      </div>
+      <div class="head-controls">
+        <div class="knob-unit">
+          <div class="knob" id="rootknob" tabindex="0" role="slider"
+               aria-label="Root note" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0">
+            <div class="knob-dial" id="rootdial"><span class="knob-ptr"></span></div>
+          </div>
+          <div class="unit-label">ROOT</div>
+          <div class="led-readout" id="rootled">C</div>
+        </div>
+        <div class="filter-unit">
+          <input id="filter" class="hw-input" type="search"
+                 placeholder="name, Forte, flag&hellip;" aria-label="Filter recipes" />
+          <div class="unit-label">FILTER</div>
+        </div>
+        <div class="power-led" title="ready" aria-hidden="true"></div>
       </div>
     </div>
   </header>
 
   <main class="wrap chd-main">
-    <nav class="chd-index" id="index" aria-label="Chord recipes"></nav>
-    <section class="chd-detail" id="detail" aria-live="polite"></section>
+    <nav class="mod chd-index" aria-label="Chord recipes">
+      <div class="mod-title">Recipes</div>
+      <div class="idx-scroll" id="index"></div>
+    </nav>
+    <section class="mod chd-detail" aria-live="polite">
+      <div class="mod-title">Voice</div>
+      <div id="detail"></div>
+    </section>
   </main>
 
-  <section class="wrap chd-refs">
-    <h2>References</h2>
-    {refs_html}
-    <p class="chd-note">Prime forms and interval-class vectors are computed from
-      first principles in <code>theory.py</code>; Forte numbers are drawn from the
-      catalogue above and pinned by tests. Set-class convention follows Rahn.{cite('rahn')}</p>
+  <section class="wrap manual">
+    <div class="mod chd-refs">
+      <div class="mod-title">Manual</div>
+      <p class="manual-intro">{intro}</p>
+      <h2>References</h2>
+      {refs_html}
+      <p class="chd-note">Prime forms and interval-class vectors are computed from
+        first principles in <code>theory.py</code>; Forte numbers are drawn from the
+        catalogue and pinned by tests. Set-class convention follows Rahn.{cite('rahn')}</p>
+    </div>
   </section>
 
   <footer class="chd-foot"><div class="wrap">
@@ -353,7 +374,7 @@ def render_html(catalog: dict, *, full_document: bool) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Chord recipe reference — Music Generator</title>
   <meta name="description" content="Every chord recipe in the Music Generator, analysed: notes, audio, pitch-class set, prime form, Forte number, and interval-class vector, with cited sources." />
-  <meta name="theme-color" content="#f7f8fb" />
+  <meta name="theme-color" content="#101215" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet" />
@@ -431,344 +452,11 @@ def main() -> int:
     return 0
 
 
-# --- inline CSS + JS (kept at the bottom so the logic above reads first) ------
-_PAGE_CSS = """
-:root{
-  --paper:#f7f8fb; --surface:#fff; --surface-2:#eceff4; --ink:#14171d;
-  --ink-2:#39414d; --muted:#646e7b; --line:#d7dce4; --line-2:#c2c9d3;
-  --accent:#1b5aa0; --accent-deep:#143f72; --accent-wash:#e9f1fa;
-  --serif:"IBM Plex Serif",Georgia,serif;
-  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-}
-*{box-sizing:border-box;}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
-  font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased;}
-.wrap{width:100%;max-width:1060px;margin:0 auto;padding:0 26px;}
-a{color:var(--accent);text-decoration:none;}
-a:hover{text-decoration:underline;text-underline-offset:2px;}
-code{font-family:var(--mono);font-size:0.86em;background:var(--surface-2);
-  border-radius:3px;padding:1px 5px;color:var(--accent-deep);}
-sup.fn{font-size:0.62em;line-height:0;}
-sup.fn a{color:var(--accent);padding:0 1px;font-family:var(--mono);}
-
-.chd-hero{background:var(--surface);border-bottom:1px solid var(--line);
-  padding:44px 0 30px;}
-.eyebrow{font-family:var(--mono);font-size:0.68rem;font-weight:500;
-  letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin:0 0 14px;}
-.chd-hero h1{font-family:var(--serif);font-size:clamp(2rem,4.5vw,2.7rem);
-  font-weight:600;letter-spacing:-0.015em;margin:0 0 14px;}
-.lede{font-size:1.05rem;color:var(--ink-2);max-width:66ch;margin:0 0 22px;}
-.chd-controls{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;}
-.ctl{display:flex;flex-direction:column;gap:5px;font-family:var(--mono);
-  font-size:0.66rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;
-  color:var(--muted);}
-.ctl select,.ctl input{font-family:var(--mono);font-size:0.85rem;color:var(--ink);
-  background:var(--surface);border:1px solid var(--line-2);border-radius:3px;
-  padding:8px 10px;min-width:150px;}
-.ctl select:focus-visible,.ctl input:focus-visible,.pbtn:focus-visible,
-.idx-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-
-.chd-main{display:grid;grid-template-columns:236px 1fr;gap:26px;
-  align-items:start;padding-top:30px;padding-bottom:20px;}
-.chd-index{position:sticky;top:14px;max-height:calc(100vh - 30px);overflow-y:auto;
-  border:1px solid var(--line);border-radius:4px;background:var(--surface);
-  padding:8px;}
-.idx-cat{font-family:var(--mono);font-size:0.6rem;font-weight:600;
-  letter-spacing:0.09em;text-transform:uppercase;color:var(--muted);
-  padding:12px 8px 4px;}
-.idx-item{display:block;width:100%;text-align:left;font-family:var(--mono);
-  font-size:0.78rem;color:var(--ink-2);background:none;border:0;border-radius:3px;
-  padding:5px 8px;cursor:pointer;}
-.idx-item:hover{background:var(--surface-2);color:var(--ink);}
-.idx-item.active{background:var(--accent-wash);color:var(--accent-deep);font-weight:600;}
-
-.chd-detail{border:1px solid var(--line);border-radius:4px;background:var(--surface);
-  padding:26px 28px;min-width:0;}
-.d-head{display:flex;justify-content:space-between;gap:18px;align-items:baseline;
-  flex-wrap:wrap;margin-bottom:18px;}
-.d-name{font-family:var(--serif);font-size:1.7rem;font-weight:600;margin:0;}
-.d-sub{font-family:var(--mono);font-size:0.66rem;letter-spacing:0.08em;
-  text-transform:uppercase;color:var(--muted);margin-top:4px;}
-.d-alias{font-size:0.82rem;color:var(--muted);margin-top:6px;}
-.d-badges{display:flex;gap:8px;flex-wrap:wrap;}
-.badge{font-family:var(--mono);font-size:0.72rem;color:var(--accent-deep);
-  background:var(--accent-wash);border:1px solid #cadef1;border-radius:3px;
-  padding:4px 9px;white-space:nowrap;}
-
-.kbd{position:relative;height:132px;border:1px solid var(--line-2);
-  border-radius:4px;background:#fff;overflow:hidden;margin:6px 0 16px;}
-.kbd-white{position:absolute;top:0;bottom:0;background:#fff;
-  border-right:1px solid var(--line);}
-.kbd-white.on{background:var(--accent-wash);}
-.kbd-black{position:absolute;top:0;height:62%;background:#2a2f38;border-radius:0 0 3px 3px;
-  z-index:2;}
-.kbd-black.on{background:var(--accent);}
-.kbd-deg{position:absolute;left:0;right:0;bottom:6px;text-align:center;
-  font-family:var(--mono);font-size:0.62rem;font-weight:600;color:var(--accent-deep);}
-.kbd-deg-b{bottom:4px;color:#fff;}
-
-.note-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
-.note-chip{display:inline-flex;flex-direction:column;align-items:center;
-  border:1px solid var(--line);border-radius:3px;padding:5px 11px;min-width:44px;
-  background:var(--surface);}
-.note-chip b{font-family:var(--serif);font-size:1.02rem;color:var(--ink);}
-.note-chip i{font-family:var(--mono);font-size:0.64rem;font-style:normal;
-  color:var(--muted);}
-
-.transport{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px;
-  padding-bottom:18px;border-bottom:1px solid var(--line);}
-.pbtn{font-family:var(--mono);font-size:0.75rem;font-weight:500;color:var(--accent-deep);
-  background:var(--surface);border:1px solid var(--line-2);border-radius:3px;
-  padding:8px 13px;cursor:pointer;transition:background 0.1s ease;}
-.pbtn:hover{background:var(--accent-wash);border-color:var(--accent);}
-.pbtn.on{background:var(--accent);color:#fff;border-color:var(--accent);}
-.pbtn.stop{color:var(--muted);}
-.pbtn.stop:hover{color:#a53a24;border-color:#d8a99e;background:#fbeeea;}
-.play-hint{font-family:var(--mono);font-size:0.66rem;color:var(--muted);
-  text-transform:uppercase;letter-spacing:0.06em;margin-left:4px;}
-
-.d-desc{font-size:0.98rem;color:var(--ink-2);margin:0 0 20px;max-width:66ch;}
-
-.cons{margin:0 0 22px;max-width:520px;}
-.cons-head{display:flex;justify-content:space-between;align-items:baseline;
-  font-family:var(--mono);font-size:0.66rem;font-weight:600;letter-spacing:0.06em;
-  text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
-.cons-band{color:var(--accent-deep);}
-.cons-track{position:relative;height:10px;border-radius:5px;border:1px solid var(--line);
-  background:linear-gradient(90deg,#2f8f6b 0%,#c9a13a 52%,#b4462f 100%);}
-.cons-marker{position:absolute;top:-4px;width:3px;height:18px;border-radius:2px;
-  background:var(--ink);box-shadow:0 0 0 2px rgba(255,255,255,0.85);transform:translateX(-1.5px);}
-.cons-ends{display:flex;justify-content:space-between;font-family:var(--mono);
-  font-size:0.6rem;color:var(--muted);margin-top:5px;text-transform:uppercase;
-  letter-spacing:0.05em;}
-.cons-read{font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-top:8px;}
-.d-analysis{display:grid;grid-template-columns:auto 1fr;gap:9px 20px;margin:0;
-  align-items:baseline;}
-.d-analysis dt{font-family:var(--mono);font-size:0.66rem;font-weight:600;
-  letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);}
-.d-analysis dd{margin:0;font-family:var(--mono);font-size:0.88rem;color:var(--ink);}
-.icv-row{display:flex;gap:6px;flex-wrap:wrap;}
-.icv-cell{display:inline-flex;flex-direction:column;align-items:center;
-  border:1px solid var(--line);border-radius:3px;padding:2px 8px;min-width:30px;}
-.icv-cell b{font-size:0.9rem;}
-.icv-cell i{font-style:normal;font-size:0.58rem;color:var(--muted);}
-.flag-row{display:flex;gap:6px;flex-wrap:wrap;}
-.flag{font-family:var(--mono);font-size:0.66rem;color:var(--accent-deep);
-  background:var(--accent-wash);border:1px solid #cadef1;border-radius:3px;
-  padding:2px 8px;}
-
-.chd-refs{padding:36px 0 10px;border-top:1px solid var(--line);}
-.chd-refs h2{font-family:var(--serif);font-size:1.35rem;font-weight:600;margin:0 0 14px;}
-.refs{margin:0;padding:0;list-style:none;counter-reset:none;}
-.refs li{position:relative;font-size:0.9rem;color:var(--ink-2);margin:0 0 10px;
-  padding-left:26px;max-width:78ch;}
-.ref-n{position:absolute;left:0;font-family:var(--mono);font-size:0.78rem;
-  color:var(--accent);font-weight:600;}
-.ref-back{margin-left:6px;font-size:0.8rem;}
-.chd-note{font-size:0.85rem;color:var(--muted);margin-top:16px;max-width:74ch;}
-
-.chd-foot{border-top:1px solid var(--line);padding:26px 0;margin-top:20px;}
-.chd-foot .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-.chd-foot span{font-family:var(--mono);font-size:0.76rem;color:var(--muted);}
-
-@media (max-width:760px){
-  .chd-main{grid-template-columns:1fr;}
-  .chd-index{position:static;max-height:none;
-    display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px;}
-  .idx-cat{grid-column:1/-1;}
-}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;}}
-"""
-
-_PAGE_JS = """
-(function(){
-  "use strict";
-  var DATA=JSON.parse(document.getElementById("chd-data").textContent);
-  var RECIPES=DATA.recipes, CATS=DATA.categories;
-  var ROOTS=[{n:"C",pc:0,l:"C"},{n:"D\\u266d",pc:1,l:"D"},{n:"D",pc:2,l:"D"},
-    {n:"E\\u266d",pc:3,l:"E"},{n:"E",pc:4,l:"E"},{n:"F",pc:5,l:"F"},
-    {n:"F\\u266f",pc:6,l:"F"},{n:"G",pc:7,l:"G"},{n:"A\\u266d",pc:8,l:"A"},
-    {n:"A",pc:9,l:"A"},{n:"B\\u266d",pc:10,l:"B"},{n:"B",pc:11,l:"B"}];
-  var LETTERS=["C","D","E","F","G","A","B"], LPC={C:0,D:2,E:4,F:5,G:7,A:9,B:11};
-  function spell(pc,step,rootPc,rootLetter){
-    var letter=LETTERS[(LETTERS.indexOf(rootLetter)+step)%7];
-    var acc=((pc-LPC[letter]+6)%12)-6; if(acc<=-3)acc+=12; if(acc>=3)acc-=12;
-    var m=acc===-2?"\\ud834\\udd2b":acc===-1?"\\u266d":acc===1?"\\u266f":acc===2?"\\ud834\\udd2a":"";
-    return letter+m;
-  }
-  var $=function(id){return document.getElementById(id);};
-  function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];});}
-  var state={name:null,root:0};
-
-  var AC=null,master=null,active=[],loopTimer=null,mode=null;
-  function ensureAudio(){
-    if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)();
-      master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination); }
-    if(AC.state!=="running")AC.resume(); return AC;
-  }
-  function voice(midi,t0,sustain,dur,mul){
-    var o=AC.createOscillator(); o.type="triangle";
-    o.frequency.value=440*Math.pow(2,(midi-69)/12);
-    var g=AC.createGain(), peak=0.13*(mul||1);
-    g.gain.setValueAtTime(0.0001,t0);
-    g.gain.exponentialRampToValueAtTime(peak,t0+0.014);
-    o.connect(g); g.connect(master); o.start(t0);
-    if(sustain){ g.gain.exponentialRampToValueAtTime(peak*0.72,t0+0.5); active.push({o:o,g:g}); }
-    else { g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); o.stop(t0+dur+0.06); }
-  }
-  function setMode(m){ mode=m;
-    document.querySelectorAll(".pbtn[data-mode]").forEach(function(b){
-      b.classList.toggle("on",b.dataset.mode===m); }); }
-  function stopAll(){
-    if(loopTimer){clearInterval(loopTimer);loopTimer=null;}
-    if(AC){ var now=AC.currentTime;
-      active.forEach(function(v){ try{ v.g.gain.cancelScheduledValues(now);
-        v.g.gain.setValueAtTime(Math.max(0.0001,v.g.gain.value),now);
-        v.g.gain.exponentialRampToValueAtTime(0.0001,now+0.2); v.o.stop(now+0.24);}catch(e){} }); }
-    active=[]; setMode(null);
-  }
-  function voiced(){ var r=RECIPES[state.name], base=48+ROOTS[state.root].pc;
-    return r.offsets.map(function(o){return base+o;}); }
-  function doStrike(){ ensureAudio(); stopAll(); var t0=AC.currentTime+0.02;
-    voiced().forEach(function(m){voice(m,t0,false,0.55,0.85);}); }
-  function doSustain(){ ensureAudio(); stopAll(); var t0=AC.currentTime+0.02;
-    voiced().forEach(function(m){voice(m,t0,true,0,0.68);}); setMode("sustain"); }
-  function doArp(loop){ ensureAudio(); stopAll(); var ns=voiced(), i=0;
-    function step(){ voice(ns[i%ns.length],AC.currentTime+0.01,false,0.42,0.95); i++;
-      if(!loop && i>=ns.length && loopTimer){clearInterval(loopTimer);loopTimer=null;} }
-    step(); loopTimer=setInterval(step,175); if(loop)setMode("loop"); }
-
-  var LOW=48,HIGH=84,WHITE=[0,2,4,5,7,9,11];
-  function drawKeyboard(container,voicedMidis,degByMidi){
-    container.innerHTML="";
-    var whites=[],blacks=[],wi=0;
-    for(var m=LOW;m<=HIGH;m++){ var pc=m%12;
-      if(WHITE.indexOf(pc)>=0){whites.push({m:m,i:wi});wi++;}
-      else blacks.push({m:m,after:wi-1}); }
-    var nW=wi;
-    whites.forEach(function(k){
-      var el=document.createElement("div"); el.className="kbd-white";
-      el.style.left=(k.i/nW*100)+"%"; el.style.width=(100/nW)+"%";
-      if(voicedMidis.indexOf(k.m)>=0){ el.className+=" on";
-        var d=document.createElement("span"); d.className="kbd-deg";
-        d.textContent=degByMidi[k.m]||""; el.appendChild(d); }
-      container.appendChild(el);
-    });
-    blacks.forEach(function(k){
-      var el=document.createElement("div"); el.className="kbd-black";
-      var bw=100/nW*0.62;
-      el.style.left=((k.after+1)/nW*100)+"%"; el.style.width=bw+"%";
-      el.style.marginLeft=(-bw/2)+"%";
-      if(voicedMidis.indexOf(k.m)>=0){ el.className+=" on";
-        var d=document.createElement("span"); d.className="kbd-deg kbd-deg-b";
-        d.textContent=degByMidi[k.m]||""; el.appendChild(d); }
-      container.appendChild(el);
-    });
-  }
-
-  var IC=["ic1 (m2/M7)","ic2 (M2/m7)","ic3 (m3/M6)","ic4 (M3/m6)","ic5 (P4/P5)","ic6 (tritone)"];
-  function renderDetail(){
-    var r=RECIPES[state.name]; if(!r)return;
-    var root=ROOTS[state.root], base=48+root.pc;
-    var vm=r.offsets.map(function(o){return base+o;});
-    var degByMidi={}; r.notes.forEach(function(n){degByMidi[base+n.offset]=n.degree;});
-    var chips=r.notes.map(function(n){
-      var nm=spell(n.pc,n.step,root.pc,root.l);
-      return '<span class="note-chip"><b>'+esc(nm)+'</b><i>'+esc(n.degree)+'</i></span>';
-    }).join("");
-    var icv=r.icv.map(function(v,i){return '<span class="icv-cell" title="'+IC[i]+'"><b>'+v+'</b><i>'+(i+1)+'</i></span>';}).join("");
-    var flags=r.flags.map(function(f){return '<span class="flag">'+esc(f)+'</span>';}).join("");
-    var aliases=r.aliases.length?'<div class="d-alias">identical set to '+r.aliases.map(function(a){return '<code>'+esc(a)+'</code>';}).join(", ")+'</div>':"";
-    var pcs=r.notes.map(function(n){return n.pc;}).filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(x,y){return x-y;});
-    var c=r.consonance, cp=Math.round(c.index*100);
-    var hf='<sup class="fn"><a href="#ref-'+DATA.huron_ref+'">'+DATA.huron_ref+'</a></sup>';
-    var meter='<div class="cons">'+
-      '<div class="cons-head"><span>Consonance / dissonance'+hf+'</span>'+
-        '<span class="cons-band">'+esc(c.band)+'</span></div>'+
-      '<div class="cons-track"><div class="cons-marker" style="left:'+cp+'%"></div></div>'+
-      '<div class="cons-ends"><span>consonant</span><span>dissonant</span></div>'+
-      '<div class="cons-read">'+esc(c.reading)+' \\u00b7 Huron '+(c.score>=0?"+":"")+c.score.toFixed(2)+'/dyad</div>'+
-      '</div>';
-    $("detail").innerHTML=
-      '<div class="d-head"><div><h2 class="d-name">'+esc(r.name)+'</h2>'+
-        '<div class="d-sub">'+esc(r.category)+'</div>'+aliases+'</div>'+
-        '<div class="d-badges"><span class="badge">prime '+esc(r.prime)+'</span>'+
-        '<span class="badge">Forte '+esc(r.forte)+'</span></div></div>'+
-      '<div class="kbd" id="kbd"></div>'+
-      '<div class="note-row">'+chips+'</div>'+
-      '<div class="transport">'+
-        '<button class="pbtn" id="p-strike" title="One short chord">\\u25b7 Short</button>'+
-        '<button class="pbtn" data-mode="sustain" id="p-sustain" title="Hold the chord">\\u25b7 Sustain</button>'+
-        '<button class="pbtn" id="p-arp" title="Arpeggiate once">\\u25b7 Arpeggio</button>'+
-        '<button class="pbtn" data-mode="loop" id="p-loop" title="Repeat the arpeggio">\\u21bb Loop</button>'+
-        '<button class="pbtn stop" id="p-stop" title="Stop">\\u25a0</button>'+
-        '<span class="play-hint">root '+esc(root.n)+'</span></div>'+
-      (r.description?'<div class="d-desc">'+r.description+'</div>':"")+
-      meter+
-      '<dl class="d-analysis">'+
-        '<dt>Pitch-class set</dt><dd>{'+pcs.join(", ")+'}</dd>'+
-        '<dt>Prime form</dt><dd>'+esc(r.prime)+'</dd>'+
-        '<dt>Forte number</dt><dd>'+esc(r.forte)+'</dd>'+
-        '<dt>Interval-class vector</dt><dd class="icv-row">'+icv+'</dd>'+
-        '<dt>Stacked intervals</dt><dd>'+esc(r.intervals.join(" \\u00b7 "))+'</dd>'+
-        (flags?'<dt>Character</dt><dd class="flag-row">'+flags+'</dd>':"")+
-      '</dl>';
-    drawKeyboard($("kbd"),vm,degByMidi);
-    $("p-strike").onclick=doStrike;
-    $("p-sustain").onclick=doSustain;
-    $("p-arp").onclick=function(){doArp(false);};
-    $("p-loop").onclick=function(){ if(mode==="loop")stopAll(); else doArp(true); };
-    $("p-stop").onclick=stopAll;
-    var btns=document.querySelectorAll(".idx-item");
-    for(var i=0;i<btns.length;i++)btns[i].classList.toggle("active",btns[i].dataset.name===state.name);
-  }
-
-  function buildIndex(){
-    var idx=$("index");
-    CATS.forEach(function(cat){
-      var h=document.createElement("div"); h.className="idx-cat"; h.textContent=cat.title; idx.appendChild(h);
-      cat.names.forEach(function(name){
-        var b=document.createElement("button"); b.className="idx-item"; b.type="button";
-        b.dataset.name=name; b.textContent=name;
-        b.addEventListener("click",function(){select(name);});
-        idx.appendChild(b);
-      });
-    });
-  }
-  function select(name){ if(!RECIPES[name])return; stopAll(); state.name=name; renderDetail();
-    var el=document.querySelector('.idx-item[data-name="'+name+'"]');
-    if(el&&el.scrollIntoView)el.scrollIntoView({block:"nearest"});
-    if(history.replaceState)history.replaceState(null,"","#"+name);
-  }
-  function buildRoots(){
-    var sel=$("root");
-    ROOTS.forEach(function(r,i){var o=document.createElement("option");o.value=i;o.textContent=r.n;sel.appendChild(o);});
-    sel.addEventListener("change",function(){state.root=+this.value;stopAll();renderDetail();});
-  }
-  function wireFilter(){
-    $("filter").addEventListener("input",function(){
-      var q=this.value.toLowerCase().trim();
-      document.querySelectorAll(".idx-item").forEach(function(b){
-        var r=RECIPES[b.dataset.name];
-        var hay=(b.dataset.name+" "+r.forte+" "+r.prime+" "+r.flags.join(" ")+" "+r.category).toLowerCase();
-        b.style.display=(!q||hay.indexOf(q)>=0)?"":"none";
-      });
-    });
-  }
-  function init(){
-    buildRoots(); buildIndex(); wireFilter();
-    var start=decodeURIComponent((location.hash||"").slice(1));
-    if(!RECIPES[start])start=CATS[0].names[0];
-    select(start);
-    ["pointerdown","keydown"].forEach(function(ev){
-      window.addEventListener(ev,function(){if(AC&&AC.state!=="running")AC.resume();},{passive:true});});
-    window.__chords=function(){return {recipe:state.name,root:ROOTS[state.root].n,
-      voiced:voiced(),audio:AC?AC.state:null,count:Object.keys(RECIPES).length};};
-  }
-  init();
-})();
-"""
+# CSS + JS are maintained as separate partials (site/_chords.*) and
+# inlined at build time so the generated pages stay self-contained.
+_ASSETS = REPO / "site"
+_PAGE_CSS = (_ASSETS / "_chords.css").read_text(encoding="utf-8")
+_PAGE_JS = (_ASSETS / "_chords.js").read_text(encoding="utf-8")
 
 if __name__ == "__main__":
     raise SystemExit(main())
