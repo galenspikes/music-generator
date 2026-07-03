@@ -1,0 +1,46 @@
+name: Sync app to Hugging Face Space
+
+# Pushes the contents of space/ (app.py, requirements.txt, README.md) to the
+# Space's own git repo whenever they change on main, so the live demo tracks
+# the repo. Requires an HF_TOKEN repo secret with write access to the Space
+# (Settings -> Secrets and variables -> Actions). Without it, the job is a
+# no-op instead of a failure.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "space/**"
+      - ".github/workflows/deploy-space.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: hf-space
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push space/ to the Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: gsp87/music-generator
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "HF_TOKEN secret is not set — skipping sync."
+            echo "Add it under Settings → Secrets and variables → Actions to enable."
+            exit 0
+          fi
+          git clone "https://gsp87:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" hf-space
+          cp space/app.py space/requirements.txt space/README.md hf-space/
+          cd hf-space
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to sync."
+          else
+            git commit -m "Sync from GitHub ${GITHUB_SHA:0:7}"
+            git push
+          fi
