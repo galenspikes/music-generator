@@ -17,3 +17,6 @@ plan here as a record.*
 - **[refactor-plan.md](refactor-plan.md)** — the active code-health plan
   (monolith breakup + hardening). **Check this before refactoring.**
 - **[webapp-ui-design.md](webapp-ui-design.md)** — the instrument UI/UX direction.
+- **[ecosystem-navigation-plan.md](ecosystem-navigation-plan.md)** — unifying
+  navigation across the showcase, web instrument, Space, and docs (records two
+  broken-link bugs and a plan to fix them at the root).
