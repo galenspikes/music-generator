@@ -8,6 +8,9 @@ notes, or extend as needed. Categories are grouped with comments for quick
 reference and editing.
 """
 
+import re
+from pathlib import Path
+
 CHORD_RECIPES: dict[str, list[int]] = {
     # =========================
     # Common-practice harmony
@@ -135,3 +138,50 @@ CHORD_RECIPES: dict[str, list[int]] = {
     # Keep prior special mode name for compatibility
     "lyd-dom": [0, 4, 6, 10],  # Compact lydian dominant flavour
 }
+
+_NOTE_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]
+
+_ENTRY_RE = re.compile(
+    r'"(?P<name>[^"]+)"\s*:\s*\[(?P<ints>[^\]]*)\]\s*,?[ \t]*(?:#[ \t]*(?P<desc>[^\n]*))?'
+)
+_COMMENT_LINE_RE = re.compile(r"^[ \t]*#[ \t]*(?P<text>.*)$", re.MULTILINE)
+_DIVIDER_RE = re.compile(r"^=+$")
+
+
+def recipe_catalog() -> list[dict]:
+    """Structured recipe metadata (category, description, notes-from-C),
+    parsed from this file's own ``# ...`` comments — the single source of
+    truth behind both docs/reference/chord-recipes.md and the webapp's
+    recipe browser. Relies on the existing comment structure (section/
+    subcategory headers above a run of entries, inline descriptions beside
+    each entry); don't restructure those comments without re-checking this
+    still parses cleanly (see tests/test_chord_recipes.py).
+    """
+    source = Path(__file__).read_text()
+
+    events: list[tuple[int, str, object]] = []
+    for m in _COMMENT_LINE_RE.finditer(source):
+        text = m.group("text").strip()
+        if text and not _DIVIDER_RE.match(text):
+            events.append((m.start(), "category", text))
+    for m in _ENTRY_RE.finditer(source):
+        if m.group("name") in CHORD_RECIPES:
+            events.append((m.start(), "entry", m))
+    events.sort(key=lambda e: e[0])
+
+    catalog: list[dict] = []
+    category = "Uncategorized"
+    for _, kind, payload in events:
+        if kind == "category":
+            category = payload
+        else:
+            name = payload.group("name")
+            ints = [int(x) for x in payload.group("ints").replace(",", " ").split()]
+            catalog.append({
+                "name": name,
+                "category": category,
+                "description": (payload.group("desc") or "").strip(),
+                "intervals": ints,
+                "notes": [_NOTE_NAMES[i % 12] for i in ints],
+            })
+    return catalog

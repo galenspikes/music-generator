@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Control } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
 import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
+import Docs from "./Docs.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
@@ -65,7 +66,7 @@ export default function App() {
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
   const [presets, setPresets] = useState([]);
-  const [showLibrary, setShowLibrary] = useState(false);
+  const [tab, setTab] = useState("listen"); // "listen" | "library" | "editor" | "docs"
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
   const [saveDesc, setSaveDesc] = useState("");
@@ -114,6 +115,7 @@ export default function App() {
           if (!s) return s;
           return { ...s, ...data.spec };
         });
+        setTab("listen");
       })
       .catch((e) => console.log("Song load failed:", e.message));
   };
@@ -125,6 +127,7 @@ export default function App() {
       .then((data) => {
         setCurrentSong(null);
         setSpec((s) => ({ ...s, ...data.spec }));
+        setTab("listen");
       })
       .catch((e) => console.log("Preset load failed:", e.message));
   };
@@ -260,25 +263,30 @@ export default function App() {
 
       {error && <pre className="errbar">{error}</pre>}
 
+      <nav className="tabbar">
+        <button className={"tab" + (tab === "listen" ? " on" : "")} onClick={() => setTab("listen")}>▸ Listen</button>
+        <button className={"tab" + (tab === "library" ? " on" : "")} onClick={() => setTab("library")}>◈ Library</button>
+        <button className={"tab" + (tab === "editor" ? " on" : "")} onClick={() => setTab("editor")}>⚙ Editor</button>
+        <button className={"tab" + (tab === "docs" ? " on" : "")} onClick={() => setTab("docs")}>❐ Docs</button>
+      </nav>
+
       <div className="songbar">
-        <button className="btn-library" onClick={() => setShowLibrary(true)}>◈ Library</button>
-        {currentSong && (
-          <span className="song-current">
-            {songs.find((s) => s.name === currentSong)?.title || currentSong}
-          </span>
-        )}
+        <span className="song-current">
+          {currentSong ? (songs.find((s) => s.name === currentSong)?.title || currentSong) : "untitled"}
+        </span>
         <div className="song-actions">
           <button className="btn-new" onClick={() => {
             const base = {};
             for (const p of params) base[p.name] = p.default;
             setSpec({ ...base, ...SEED_OVERRIDES });
             setCurrentSong(null);
+            setTab("editor");
           }}>+ New</button>
           <button className="btn-save" onClick={() => setShowSaveDialog(true)}>Save</button>
         </div>
       </div>
 
-      <section className="deck">
+      <section className={"deck" + (tab === "listen" ? "" : " tab-hidden")}>
         <div className="player-wrap">
           <midi-player
             ref={playerRef}
@@ -303,60 +311,58 @@ export default function App() {
         </div>
       </section>
 
-      <main className="modules">
-        {grouped.map(([group, ps]) => (
-          <Panel
-            key={group}
-            group={group}
-            accent={GROUP_ACCENT[group] || "#9aa4b8"}
-            collapsed={!!collapsed[group]}
-            onToggle={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}
-          >
-            {ps.map((p) => (
-              <Param key={p.name} param={p} value={spec[p.name]}
-                onChange={setField(p.name)} grooves={grooves} instruments={instruments} />
-            ))}
-          </Panel>
-        ))}
-      </main>
-
-      {showLibrary && (
-        <div className="lib-overlay" onClick={() => setShowLibrary(false)}>
-          <div className="lib-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="lib-header">
-              <span className="lib-title">Library</span>
-              <button className="lib-close" onClick={() => setShowLibrary(false)}>✕</button>
+      {tab === "library" && (
+        <section className="library-page">
+          <div className="lib-section">
+            <div className="lib-section-label">Songs</div>
+            <div className="lib-grid">
+              {songs.map((s) => (
+                <div key={s.name} className={"lib-card" + (currentSong === s.name ? " active" : "")}
+                  onClick={() => loadSong(s.name)}>
+                  <div className="lib-card-title">{s.title}</div>
+                  {s.description && <div className="lib-card-desc">{s.description}</div>}
+                </div>
+              ))}
             </div>
+          </div>
+          {presets.length > 0 && (
             <div className="lib-section">
-              <div className="lib-section-label">Songs</div>
+              <div className="lib-section-label">My Presets</div>
               <div className="lib-grid">
-                {songs.map((s) => (
-                  <div key={s.name} className={"lib-card" + (currentSong === s.name ? " active" : "")}
-                    onClick={() => { loadSong(s.name); setShowLibrary(false); }}>
-                    <div className="lib-card-title">{s.title}</div>
-                    {s.description && <div className="lib-card-desc">{s.description}</div>}
+                {presets.map((p) => (
+                  <div key={p.name} className="lib-card"
+                    onClick={() => loadPreset(p.name)}>
+                    <div className="lib-card-title">{p.title || p.name}</div>
+                    {p.description && <div className="lib-card-desc">{p.description}</div>}
+                    {p.saved && <div className="lib-card-meta">{p.saved.slice(0, 10)}</div>}
                   </div>
                 ))}
               </div>
             </div>
-            {presets.length > 0 && (
-              <div className="lib-section">
-                <div className="lib-section-label">My Presets</div>
-                <div className="lib-grid">
-                  {presets.map((p) => (
-                    <div key={p.name} className="lib-card"
-                      onClick={() => { loadPreset(p.name); setShowLibrary(false); }}>
-                      <div className="lib-card-title">{p.title || p.name}</div>
-                      {p.description && <div className="lib-card-desc">{p.description}</div>}
-                      {p.saved && <div className="lib-card-meta">{p.saved.slice(0, 10)}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </section>
       )}
+
+      {tab === "editor" && (
+        <main className="modules">
+          {grouped.map(([group, ps]) => (
+            <Panel
+              key={group}
+              group={group}
+              accent={GROUP_ACCENT[group] || "#9aa4b8"}
+              collapsed={!!collapsed[group]}
+              onToggle={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}
+            >
+              {ps.map((p) => (
+                <Param key={p.name} param={p} value={spec[p.name]}
+                  onChange={setField(p.name)} grooves={grooves} instruments={instruments} />
+              ))}
+            </Panel>
+          ))}
+        </main>
+      )}
+
+      {tab === "docs" && <Docs spec={spec} setField={setField} setTab={setTab} />}
 
       {showSaveDialog && (
         <div className="modal-overlay" onClick={() => setShowSaveDialog(false)}>
@@ -398,7 +404,9 @@ export default function App() {
       <footer className="footer">
         <div className="credit">
           Music Generator — © 2026 <strong>Galen Spikes</strong> · MIT licensed ·{" "}
-          <a href="https://github.com/galenspikes/music-generator">source</a>
+          <a href="https://github.com/galenspikes/music-generator">source</a> ·{" "}
+          <a href="https://github.com/galenspikes/music-generator/tree/main/docs">docs</a> ·{" "}
+          <a href="/showcase/" target="_blank" rel="noreferrer">showcase</a>
         </div>
         <div className="credit-sub">
           in-process seam · {params.length} parameters · browser-MIDI preview
