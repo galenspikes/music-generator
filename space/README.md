@@ -1,6 +1,6 @@
 ---
 title: Music Generator
-emoji: ♪
+emoji: 🎹
 colorFrom: yellow
 colorTo: indigo
 sdk: gradio
