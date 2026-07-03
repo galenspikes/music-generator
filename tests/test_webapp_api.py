@@ -92,3 +92,43 @@ def test_parse_perc_endpoint():
     chord = client.post("/api/parse-perc",
                         json={"pattern": "ec, er", "kind": "chord"})
     assert chord.json()["tokens"][0]["hits"] == ["chord"]
+
+
+def test_docs_lists_diataxis_sections():
+    r = client.get("/api/docs")
+    assert r.status_code == 200
+    sections = r.json()["sections"]
+    labels = [s["section"] for s in sections]
+    # The four Diátaxis modes are present and ordered ahead of the rest.
+    for expected in ["Tutorials", "How-to guides", "Reference", "Explanation"]:
+        assert expected in labels
+    assert labels.index("Tutorials") < labels.index("Reference")
+    slugs = {d["slug"] for s in sections for d in s["docs"]}
+    assert "tutorials/01-first-groove" in slugs
+    # chord-recipes is served as the interactive browser, not static markdown.
+    assert "reference/chord-recipes" not in slugs
+
+
+def test_docs_fetch_nested_doc():
+    r = client.get("/api/docs/tutorials/01-first-groove")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["slug"] == "tutorials/01-first-groove"
+    assert body["title"]
+    assert "# " in body["content"]
+
+
+def test_docs_rejects_path_traversal_and_excluded():
+    assert client.get("/api/docs/../../CLAUDE").status_code == 404
+    assert client.get("/api/docs/reference/chord-recipes").status_code == 404
+    assert client.get("/api/docs/does/not/exist").status_code == 404
+
+
+def test_recipes_endpoint():
+    r = client.get("/api/recipes")
+    assert r.status_code == 200
+    recipes = r.json()["recipes"]
+    assert len(recipes) > 0
+    maj = next(x for x in recipes if x["name"] == "maj")
+    assert maj["intervals"] == [0, 4, 7]
+    assert maj["category"]

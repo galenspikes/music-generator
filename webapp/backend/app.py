@@ -11,6 +11,10 @@ or a ``sys.argv`` hack. Endpoints:
     GET  /api/schema    every parameter, introspected from the CLI parser
     POST /api/validate  does this spec parse? (inline editor feedback)
     POST /api/generate  spec -> { midi (base64), tracks, duration, warnings }
+    GET  /api/docs      the docs/ tree (Diátaxis sections) for the Docs tab
+    GET  /api/docs/{slug}  one doc's raw markdown (slug = path under docs/)
+    GET  /api/recipes   chord-recipe catalog (category, intervals, notes) for
+                         the interactive recipe browser
 """
 
 from __future__ import annotations
@@ -166,6 +170,98 @@ def save_preset(name: str, req: SavePresetRequest) -> dict:
     except api.GenerationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return data
+
+
+# The full docs/ tree (Diátaxis: tutorials / how-to / reference / explanation,
+# plus design-notes, token-grammar deep-dives, about) surfaced in the in-app
+# Docs tab. Slugs are the doc's path under docs/ without the .md suffix (e.g.
+# "tutorials/01-first-groove"); every request re-resolves the path and checks
+# it stays inside DOCS_DIR, so the slug can't be used to escape the tree.
+# reference/chord-recipes is excluded — the webapp renders it as the
+# interactive recipe browser (/api/recipes) instead of static markdown.
+DOCS_DIR = REPO_ROOT / "docs"
+_DOC_EXCLUDE = {"reference/chord-recipes"}
+
+# Diátaxis sections shown in the docs sidebar, in this order. Each maps a
+# top-level docs/ subdirectory to a friendly section label; anything not
+# listed here is grouped under "More" so new dirs still appear.
+_DOC_SECTIONS = [
+    ("tutorials", "Tutorials"),
+    ("how-to", "How-to guides"),
+    ("reference", "Reference"),
+    ("explanation", "Explanation"),
+    ("token-grammar", "Token grammar"),
+    ("design-notes", "Design notes"),
+    ("about", "About"),
+]
+
+
+def _doc_title(text: str, fallback: str) -> str:
+    for line in text.splitlines():
+        if line.startswith("# "):
+            return line[2:].strip()
+    return fallback
+
+
+def _resolve_doc(slug: str) -> pathlib.Path | None:
+    """Map a slug to its .md path, or None if it escapes DOCS_DIR / is hidden."""
+    if slug in _DOC_EXCLUDE:
+        return None
+    path = (DOCS_DIR / f"{slug}.md").resolve()
+    try:
+        path.relative_to(DOCS_DIR.resolve())
+    except ValueError:
+        return None
+    return path if path.is_file() else None
+
+
+@app.get("/api/docs")
+def list_docs() -> dict:
+    # Collect every doc, keyed by its slug, with the section it belongs to.
+    entries: dict[str, list[dict]] = {}
+    for path in sorted(DOCS_DIR.rglob("*.md")):
+        slug = path.relative_to(DOCS_DIR).with_suffix("").as_posix()
+        if slug in _DOC_EXCLUDE:
+            continue
+        top = path.relative_to(DOCS_DIR).parts[0]
+        # A file directly under docs/ (e.g. docs/index.md) has no subdir.
+        section = top if (DOCS_DIR / top).is_dir() else "_root"
+        entries.setdefault(section, []).append(
+            {"slug": slug, "title": _doc_title(path.read_text(), slug)}
+        )
+
+    sections = []
+    for key, label in _DOC_SECTIONS:
+        if entries.get(key):
+            sections.append({"section": label, "docs": entries.pop(key)})
+    # Any leftover sections (new dirs, loose root files) under a catch-all.
+    leftover = [d for docs in entries.values() for d in docs]
+    if leftover:
+        sections.append({"section": "More", "docs": sorted(leftover, key=lambda d: d["slug"])})
+    return {"sections": sections}
+
+
+@app.get("/api/docs/{slug:path}")
+def get_doc(slug: str) -> dict:
+    path = _resolve_doc(slug)
+    if path is None:
+        raise HTTPException(status_code=404, detail="Doc not found")
+    text = path.read_text()
+    return {"slug": slug, "title": _doc_title(text, slug), "content": text}
+
+
+@app.get("/api/recipes")
+def recipes() -> dict:
+    from library.chord_recipes import recipe_catalog
+    return {"recipes": recipe_catalog()}
+
+
+# Serve the scholarly landing page (site/) so it's reachable from the webapp
+# without a second server. In dev the Vite proxy forwards /showcase here;
+# mounted before the catch-all "/" below so it wins for /showcase paths.
+_SITE = REPO_ROOT / "site"
+if _SITE.is_dir():
+    app.mount("/showcase", StaticFiles(directory=str(_SITE), html=True), name="showcase")
 
 
 # Serve the built frontend if present (production single-process mode).
