@@ -2,3 +2,6 @@ gradio>=4.44
 mido>=1.3
 numpy>=1.26
 pyyaml>=6
+# Python 3.13 removed the stdlib `audioop` module that gradio's pydub dep imports;
+# this backport restores it if the Space builds on 3.13 (no-op on <=3.12).
+audioop-lts; python_version >= "3.13"
