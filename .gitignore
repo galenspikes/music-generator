@@ -8,6 +8,11 @@ SoundFonts/
 # --- Build output (generated; regenerable from source) ---
 webapp/frontend/dist/
 node_modules/
+webapp/backend/.deps-installed
+
+# --- Packaged / exported artifacts (regenerable; often huge) ---
+music-generator.zip
+Music Generator.app/
 
 # --- Python ---
 venv/

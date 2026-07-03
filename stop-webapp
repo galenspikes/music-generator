@@ -1,0 +1,31 @@
+#!/bin/bash
+# Stop the Music Generator webapp: the single app server on :8753, plus any
+# stray Vite dev server on :5173 left over from frontend development. Safe to
+# run when nothing is up.
+
+set -uo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null || true
+
+stopped=0
+
+# Kill whatever is listening on a port, politely first, then for real.
+kill_port() {
+    local port="$1" label="$2" pids
+    pids="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+    [ -z "$pids" ] && return 0
+
+    kill $pids 2>/dev/null || true
+    sleep 0.5
+    local left
+    left="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+    [ -n "$left" ] && kill -9 $left 2>/dev/null || true
+
+    printf 'Stopped %s (port %s).\n' "$label" "$port"
+    stopped=1
+}
+
+kill_port 8753 "the app server"
+kill_port 5173 "a leftover dev server"
+
+[ "$stopped" -eq 0 ] && echo "Music Generator was not running."
+exit 0

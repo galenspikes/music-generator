@@ -1,0 +1,99 @@
+#!/bin/bash
+# Start the Music Generator webapp and open it in Firefox.
+#
+# One server does everything: FastAPI serves the built React app AND the API
+# on a single port (8753), so there's only ever one thing running. It's
+# launched detached, so it outlives this terminal. Safe to run repeatedly —
+# each run rebuilds the UI if the source changed and (re)starts the server on
+# the latest code, so you never stare at a stale page. Stop it with
+# ./stop-webapp.
+#
+# We open Firefox rather than Safari on purpose: Safari's HTTPS-Only mode
+# refuses plain http://localhost, and fighting it with a self-signed cert was
+# more trouble than it's worth. Firefox loads http://localhost directly.
+
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+PORT=8753
+URL="http://localhost:$PORT/"
+LOG=/tmp/music-generator.log
+
+say() { printf '%s\n' "$*"; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+# Prefer Firefox (loads http://localhost cleanly); fall back to the default
+# browser if it isn't installed.
+open_url()  { open -a Firefox "$1" 2>/dev/null || open "$1" 2>/dev/null || true; }
+port_pids() { lsof -ti tcp:"$1" -sTCP:LISTEN 2>/dev/null || true; }
+healthy()   { curl -s -o /dev/null -f "$URL" 2>/dev/null; }
+
+# Ready = the app page itself returns 200 (not just the port binding), so the
+# browser never opens onto a dead port.
+wait_until_ready() {
+    for _ in $(seq 1 60); do   # up to ~30s
+        healthy && return 0
+        sleep 0.5
+    done
+    return 1
+}
+
+# Rebuild only when a frontend source is newer than the built page — fast when
+# nothing changed, never stale when it did.
+needs_build() {
+    [ -f webapp/frontend/dist/index.html ] || return 0
+    [ -n "$(find webapp/frontend/src webapp/frontend/index.html \
+                 webapp/frontend/package.json \
+                 -newer webapp/frontend/dist/index.html 2>/dev/null | head -1)" ]
+}
+
+# --- First-run setup (skipped once these exist) ---------------------------
+if [ ! -d venv ]; then
+    say "Setting up the Python environment…"
+    python3 -m venv venv
+    venv/bin/pip install -q -r requirements.txt
+fi
+if [ ! -f webapp/backend/.deps-installed ]; then
+    say "Installing backend dependencies…"
+    venv/bin/pip install -q -r webapp/backend/requirements.txt
+    touch webapp/backend/.deps-installed
+fi
+command -v npm >/dev/null 2>&1 || die "npm not found — install Node.js first."
+if [ ! -d webapp/frontend/node_modules ]; then
+    say "Installing frontend dependencies…"
+    ( cd webapp/frontend && npm install --silent )
+fi
+
+# --- Build the UI when the source has changed -----------------------------
+if needs_build; then
+    say "Building the web UI…"
+    ( cd webapp/frontend && npm run build ) \
+        || die "frontend build failed — see the output above."
+fi
+
+# --- (Re)start the single server on the latest code -----------------------
+existing="$(port_pids "$PORT")"
+if [ -n "$existing" ]; then
+    say "Restarting the server…"
+    kill $existing 2>/dev/null || true
+    for _ in $(seq 1 20); do          # wait for the port to free up
+        [ -z "$(port_pids "$PORT")" ] && break
+        sleep 0.25
+    done
+    stubborn="$(port_pids "$PORT")"   # still holding on? force it
+    [ -n "$stubborn" ] && kill -9 $stubborn 2>/dev/null || true
+fi
+
+nohup venv/bin/python -m uvicorn webapp.backend.app:app \
+    --host 127.0.0.1 --port "$PORT" > "$LOG" 2>&1 &
+disown
+
+if wait_until_ready; then
+    open_url "$URL"
+    say ""
+    say "Music Generator is running at $URL"
+    say "  stop it with:  ./stop-webapp"
+    say "  logs:          $LOG"
+else
+    die "the app didn't come up in time — see $LOG"
+fi
