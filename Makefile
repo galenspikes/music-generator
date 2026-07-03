@@ -46,6 +46,10 @@ demo: ## Play the flagship demo (Kiss On My List) — the "press demo" button
 gallery: ## Render the demo highlight set to committable MIDI (site/assets/midi)
 	$(PY) cook_song.py gallery
 
+.PHONY: chords
+chords: ## Regenerate the chord-recipe reference (site/chords.html + docs table)
+	$(PY) chord_reference.py
+
 .PHONY: webapp
 webapp: ## Run the web editor backend (edit every parameter live and hear it)
 	@echo "Backend → http://127.0.0.1:8753"
