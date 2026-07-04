@@ -93,6 +93,9 @@ input {
 .transport-btn.stop { background: var(--metal-lo); color: var(--red); }
 .transport-btn:disabled { opacity: 0.4; cursor: default; }
 
+.arp-toggle { color: var(--ink-dim); }
+.arp-toggle.on { background: var(--blue); color: var(--rack); font-weight: 600; }
+
 .instrument-toggle { display: flex; gap: 4px; margin-left: auto; }
 
 .instrument-btn {
@@ -148,6 +151,7 @@ input {
 }
 
 .strike-btn:disabled { opacity: 0.35; }
+.strike-btn.playing { background: var(--red); }
 
 .card-chord-label {
   font-family: var(--mono);
@@ -175,6 +179,18 @@ input {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.mode-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mode-pill {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
 }
 
 .raw-card {
