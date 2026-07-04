@@ -475,7 +475,8 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
 
     chord_tl = build_chord_timeline(seq, beats_total, chord_len_beats,
                                     chord_intr,
-                                    chord_fill_rate=args.chord_fill_rate)
+                                    chord_fill_rate=args.chord_fill_rate,
+                                    static=(args.satb_style == "static"))
     chord_tl = fill_chords_to_end(chord_tl, beats_total)
 
     perc_plan = build_perc_from_args(args)
@@ -650,9 +651,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--bass-style",
         choices=list(BASS_STYLES),
         default="follow",
-        help="Bass line generator: 'follow' (bass tracks the SATB voicing), or "
-        "an independent line: root, octaves, fifths, walking, arp. "
-        "Requires split stems.")
+        help="Bass line generator: 'follow' (bass tracks the SATB voicing), "
+        "'none' (no bass voice at all), or an independent line: root, "
+        "octaves, fifths, walking, arp. Requires split stems.")
     ap.add_argument(
         "--bass-step",
         type=float,
@@ -691,9 +692,11 @@ def build_parser() -> argparse.ArgumentParser:
                     default=[],
                     help='Motifs like "ec,er,sc" (multiple allowed)')
     ap.add_argument("--satb-style",
-                    choices=["block", "counterpoint", "arpeggio"],
+                    choices=["block", "static", "counterpoint", "arpeggio"],
                     default="block",
-                    help="Voicing style for SATB harmony: block chords or counterpoint lines.")
+                    help="Voicing style for SATB harmony: block chords (re-voices "
+                    "each hit), static (freezes the voicing across an unchanged "
+                    "chord — no wobble), or counterpoint/arpeggio lines.")
     ap.add_argument(
         "--voicing",
         choices=["satb", "dense"],
@@ -724,7 +727,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--perc-main",
                     type=str,
                     default=None,
-                    help='Pattern like "qk,eh,esh,er"')
+                    help='Pattern like "qk,eh,esh,er". Pass "" for silence.')
+    ap.add_argument("--no-perc",
+                    action="store_true",
+                    help="Silence percussion entirely (same as --perc-main '').")
     ap.add_argument("--perc-interrupters",
                     nargs="*",
                     default=None,
@@ -772,16 +778,6 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--out", type=str, default="out")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--sf2", required=False, help="Path to SoundFont (.sf2)")
-    ap.add_argument("--gain",
-                    type=float,
-                    default=0.5,
-                    help="FluidSynth master gain (0.0–1.0)")
-    ap.add_argument("--reverb", type=int, default=1, help="Enable reverb (0/1)")
-    ap.add_argument("--chorus", type=int, default=1, help="Enable chorus (0/1)")
-    ap.add_argument("--poly",
-                    type=int,
-                    default=256,
-                    help="Maximum polyphony voices")
     ap.add_argument("--no-play",
                     action="store_true",
                     help="Generate MIDI only; do not launch FluidSynth.")
@@ -948,7 +944,9 @@ def main():
         perc_over: dict = {}
         if _cli_set("perc_fill_rate", "--perc-fill-rate"):
             perc_over["fill_rate"] = float(args.perc_fill_rate)
-        if args.perc_main:
+        if args.no_perc:
+            perc_over["main"] = ""  # explicit silence (gap-analysis I1)
+        elif _cli_set("perc_main", "--perc-main"):
             perc_over["main"] = args.perc_main
         if perc_over:
             arr_overrides["perc"] = perc_over
@@ -1006,27 +1004,7 @@ def main():
 
     midi.save(out_path)
 
-    # NOTE:
-    # Originally this block auto-launched FluidSynth to play the generated MIDI.
-    # It has been commented out because playback is now handled by the wrapper script (play_music.sh).
-    # Keeping it here (commented) avoids double playback and ensures music_generator.py
-    # is MIDI-only, leaving audio rendering/preview to the wrapper.
-    # if args.sf2 and not args.no_play:
-    #     cmd = [
-    #         "fluidsynth",
-    #         "-i",  # no interactive shell
-    #         "-n",  # no MIDI input
-    #         "-a", "coreaudio",
-    #         "-g", str(args.gain),
-    #         "-R", str(args.reverb),
-    #         "-C", str(args.chorus),
-    #         "-o", f"synth.polyphony={args.poly}",
-    #         args.sf2,
-    #         out_path  # or your audio_path if you route into audio/
-    #     ]
-    #     print(">>> Playing via FluidSynth:", " ".join(shlex.quote(c) for c in cmd))
-    #     subprocess.run(cmd)
-
+    # music_generator.py is MIDI-only; audio rendering/preview lives in render.py.
     print(f"Wrote {out_path}")
 
     # Log completion

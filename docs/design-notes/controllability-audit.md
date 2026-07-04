@@ -34,29 +34,50 @@ The instrument boots maximally *deviated*, not at home.
 
 ## ❌ Holes — no neutral/off (completeness failures)
 
-| Control | Problem | Evidence |
+**Status: shipped (2026-07-04)**, per [ui-ux-roadmap.md](ui-ux-roadmap.md) Thread A.
+
+| Control | Problem | Fix shipped |
 |---|---|---|
-| `perc_main` | empty → forced `"sh,sh,sh,sh"`; drums can't be silenced | [mg:2659](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) |
-| `perc_interrupters` | empty → forced default fill | [mg:2662](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) |
-| `bass_style` | no `none`; bass mandatory | [mg:3165](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) |
-| `satb_style` / `voicing` | no *static* option — `block` still voice-leads | [arch:107](../explanation/architecture.md) |
+| `perc_main` | empty → forced `"sh,sh,sh,sh"`; drums can't be silenced | explicit `--perc-main ""` (or `--no-perc`) now means silence; unspecified still falls back to the default groove. `percussion.py::build_perc_from_args`, and (a follow-up fix, same pass) the `--song`/arrangement override builders in `music_generator.py` and `generator_api.py`, which had the identical truthy-check bug on their own copy of the logic and never honored `--no-perc` at all. |
+| `perc_interrupters` | empty → forced default fill | an explicitly empty `--perc-interrupters` (bare flag, zero values) is now honored as "no interrupters" instead of forcing the default fill vocabulary. Same function. |
+| `bass_style` | no `none`; bass mandatory | added `"none"` to `BASS_STYLES`; `build_harmony_events` drops the SATB bass voice entirely and skips `build_bass_line`. |
+| `satb_style` / `voicing` | no *static* option — `block` still voice-leads | added `--satb-style static`; `build_chord_timeline(..., static=True)` freezes the exact voicing across an unchanged chord instead of calling `pick_soprano`'s anti-stagnation logic. |
 
 *Partial existing escape:* `voicing: dense` sounds every tone on one channel — close to
 a faithful static stack, but it isn't the default and drops voice independence.
 
 ## ⚠️ Leaks — output ≠ controls (faithfulness failures)
 
-| Control | Problem |
-|---|---|
-| `satb` voicing (default) | the chord you set is re-voiced every hit (the wobble) |
-| `chords` + `chords_order=random` | bare roots get engine-chosen qualities. Colon tokens (`C::maj7`) bypass this and *are* faithful. |
-| `perc_fill_rate=0.2` | fills fire unbidden even when none are wanted |
+| Control | Problem | Status |
+|---|---|---|
+| `satb` voicing (default) | the chord you set is re-voiced every hit (the wobble) | **Fixed for `--satb-style static`** (above); `block` still wobbles by design (voice-leading is the point of `block`). |
+| `chords` + `chords_order=random` | bare roots get engine-chosen qualities. Colon tokens (`C::maj7`) bypass this and *are* faithful. | Open — literal tokens already faithful; family-based selection is unchanged. |
+| `perc_fill_rate=0.2` | fills fire unbidden even when none are wanted | Open — the *default* fill rate is unchanged; only the "explicit empty means off" bug (above) shipped. Lowering the default is a separate, more opinionated call (see GroundState note below). |
 
 ## ✂️ Baggage — not instrument controls (cut from the surface)
 
-`mode` · the **Process/fugue** group (`process*`, `fugue*`) · CLI/render plumbing
-leaking into the UI: `out`, `no_play`, `song`, `sf2`, `poly`, `perc_lib`. Cutting these
-follows the [instrument-first decision](gap-analysis.md#decision-instrument-first-2026-06-18).
+**Status: shipped (2026-07-04).** `mode`, the **Process/fugue** group (`process*`,
+`fugue*`), and CLI/render plumbing (`out`, `no_play`, `song`, `sf2`,
+`perc_lib`) are now excluded from `generator_api.parameter_schema()` via
+`HIDDEN_PARAMS` — they no longer render as webapp controls, but remain fully
+functional on the CLI and in song YAML. Cutting these follows the
+[instrument-first decision](gap-analysis.md#decision-instrument-first-2026-06-18).
+
+**A worse case than baggage, found during Thread C:** `gain`, `reverb`,
+`chorus`, and `poly` weren't just baggage to hide — they were **entirely dead**
+(referenced only inside a commented-out, unreachable FluidSynth-launch block
+predating `render.py`). `gain`/`reverb`/`chorus` were still live, turnable
+knobs in the webapp's Render panel with zero effect on anything. Removed the
+flags themselves (not just hidden from the UI) — see
+[ui-ux-roadmap.md](ui-ux-roadmap.md) Thread C.
+
+**Not done in this pass:** the single-source-of-truth `GroundState` config (I4) —
+i.e. actually flipping the *default* rest-state to neutral (no groove, no fill,
+unless asked) rather than just making neutral *reachable*. Per the user's own
+[ui-homework.md](ui-homework.md), the exact home content is still a placeholder
+they intend to tune by ear before it's locked in as a default — so this pass
+fixes the mechanism (every "off" is now reachable) without changing what
+existing renders produce when nothing is specified.
 
 ## ✅ Already controllable — keep
 

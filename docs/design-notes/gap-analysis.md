@@ -119,18 +119,25 @@ instrument-first product over a shared engine. Consequences for this plan:
 Sequenced by dependency and by value-per-effort. Status: **all Proposed.**
 
 ### Phase 0 — Reach the home *(cheap, high value, fixes real bugs)*
-**Closes:** I1, I2, I3, I4 → A1 (partial). **Spec:** [controllability-audit.md](controllability-audit.md).
-- Treat an explicit empty `--perc-main ""` as **silence**; add `--no-perc`.
-- Respect an explicit empty interrupter list (don't force `"qk,er,qs,er"`).
-- Add `bass-style none`.
-- Define a single **`GroundState`** config: the one source of truth for "what plays
-  when nothing is said," and make it *neutral* (a held chord on the pulse, no forced
-  groove). Wire argparse + arrangement defaults to it.
-- **Outcome:** the app can render its own idle, and a one-chord scheme comes out
-  clean. This also delivers the literal **home/`vamp`** the
-  [literal-mode audit](literal-mode-workflow-audit.md) asked for.
-- **Effort:** small. **Risk:** low (guard with the smoke tests; defaults change, so
-  pin expected output).
+**Closes:** I1, I2, I3 (shipped 2026-07-04) · I4 (not yet) → A1 (partial).
+**Spec:** [controllability-audit.md](controllability-audit.md).
+- ✅ Treat an explicit empty `--perc-main ""` as **silence**; add `--no-perc`.
+- ✅ Respect an explicit empty interrupter list (don't force `"qk,er,qs,er"`).
+- ✅ Add `bass-style none`, and a `--satb-style static` that freezes the voicing
+  across an unchanged chord (closes the wobble leak, not originally scoped to I1-I4
+  but the same "faithful home" work).
+- **Not yet:** define a single **`GroundState`** config — the one source of truth
+  for "what plays when nothing is said," made *neutral* by default (a held chord on
+  the pulse, no forced groove), with argparse + arrangement defaults wired to it.
+  What shipped makes every "off" state *reachable*; it does not change what an
+  unspecified render produces today. Deferred because the exact home content is
+  still a user-tuned placeholder (see [ui-homework.md](ui-homework.md)) — flipping
+  the shipped default is a separate, more opinionated call once that's settled.
+- **Outcome so far:** a one-chord scheme (`--no-perc --bass-style none --satb-style
+  static`) now comes out clean — verified end to end. The literal **home/`vamp`**
+  primitive the [literal-mode audit](literal-mode-workflow-audit.md) asked for is
+  still a follow-up (a named one-liner around these flags, not yet built).
+- **Effort:** small. **Risk:** low (guard with the smoke tests; defaults unchanged).
 
 ### Phase 1 — Unify the atom
 **Closes:** A3 (and lays the shared timeline that A6 needs).

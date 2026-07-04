@@ -50,6 +50,50 @@ def test_find_tool_missing_returns_none():
     assert render.find_tool("definitely-not-a-real-tool-xyz") is None
 
 
+# ---- soundfont discovery (Thread D v2: master-side "which soundfonts do I have") ----
+
+def test_list_soundfonts_empty_when_dir_missing(tmp_path):
+    assert render.list_soundfonts(tmp_path / "nope") == []
+
+
+def test_list_soundfonts_finds_sf2_files_sorted(tmp_path):
+    (tmp_path / "zeta.sf2").write_bytes(b"")
+    (tmp_path / "alpha.sf2").write_bytes(b"")
+    (tmp_path / "notes.txt").write_bytes(b"")  # ignored, not .sf2
+    assert render.list_soundfonts(tmp_path) == ["alpha.sf2", "zeta.sf2"]
+
+
+def test_resolve_sf2_passes_through_real_paths_and_none(tmp_path):
+    real = tmp_path / "somewhere.sf2"
+    real.write_bytes(b"")
+    assert render.resolve_sf2(str(real)) == str(real)
+    assert render.resolve_sf2(None) is None
+    assert render.resolve_sf2("has/a/slash.sf2") == "has/a/slash.sf2"
+
+
+def test_resolve_sf2_finds_bare_name_in_soundfonts_dir(tmp_path):
+    (tmp_path / "arachno.sf2").write_bytes(b"")
+    assert render.resolve_sf2("arachno", tmp_path) == str(tmp_path / "arachno.sf2")
+    assert render.resolve_sf2("arachno.sf2", tmp_path) == str(tmp_path / "arachno.sf2")
+
+
+def test_resolve_sf2_unresolved_name_passes_through(tmp_path):
+    assert render.resolve_sf2("not-there", tmp_path) == "not-there"
+
+
+def test_main_list_soundfonts_reports_none_found(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(render, "SOUNDFONTS_DIR", tmp_path / "empty")
+    assert render.main(["--list-soundfonts"]) == 0
+    assert "No .sf2 files found" in capsys.readouterr().out
+
+
+def test_main_list_soundfonts_lists_files(tmp_path, monkeypatch, capsys):
+    (tmp_path / "arachno.sf2").write_bytes(b"")
+    monkeypatch.setattr(render, "SOUNDFONTS_DIR", tmp_path)
+    assert render.main(["--list-soundfonts"]) == 0
+    assert "arachno.sf2" in capsys.readouterr().out
+
+
 # ---- generator glue (integration; no audio tools needed) ----
 
 @pytest.fixture

@@ -183,10 +183,17 @@ def test_repetition_token():
     assert M.parse_repetition_token("C::maj*4") == ("C::maj", 4)
 
 
-@pytest.mark.parametrize("bad", ["*4", "C*", "C*x", "C*0"])
+@pytest.mark.parametrize("bad", ["*4", "C*", "C*x", "C*0", "C*-1"])
 def test_repetition_errors(bad):
     with pytest.raises(ValueError):
         M.parse_repetition_token(bad)
+
+
+def test_repetition_negative_count_keeps_specific_message():
+    # the count<1 check must not be swallowed by the surrounding int() parse's
+    # except clause and replaced with the generic "Bad repetition count" message
+    with pytest.raises(ValueError, match="must be >= 1"):
+        M.parse_repetition_token("C*-1")
 
 
 def test_chain_repetition():
@@ -221,6 +228,16 @@ def test_key_roots_preserves_colon_tokens():
 def test_key_roots_normalizes_enharmonic_and_strips_minor():
     # bare roots: sharps -> flats, minor marker stripped (quality comes from --chords)
     assert M.key_roots("ostinato", "C#,Gm,F#m") == ["Db", "G", "Gb"]
+
+
+def test_key_roots_normalizes_unicode_accidentals():
+    assert M.key_roots("ostinato", "C♯,G♭") == ["Db", "Gb"]
+
+
+def test_key_roots_case_insensitive_flat_accidental():
+    # an uppercase accidental letter ("GBm") must normalize the same as the
+    # lowercase spelling ("Gbm") instead of failing the NOTE_TO_PC lookup.
+    assert M.key_roots("ostinato", "GBm,Gbm") == ["Gb", "Gb"]
 
 
 def test_key_roots_rejects_bad_key():
@@ -307,3 +324,48 @@ def test_perc_main_key_without_explicit_lib():
     perc_plan = M.build_perc_from_args(args)
     assert perc_plan.main is not None
     assert len(perc_plan.main) > 0
+
+
+def _base_args(**overrides):
+    argv = ["--mode", "ostinato", "--keys", "C::maj7", "--seconds", "8"]
+    for flag, value in overrides.items():
+        if value is True:
+            argv.append(flag)
+        else:
+            argv += [flag, value]
+    return M.build_parser().parse_args(argv)
+
+
+def test_perc_main_defaults_to_the_forced_groove_when_unspecified():
+    # Regression guard: today's un-neutral default is unchanged unless the
+    # caller explicitly asks for silence (gap-analysis I1's fix must not
+    # flip the default for existing callers).
+    plan = M.build_perc_from_args(_base_args())
+    assert len(plan.main) > 0
+
+
+def test_perc_main_explicit_empty_string_means_silence():
+    # gap-analysis I1: an explicit empty --perc-main used to be
+    # indistinguishable from "not specified" and got forced to a hi-hat
+    # groove. It must now mean silence.
+    plan = M.build_perc_from_args(_base_args(**{"--perc-main": ""}))
+    assert plan.main == []
+
+
+def test_no_perc_flag_means_silence():
+    plan = M.build_perc_from_args(_base_args(**{"--no-perc": True}))
+    assert plan.main == []
+
+
+def test_perc_interrupters_explicit_empty_is_honored():
+    # gap-analysis I2: passing --perc-interrupters with zero values used to
+    # be indistinguishable from not passing the flag at all, and got the
+    # default fill vocabulary forced in anyway.
+    plan = M.build_perc_from_args(_base_args(**{"--perc-interrupters": True}))
+    assert plan.interrupters == []
+
+
+def test_perc_interrupters_default_to_forced_fill_when_unspecified():
+    plan = M.build_perc_from_args(_base_args())
+    assert plan.interrupters is not None
+    assert len(plan.interrupters) > 0

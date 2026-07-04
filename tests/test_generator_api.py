@@ -60,6 +60,31 @@ def test_generate_song_roundtrip(tmp_path):
     assert r.midi[:4] == b"MThd"
 
 
+def test_generate_accepts_inline_song_yaml_text():
+    # The lead-sheet importer's path: raw song.yml text in the spec, never
+    # written anywhere durable -- an alternative to "song" (a file path).
+    yml_text = (
+        "title: Inline Test\ntempo: 100\n"
+        "sections:\n  - {name: A, keys: 'C::maj7, F::maj7'}\n"
+    )
+    r = api.generate({"song_yaml": yml_text})
+    assert r.mode == "song"
+    assert r.midi[:4] == b"MThd"
+    assert len(_midi_notes(r.midi)) > 0
+
+
+def test_generate_song_no_perc_silences_drums():
+    # gap-analysis I1, song-path regression: "no_perc"/explicit-empty perc_main
+    # used to be dropped by a truthy check when forwarding UI overrides into
+    # the arrangement, so a song always kept its own YAML drum pattern
+    # regardless of what the UI asked for.
+    with_drums = api.generate({"song": "songs/kiss.yml"})
+    assert any(m.channel == mg.DRUM_CH for m in _midi_notes(with_drums.midi))
+
+    silenced = api.generate({"song": "songs/kiss.yml", "no_perc": True})
+    assert not any(m.channel == mg.DRUM_CH for m in _midi_notes(silenced.midi))
+
+
 def test_generate_bad_recipe_raises():
     with pytest.raises(api.GenerationError):
         api.generate({"mode": "ostinato", "keys": "C::definitely_not_a_recipe"})
@@ -70,6 +95,30 @@ def test_generate_is_disk_free():
     api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 6})
     after = set(glob.glob(str(mg.MIDI_DIR / "**" / "*.mid"), recursive=True))
     assert before == after
+
+
+def test_generate_returns_a_bucketed_envelope():
+    r = api.generate({"mode": "ostinato", "keys": "C::maj7, A::min7", "seconds": 8,
+                      "seed": 1})
+    assert len(r.envelope) == 60
+    assert all(0.0 <= v <= 1.0 for v in r.envelope)
+    assert max(r.envelope) == 1.0  # normalized to its own peak
+
+
+def test_envelope_from_bytes_empty_when_duration_zero():
+    r = api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 4, "seed": 1})
+    assert api.envelope_from_bytes(r.midi, 0.0) == [0.0] * 60
+
+
+def test_envelope_bucket_count_is_configurable():
+    r = api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 4, "seed": 1})
+    assert len(api.envelope_from_bytes(r.midi, r.duration_seconds, buckets=10)) == 10
+
+
+def test_generate_song_includes_envelope():
+    r = api.generate({"song": "songs/kiss.yml"})
+    assert len(r.envelope) == 60
+    assert max(r.envelope) == 1.0
 
 
 def test_generate_seeded_is_deterministic():
@@ -159,12 +208,24 @@ def test_parse_perc_chord_kind():
 
 # --- parameter_schema ----------------------------------------------------------
 
-def test_schema_covers_every_parser_flag():
+def test_schema_covers_every_parser_flag_except_hidden_baggage():
+    # Every real instrument control is auto-derived and never silently
+    # dropped — except the deliberate HIDDEN_PARAMS baggage cut
+    # (controllability-audit.md): mode, process/fugue, CLI/render plumbing.
     schema = api.parameter_schema()
     schema_names = {p["name"] for p in schema}
     parser_dests = {a.dest for a in mg.build_parser()._actions
                     if a.dest != "help"}
-    assert schema_names == parser_dests  # nothing hidden, nothing invented
+    assert schema_names == parser_dests - api.HIDDEN_PARAMS
+    assert schema_names.isdisjoint(api.HIDDEN_PARAMS)
+
+
+def test_hidden_params_still_work_as_spec_keys():
+    # Hidden from the rack, but not actually removed: the CLI and song YAML
+    # still use these, so they must remain valid namespace attributes.
+    ns = vars(mg.build_parser().parse_args([]))
+    for name in api.HIDDEN_PARAMS:
+        assert name in ns
 
 
 def test_schema_entries_are_well_formed():
@@ -178,7 +239,16 @@ def test_schema_known_controls():
     assert by["chords"]["kind"] == "multichoice"
     assert by["bpm"]["kind"] == "int"
     assert by["split_stems"]["kind"] == "bool"
-    assert by["gain"]["kind"] == "float"
+    assert by["chord_fill_rate"]["kind"] == "float"
+
+
+def test_schema_has_no_dead_fluidsynth_controls():
+    # gain/reverb/chorus/poly used to be knobs in the webapp's Render panel
+    # that did nothing -- only referenced in a commented-out, unreachable
+    # FluidSynth-launch block. render.py (not music_generator.py) is the real
+    # audio-rendering path and has its own independent --fx/--sf2 handling.
+    names = {p["name"] for p in api.parameter_schema()}
+    assert not ({"gain", "reverb", "chorus", "poly"} & names)
 
 
 def test_schema_names_are_valid_spec_keys():
@@ -187,3 +257,80 @@ def test_schema_names_are_valid_spec_keys():
     ns = vars(mg.build_parser().parse_args([]))
     for p in api.parameter_schema():
         assert p["name"] in ns
+
+
+# --- presets (Thread B) ---------------------------------------------------------
+
+@pytest.fixture
+def presets_dir(tmp_path, monkeypatch):
+    d = tmp_path / "presets" / "user"
+    monkeypatch.setattr(api, "PRESETS_DIR", d)
+    return d
+
+
+def test_slugify_preserves_underscore_names():
+    # existing songs/*.yml filenames (four_organs, girl_from_ipanema, ...) must
+    # round-trip unchanged, since load_song/load_preset re-slugify on read.
+    assert api.slugify("four_organs") == "four_organs"
+    assert api.slugify("Kiss") == "kiss"
+
+
+def test_slugify_sanitizes_unsafe_characters():
+    assert api.slugify("My Cool Groove!") == "my-cool-groove"
+    assert api.slugify("  spaced  ") == "spaced"
+    assert api.slugify("") == "untitled"
+
+
+def test_slugify_neutralizes_path_traversal():
+    slug = api.slugify("../../../etc/passwd")
+    assert "/" not in slug and ".." not in slug
+
+
+def test_save_load_delete_preset_roundtrip(presets_dir):
+    api.save_preset("my-groove", {"keys": "C::maj7"}, title="My Groove")
+    assert api.load_preset("my-groove") == {"keys": "C::maj7"}
+    names = {p["name"] for p in api.list_presets()}
+    assert "my-groove" in names
+
+    api.delete_preset("my-groove")
+    assert not (presets_dir / "my-groove.json").exists()
+    with pytest.raises(api.GenerationError):
+        api.load_preset("my-groove")
+
+
+def test_delete_missing_preset_is_not_an_error(presets_dir):
+    api.delete_preset("never-existed")  # must not raise
+
+
+def test_save_preset_name_is_slugified_on_disk(presets_dir):
+    api.save_preset("My Cool Groove!", {"keys": "C"})
+    assert (presets_dir / "my-cool-groove.json").exists()
+
+
+def test_load_preset_rejects_path_traversal(presets_dir):
+    # the attempted escape resolves to a slug ("etc-passwd") that simply
+    # doesn't exist as a saved preset -- it must not read/write outside
+    # PRESETS_DIR under any circumstance.
+    with pytest.raises(api.GenerationError):
+        api.load_preset("../../../etc/passwd")
+
+
+def test_save_preset_path_traversal_cannot_write_outside_presets_dir(tmp_path, monkeypatch):
+    # The real proof: reading a bogus traversed path would 404 "not found"
+    # even without sanitization, since nothing exists there anyway. Writing
+    # is the actual exploit surface -- confirm a traversal-style name can't
+    # make save_preset land a file outside PRESETS_DIR.
+    sandbox = tmp_path / "sandbox" / "presets"
+    monkeypatch.setattr(api, "PRESETS_DIR", sandbox)
+    escape_target = tmp_path / "escaped.json"
+
+    api.save_preset("../../escaped", {"keys": "C"})
+
+    assert not escape_target.exists()
+    assert list(sandbox.glob("*.json"))  # landed safely inside instead
+
+
+def test_home_preset_detection(presets_dir):
+    assert api.has_home_preset() is False
+    api.save_preset(api.HOME_PRESET_NAME, {"keys": "C::maj7"})
+    assert api.has_home_preset() is True

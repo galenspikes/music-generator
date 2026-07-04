@@ -18,7 +18,7 @@ usage: music_generator.py [-h] [--mode {complete,mixed,ostinato}]
                           [--chords-order {random,roundrobin}]
                           [--instrument INSTRUMENT]
                           [--voice-instrument VOICE=NAME]
-                          [--bass-style {follow,root,octaves,fifths,walking,arp}]
+                          [--bass-style {follow,none,root,octaves,fifths,walking,arp}]
                           [--bass-step BASS_STEP] [--melody MELODY]
                           [--melody-relative {key,chord}]
                           [--melody-octave MELODY_OCTAVE]
@@ -27,12 +27,12 @@ usage: music_generator.py [-h] [--mode {complete,mixed,ostinato}]
                           [--melody-mode MELODY_MODE] [--bpm BPM]
                           [--chord-length {w,h,q,e,s,t}]
                           [--chord-interrupters [CHORD_INTERRUPTERS ...]]
-                          [--satb-style {block,counterpoint,arpeggio}]
+                          [--satb-style {block,static,counterpoint,arpeggio}]
                           [--voicing {satb,dense}]
                           [--counterpoint-step COUNTERPOINT_STEP]
                           [--counterpoint-suspension-prob COUNTERPOINT_SUSPENSION_PROB]
                           [--counterpoint-anticipation-prob COUNTERPOINT_ANTICIPATION_PROB]
-                          [--perc-main PERC_MAIN]
+                          [--perc-main PERC_MAIN] [--no-perc]
                           [--perc-interrupters [PERC_INTERRUPTERS ...]]
                           [--perc-lib PERC_LIB]
                           [--perc-main-key PERC_MAIN_KEY]
@@ -44,9 +44,8 @@ usage: music_generator.py [-h] [--mode {complete,mixed,ostinato}]
                           [--velocity-mode-drums {uniform,random,human}]
                           [--chord-fill-rate CHORD_FILL_RATE]
                           [--seconds SECONDS] [--out OUT] [--seed SEED]
-                          [--sf2 SF2] [--gain GAIN] [--reverb REVERB]
-                          [--chorus CHORUS] [--poly POLY] [--no-play]
-                          [--split-stems] [--no-split-stems] [--swing SWING]
+                          [--sf2 SF2] [--no-play] [--split-stems]
+                          [--no-split-stems] [--swing SWING]
                           [--pan-spread PAN_SPREAD]
 
 Harmony + Percussion generator (independent parts, SATB, interrupters).
@@ -90,10 +89,11 @@ options:
                         bass=bass (repeatable). Voices: soprano, alto, tenor,
                         bass. Voices not set use --instrument. Requires split
                         stems (the default).
-  --bass-style {follow,root,octaves,fifths,walking,arp}
+  --bass-style {follow,none,root,octaves,fifths,walking,arp}
                         Bass line generator: 'follow' (bass tracks the SATB
-                        voicing), or an independent line: root, octaves,
-                        fifths, walking, arp. Requires split stems.
+                        voicing), 'none' (no bass voice at all), or an
+                        independent line: root, octaves, fifths, walking, arp.
+                        Requires split stems.
   --bass-step BASS_STEP
                         Subdivision (in beats) for the bass line when --bass-
                         style is not 'follow' (0.5 = eighths, 1.0 = quarters).
@@ -117,9 +117,11 @@ options:
   --chord-length {w,h,q,e,s,t}
   --chord-interrupters [CHORD_INTERRUPTERS ...]
                         Motifs like "ec,er,sc" (multiple allowed)
-  --satb-style {block,counterpoint,arpeggio}
-                        Voicing style for SATB harmony: block chords or
-                        counterpoint lines.
+  --satb-style {block,static,counterpoint,arpeggio}
+                        Voicing style for SATB harmony: block chords (re-
+                        voices each hit), static (freezes the voicing across
+                        an unchanged chord — no wobble), or
+                        counterpoint/arpeggio lines.
   --voicing {satb,dense}
                         satb = 4-voice voicing (default). dense = sound EVERY
                         chord tone spread across the register (full
@@ -135,7 +137,8 @@ options:
                         Probability per voice that a chord change introduces
                         an anticipation (0–1).
   --perc-main PERC_MAIN
-                        Pattern like "qk,eh,esh,er"
+                        Pattern like "qk,eh,esh,er". Pass "" for silence.
+  --no-perc             Silence percussion entirely (same as --perc-main '').
   --perc-interrupters [PERC_INTERRUPTERS ...]
                         Motifs like "sh,sh,skh,sh" ...
   --perc-lib PERC_LIB
@@ -162,10 +165,6 @@ options:
   --out OUT
   --seed SEED
   --sf2 SF2             Path to SoundFont (.sf2)
-  --gain GAIN           FluidSynth master gain (0.0–1.0)
-  --reverb REVERB       Enable reverb (0/1)
-  --chorus CHORUS       Enable chorus (0/1)
-  --poly POLY           Maximum polyphony voices
   --no-play             Generate MIDI only; do not launch FluidSynth.
   --split-stems         Write SATB voices to separate MIDI tracks/channels
                         (default).
@@ -184,16 +183,19 @@ Wrapper over the generator: runs FluidSynth then ffmpeg. Wrapper flags are
 consumed here; everything else is forwarded to `music_generator.py`.
 
 ```text
-usage: render.py [-h] [--sf2 SF2] [--fx FX] [--chorus-super] [--normalize]
-                 [--boost-db BOOST_DB] [--boost-normalize BOOST_AFTER_NORM]
-                 [--no-play] [--save-wav] [--output-dir OUTPUT_DIR]
-                 [--keep-temporary]
+usage: render.py [-h] [--sf2 SF2] [--list-soundfonts] [--fx FX]
+                 [--chorus-super] [--normalize] [--boost-db BOOST_DB]
+                 [--boost-normalize BOOST_AFTER_NORM] [--no-play] [--save-wav]
+                 [--output-dir OUTPUT_DIR] [--keep-temporary]
 
 Generate MIDI and optionally render/normalize audio.
 
 options:
   -h, --help            show this help message and exit
-  --sf2 SF2
+  --sf2 SF2             SoundFont path, or a bare name resolved against
+                        SoundFonts/ (e.g. --sf2 arachno for
+                        SoundFonts/arachno.sf2).
+  --list-soundfonts     List .sf2 files found in SoundFonts/ and exit.
   --fx FX
   --chorus-super
   --normalize

@@ -11,6 +11,8 @@ knows the basics. Recipes, not lessons.*
   durations, modifiers, interrupters.
 - **[Write melodies](write-melodies.md)** — scale degrees, anchoring, transforms.
 - **[Create an arrangement](create-an-arrangement.md)** — YAML song files, sections.
+- **[Import a lead sheet](import-a-lead-sheet.md)** — turn a chart PDF into a
+  song.yml (chords + form; an agent workflow + a tested chord-symbol mapper).
 - **[Render audio](render-audio.md)** — FluidSynth + ffmpeg via `render.py` /
   `play_music`.
 - **[Use the web instrument](use-the-web-instrument.md)** — run the React + FastAPI UI.

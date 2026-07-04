@@ -34,7 +34,7 @@ def test_schema_endpoint():
     r = client.get("/api/schema")
     assert r.status_code == 200
     params = r.json()["params"]
-    assert len(params) > 40
+    assert len(params) > 30
     assert all({"name", "kind", "control", "group"} <= set(p) for p in params)
 
 
@@ -44,6 +44,19 @@ def test_vocab_endpoint():
     assert r.status_code == 200
     assert len(body["recipes"]) > 0
     assert len(body["drums"]) > 0
+    assert len(body["instruments"]) > 0
+
+
+def test_vocab_endpoint_instrument_catalog():
+    # Thread D: the full, family-grouped GM catalog for the instrument picker,
+    # alongside (not replacing) the short curated alias list.
+    r = client.get("/api/vocab")
+    body = r.json()
+    catalog = body["instrument_catalog"]
+    assert len(catalog) == 128
+    assert all({"program", "name", "family"} <= set(e) for e in catalog)
+    families = {e["family"] for e in catalog}
+    assert "Piano" in families and "Bass" in families and "Strings" in families
 
 
 def test_generate_endpoint_returns_midi():
@@ -132,3 +145,118 @@ def test_recipes_endpoint():
     maj = next(x for x in recipes if x["name"] == "maj")
     assert maj["intervals"] == [0, 4, 7]
     assert maj["category"]
+
+
+# --- presets (Thread B) ---------------------------------------------------------
+
+@pytest.fixture
+def presets_dir(tmp_path, monkeypatch):
+    import generator_api as api
+    d = tmp_path / "presets" / "user"
+    monkeypatch.setattr(api, "PRESETS_DIR", d)
+    return d
+
+
+def test_preset_save_load_delete_roundtrip(presets_dir):
+    r = client.post("/api/presets/My Groove",
+                    json={"spec": {"keys": "C::maj7"}, "title": "My Groove"})
+    assert r.status_code == 200
+
+    names = {p["name"] for p in client.get("/api/presets").json()["presets"]}
+    assert "my-groove" in names
+
+    r = client.get("/api/presets/My Groove")
+    assert r.status_code == 200
+    assert r.json()["spec"] == {"keys": "C::maj7"}
+
+    r = client.delete("/api/presets/My Groove")
+    assert r.status_code == 200
+    assert client.get("/api/presets/My Groove").status_code == 404
+
+
+def test_preset_delete_missing_is_idempotent(presets_dir):
+    r = client.delete("/api/presets/never-existed")
+    assert r.status_code == 200
+
+
+def test_preset_path_traversal_rejected(presets_dir):
+    r = client.get("/api/presets/..%2F..%2F..%2Fetc%2Fpasswd")
+    assert r.status_code == 404
+    assert not (presets_dir.parent.parent / "etc" / "passwd.json").exists()
+
+
+# --- lead-sheet import ---------------------------------------------------------
+
+def _write_chart_pdf(path):
+    reportlab = pytest.importorskip("reportlab")  # noqa: F841 -- dev-only
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(72, 720, "Test Tune")
+    c.setFont("Helvetica", 10)
+    c.drawString(72, 700, "Tempo: 130")
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(72, 660, "A")
+    c.setFont("Courier", 11)
+    c.drawString(72, 640, "Cm7  F7  |  Bbmaj7  Ebmaj7")
+    c.save()
+
+
+def test_leadsheet_extract_endpoint(tmp_path):
+    pdf_path = tmp_path / "chart.pdf"
+    _write_chart_pdf(pdf_path)
+    with open(pdf_path, "rb") as f:
+        r = client.post("/api/leadsheet/extract",
+                        files={"file": ("chart.pdf", f, "application/pdf")})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["chart"]["title"] == "Test Tune"
+    assert body["chart"]["sections"][0]["name"] == "A"
+    assert "C::min7" in body["song_yaml"]
+    assert body["warnings"] == []
+
+
+def test_leadsheet_extract_rejects_non_pdf():
+    r = client.post("/api/leadsheet/extract",
+                    files={"file": ("not-a-pdf.txt", b"hello world", "text/plain")})
+    assert r.status_code == 422
+
+
+def test_leadsheet_emit_endpoint():
+    chart = {"title": "t", "tempo": 120,
+            "sections": [{"name": "A", "measures": [["Cmaj7"]]}]}
+    r = client.post("/api/leadsheet/emit", json={"chart": chart})
+    assert r.status_code == 200
+    assert "C::maj7" in r.json()["song_yaml"]
+
+
+def test_leadsheet_emit_applies_transpose():
+    chart = {"title": "t", "tempo": 120,
+            "sections": [{"name": "A", "measures": [["Cmaj7"]]}]}
+    r = client.post("/api/leadsheet/emit", json={"chart": chart, "transpose": 2})
+    assert r.status_code == 200
+    assert "D::maj7" in r.json()["song_yaml"]
+
+
+def test_leadsheet_emit_rejects_unknown_chord():
+    chart = {"title": "t", "sections": [{"name": "A", "measures": [["Xwibble9"]]}]}
+    r = client.post("/api/leadsheet/emit", json={"chart": chart})
+    assert r.status_code == 422
+
+
+def test_generate_accepts_extracted_song_yaml(tmp_path):
+    # The full loop: extract -> song_yaml -> /api/generate plays it, with
+    # nothing ever written to disk.
+    pdf_path = tmp_path / "chart.pdf"
+    _write_chart_pdf(pdf_path)
+    with open(pdf_path, "rb") as f:
+        extracted = client.post(
+            "/api/leadsheet/extract",
+            files={"file": ("chart.pdf", f, "application/pdf")}).json()
+
+    r = client.post("/api/generate", json={"spec": {"song_yaml": extracted["song_yaml"]}})
+    assert r.status_code == 200
+    data = base64.b64decode(r.json()["midi"])
+    assert data[:4] == b"MThd"

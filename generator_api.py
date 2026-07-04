@@ -23,12 +23,14 @@ global state (true concurrency) is a later, separate step.
 from __future__ import annotations
 
 import argparse
+import io
 import random
 import re
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import mido
 import music_generator as mg
 
 _LOCK = threading.Lock()
@@ -60,6 +62,7 @@ class GenerationResult:
     duration_seconds: float
     mode: str
     warnings: list[str] = field(default_factory=list)
+    envelope: list[float] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         return {
@@ -67,6 +70,7 @@ class GenerationResult:
             "duration_seconds": self.duration_seconds,
             "mode": self.mode,
             "warnings": self.warnings,
+            "envelope": self.envelope,
         }
 
 
@@ -161,6 +165,31 @@ def _track_infos(midifile) -> list[TrackInfo]:
     return infos
 
 
+def envelope_from_bytes(data: bytes, duration: float, buckets: int = 60) -> list[float]:
+    """A coarse, time-bucketed note-density envelope (0..1 per bucket) for a
+    lightweight "waveform" visual in the webapp (webapp-ui-design.md's
+    waveform display, still missing as of ui-ux-roadmap.md Thread C).
+
+    Computed here via ``mido``'s tempo-aware absolute timing (iterating a
+    ``MidiFile`` merges tracks and converts tick deltas to seconds using the
+    tempo map) rather than re-parsed client-side — MIDI tick/tempo math is
+    easy to get subtly wrong in a hand-rolled parser, and this project
+    already trusts mido elsewhere (tests, MidiOut).
+    """
+    if duration <= 0 or buckets <= 0:
+        return [0.0] * max(buckets, 0)
+    mid = mido.MidiFile(file=io.BytesIO(data))
+    counts = [0.0] * buckets
+    t = 0.0
+    for msg in mid:
+        t += msg.time
+        if msg.type == "note_on" and msg.velocity > 0:
+            idx = min(buckets - 1, max(0, int((t / duration) * buckets)))
+            counts[idx] += msg.velocity
+    peak = max(counts) or 1.0
+    return [round(c / peak, 3) for c in counts]
+
+
 # --- the seam ------------------------------------------------------------------
 
 def generate(spec: dict) -> GenerationResult:
@@ -177,6 +206,11 @@ def generate(spec: dict) -> GenerationResult:
 
 
 def _generate_locked(spec: dict) -> GenerationResult:
+    # Raw song YAML text (e.g. from the lead-sheet importer) — an alternative
+    # to args.song's file path so the webapp never has to write the imported
+    # song anywhere durable. Not an argparse flag, so pulled from the raw
+    # spec dict directly rather than through _namespace_from_spec.
+    song_yaml_text = spec.get("song_yaml")
     args = _namespace_from_spec(spec)
 
     if getattr(args, "keys_preset", None):
@@ -222,7 +256,7 @@ def _generate_locked(spec: dict) -> GenerationResult:
         return _result(midi, total, f"process:{args.process}")
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
-    if args.song:
+    if args.song or song_yaml_text:
         import tempfile
         import arrangement
 
@@ -239,7 +273,9 @@ def _generate_locked(spec: dict) -> GenerationResult:
             "swing": float(getattr(args, "swing", 0.0)),
             "pan_spread": float(getattr(args, "pan_spread", 0.0)),
         }
-        if args.perc_main:
+        if getattr(args, "no_perc", False):
+            arr_overrides["perc"]["main"] = ""  # explicit silence (gap-analysis I1)
+        elif args.perc_main is not None:
             arr_overrides["perc"]["main"] = args.perc_main
         if args.voice_instrument:
             voices: dict = {}
@@ -250,18 +286,22 @@ def _generate_locked(spec: dict) -> GenerationResult:
             if voices:
                 arr_overrides["voices"] = voices
 
-        song_spec = arrangement.load_spec(
-            args.song, vel_mode_chords=args.velocity_mode_chords,
-            vel_mode_drums=args.velocity_mode_drums,
-            overrides=arr_overrides)
         with tempfile.TemporaryDirectory(prefix="mg_song_") as tmp:
+            song_path = args.song
+            if song_yaml_text:
+                song_path = str(Path(tmp) / "uploaded_song.yml")
+                Path(song_path).write_text(song_yaml_text, encoding="utf-8")
+            song_spec = arrangement.load_spec(
+                song_path, vel_mode_chords=args.velocity_mode_chords,
+                vel_mode_drums=args.velocity_mode_drums,
+                overrides=arr_overrides)
             out = str(Path(tmp) / "song.mid")
             arrangement.render(song_spec, out)
             data = Path(out).read_bytes()
-        import mido
-        mid = mido.MidiFile(file=__import__("io").BytesIO(data))
-        return GenerationResult(data, _track_infos(mid), float(mid.length),
-                                "song")
+        mid = mido.MidiFile(file=io.BytesIO(data))
+        duration = float(mid.length)
+        return GenerationResult(data, _track_infos(mid), duration, "song",
+                                envelope=envelope_from_bytes(data, duration))
 
     # ----- flat (ostinato / mixed / complete) -----
     midi, _meta = mg.build_flat_midi(args)
@@ -269,11 +309,13 @@ def _generate_locked(spec: dict) -> GenerationResult:
 
 
 def _result(midi, duration: float, mode: str) -> GenerationResult:
+    data = midi.to_bytes()
     return GenerationResult(
-        midi=midi.to_bytes(),
+        midi=data,
         tracks=_track_infos(midi.mid),
         duration_seconds=duration,
         mode=mode,
+        envelope=envelope_from_bytes(data, duration),
     )
 
 
@@ -484,18 +526,24 @@ def validate(spec: dict) -> ValidationResult:
 # --- schema (introspected, never hand-mirrored) --------------------------------
 
 def parameter_schema() -> list[dict]:
-    """Every CLI parameter as a UI-renderable spec, derived from build_parser.
+    """Every controllable CLI parameter as a UI-renderable spec, derived from
+    build_parser.
 
     Annotations (group + control hint + range) live in PARAM_ANNOTATIONS; any
     flag not annotated still appears (group 'More', inferred control), so the
-    UI can never silently omit a parameter.
+    UI can never silently omit a real instrument control. HIDDEN_PARAMS is the
+    one deliberate exception: baggage (mode, the parked process/fugue group,
+    CLI/render plumbing) that the controllability audit flagged for removal
+    from the surface. Those flags stay fully functional on the CLI and in song
+    YAML — they're just not rendered as rack controls. See
+    docs/design-notes/controllability-audit.md.
     """
     defaults = vars(mg.build_parser().parse_args([]))
     out: list[dict] = []
     seen: set[str] = set()
     for action in mg.build_parser()._actions:
         dest = action.dest
-        if dest in ("help",) or dest in seen:
+        if dest in ("help",) or dest in seen or dest in HIDDEN_PARAMS:
             continue
         seen.add(dest)
         out.append(_param_spec(action, defaults.get(dest)))
@@ -553,12 +601,22 @@ def _default_control(kind: str, choices) -> str:
     return "text"
 
 
+# Baggage cut from the webapp control surface (controllability-audit.md): the
+# parked mode switch and process/fugue group, plus CLI/render plumbing that
+# isn't an instrument control. The underlying flags still work on the CLI and
+# in song YAML — see parameter_schema()'s docstring.
+HIDDEN_PARAMS: set[str] = {
+    "mode",
+    "process", "process_cell", "process_reps", "process_stages",
+    "fugue", "fugue_countersubject",
+    "out", "no_play", "song", "sf2", "perc_lib",
+}
+
 # Presentation metadata: which rack panel a flag lives in, its control, ranges.
 # Completeness is guaranteed by parameter_schema's catch-all, so this only needs
 # to grow when we want nicer placement — never to keep the UI in sync.
 PARAM_ANNOTATIONS: dict[str, dict] = {
-    # Engine / mode
-    "mode": {"group": "Engine", "control": "segmented"},
+    # Engine
     "seconds": {"group": "Engine", "control": "slider", "min": 4, "max": 600, "step": 2},
     "bpm": {"group": "Engine", "control": "slider", "min": 40, "max": 300, "step": 1},
     "seed": {"group": "Engine", "control": "int", "min": 0, "max": 999999},
@@ -594,7 +652,6 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     "perc_stages": {"group": "Percussion", "control": "taglist"},
     "perc_fill_rate": {"group": "Percussion", "control": "knob", "min": 0, "max": 1, "step": 0.01},
     "perc_fill_curve": {"group": "Percussion", "control": "text"},
-    "perc_lib": {"group": "Percussion", "control": "text"},
     "perc_main_key": {"group": "Percussion", "control": "text"},
     "perc_intr_keys": {"group": "Percussion", "control": "taglist"},
     # Dynamics
@@ -602,23 +659,8 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     "velocity_mode_drums": {"group": "Dynamics", "control": "segmented"},
     "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01},
     "pan_spread": {"group": "Dynamics", "control": "knob", "min": 0, "max": 1, "step": 0.01},
-    # Process / fugue
-    "process": {"group": "Process", "control": "segmented"},
-    "process_cell": {"group": "Process", "control": "text", "multiline": True},
-    "process_reps": {"group": "Process", "control": "slider", "min": 1, "max": 16, "step": 1},
-    "process_stages": {"group": "Process", "control": "slider", "min": 1, "max": 16, "step": 1},
-    "fugue": {"group": "Process", "control": "text"},
-    "fugue_countersubject": {"group": "Process", "control": "text"},
-    # Render / audio (FluidSynth — used by the Phase-2 audio path)
-    "sf2": {"group": "Render", "control": "text"},
-    "gain": {"group": "Render", "control": "knob", "min": 0, "max": 1, "step": 0.01},
-    "reverb": {"group": "Render", "control": "toggle"},
-    "chorus": {"group": "Render", "control": "toggle"},
-    "poly": {"group": "Render", "control": "slider", "min": 16, "max": 512, "step": 16},
+    # Render
     "split_stems": {"group": "Render", "control": "toggle"},
-    "song": {"group": "Render", "control": "text"},
-    "out": {"group": "Render", "control": "text"},
-    "no_play": {"group": "Render", "control": "toggle"},
 }
 
 
@@ -627,6 +669,38 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
 REPO_ROOT = Path(__file__).resolve().parent
 SONGS_DIR = REPO_ROOT / "songs"
 PRESETS_DIR = REPO_ROOT / "presets" / "user"
+
+_SLUG_UNSAFE_RE = re.compile(r"[^a-z0-9_-]+")
+_SLUG_DASH_RUN_RE = re.compile(r"-{2,}")
+
+
+def slugify(name: str) -> str:
+    """Turn arbitrary text into a filesystem-safe identifier: lowercase,
+    ``[a-z0-9_-]+``, no leading/trailing hyphens or repeated hyphens.
+
+    Every preset/song name that reaches the filesystem goes through this —
+    it's the only thing standing between a name coming from an HTTP path
+    parameter and a path-traversal write (``../../etc/passwd``), since a raw
+    ``PRESETS_DIR / f"{name}.json"`` does not resolve or reject ``..``
+    segments. Underscores are kept literal (not folded to ``-``) so this is
+    idempotent for existing ``songs/*.yml`` filenames like
+    ``four_organs`` / ``girl_from_ipanema`` — a raw name already in that form
+    round-trips unchanged, so it's safe to apply on every read as well as
+    every write.
+    """
+    slug = _SLUG_UNSAFE_RE.sub("-", name.strip().lower())
+    slug = _SLUG_DASH_RUN_RE.sub("-", slug).strip("-")
+    return slug or "untitled"
+
+
+def _safe_path_for(directory: Path, name: str, suffix: str) -> Path:
+    """Slugify ``name`` and join it to ``directory``, then verify the result
+    can't have escaped (defense in depth on top of slugify's character
+    restriction)."""
+    path = directory / f"{slugify(name)}{suffix}"
+    if path.resolve().parent != directory.resolve():
+        raise GenerationError(f"Invalid name '{name}'")
+    return path
 
 
 def list_songs() -> list[dict]:
@@ -654,7 +728,7 @@ def load_song(name: str) -> dict:
     """Load a song YAML and return all params (defaults + derived)."""
     import yaml
 
-    song_path = SONGS_DIR / f"{name}.yml"
+    song_path = _safe_path_for(SONGS_DIR, name, ".yml")
     if not song_path.exists():
         raise GenerationError(f"Song '{name}' not found")
 
@@ -743,7 +817,7 @@ def load_preset(name: str) -> dict:
     """Load a user preset and return the spec."""
     import json
 
-    preset_path = PRESETS_DIR / f"{name}.json"
+    preset_path = _safe_path_for(PRESETS_DIR, name, ".json")
     if not preset_path.exists():
         raise GenerationError(f"Preset '{name}' not found")
 
@@ -760,7 +834,7 @@ def save_preset(name: str, spec: dict, title: str = "", description: str = "") -
     from datetime import datetime
 
     PRESETS_DIR.mkdir(parents=True, exist_ok=True)
-    preset_path = PRESETS_DIR / f"{name}.json"
+    preset_path = _safe_path_for(PRESETS_DIR, name, ".json")
 
     data = {
         "title": title or name,
@@ -774,3 +848,20 @@ def save_preset(name: str, spec: dict, title: str = "", description: str = "") -
         return data
     except Exception as e:
         raise GenerationError(f"Failed to save preset '{name}': {e}")
+
+
+def delete_preset(name: str) -> None:
+    """Delete a user preset. No-op (not an error) if it doesn't exist."""
+    preset_path = _safe_path_for(PRESETS_DIR, name, ".json")
+    preset_path.unlink(missing_ok=True)
+
+
+# The reserved preset name the app tries to boot into (docs/design-notes/
+# ui-homework.md: "the home, or a user-defined home preset" instead of always
+# the same hardcoded demo). Saving a preset under this name is how a user
+# designates their home; it's just a preset like any other otherwise.
+HOME_PRESET_NAME = "home"
+
+
+def has_home_preset() -> bool:
+    return _safe_path_for(PRESETS_DIR, HOME_PRESET_NAME, ".json").exists()

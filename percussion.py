@@ -345,18 +345,7 @@ def build_drum_timeline_from_main(
     Assumes 'main_pat' already quantized (e.g., via quantize_to_grid).
     Returns list of (when_beats, duration_beats, hits_set).
     """
-    if not main_pat:
-        return []
-    out = []
-    pos = 0.0
-    while pos < beats_total:
-        for beats, hits in main_pat:
-            if pos >= beats_total:
-                break
-            dur = min(beats, max(0.0, beats_total - pos))
-            out.append((pos, dur, hits))
-            pos += dur
-    return out
+    return build_drum_segment(0.0, beats_total, main_pat, None, 0.0)
 
 
 def build_drum_timeline_with_fills(
@@ -368,22 +357,7 @@ def build_drum_timeline_with_fills(
     Bar-less unroll: each iteration chooses either main or a fill motif
     based on fill_rate. If intr_pats is None or fill_rate==0, falls back to main only.
     """
-    tl: list[tuple[float, float, list[PercHit]]] = []
-    pos = 0.0
-    if not main_pat:
-        return tl
-
-    while pos < beats_total:
-        pattern = choose_perc_pattern(main_pat, intr_pats, fill_rate)
-        for beats, hits in pattern:
-            if pos >= beats_total:
-                break
-            dur = min(beats, max(0.0, beats_total - pos))
-            if dur <= 0.0:
-                break
-            tl.append((pos, dur, hits))
-            pos += dur
-    return tl
+    return build_drum_segment(0.0, beats_total, main_pat, intr_pats, fill_rate)
 
 
 def build_drum_segment(start_beats: float,
@@ -498,11 +472,17 @@ def build_perc_from_args(args) -> PercPlan:
     stage_specs: list[PercStage] = []
     fill_curve: tuple[float, float] | None = None
 
-    if getattr(args, "perc_main", None):
-        plan_main = parse_main(args.perc_main)
+    perc_main_arg = getattr(args, "perc_main", None)
+    if getattr(args, "no_perc", False) or perc_main_arg == "":
+        plan_main = []  # explicit silence; never fall back to the default groove
+    elif perc_main_arg:
+        plan_main = parse_main(perc_main_arg)
 
-    if getattr(args, "perc_interrupters", None) and args.perc_interrupters:
-        plan_intr = parse_intr_list(args.perc_interrupters)
+    perc_intr_arg = getattr(args, "perc_interrupters", None)
+    if perc_intr_arg is not None:
+        # Explicitly provided (even an empty list from a bare flag) — honor it
+        # instead of falling back to the default fill vocabulary below.
+        plan_intr = parse_intr_list(perc_intr_arg) if perc_intr_arg else []
 
     groups: dict[str, dict] = {}
     if getattr(args, "perc_lib", None):
@@ -528,7 +508,7 @@ def build_perc_from_args(args) -> PercPlan:
         if intr_from_group:
             plan_intr = (plan_intr or []) + intr_from_group
 
-    if getattr(args, "perc_intr_keys", None) and args.perc_intr_keys:
+    if getattr(args, "perc_intr_keys", None):
         for key in args.perc_intr_keys:
             _, intr_from_group = fetch_group(key)
             if intr_from_group:
@@ -598,7 +578,7 @@ def build_perc_from_args(args) -> PercPlan:
     if plan_main is None:
         plan_main = parse_main("sh,sh,sh,sh")
 
-    if not plan_intr:
+    if plan_intr is None:
         plan_intr = parse_intr_list(["qk,er,qs,er"])
 
     return PercPlan(
