@@ -87,7 +87,8 @@ body {
 .transport { display: flex; align-items: center; gap: 12px; }
 .transport-bpm { display: flex; align-items: center; gap: 6px; }
 .transport-bpm-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; }
-.transport-bpm .intfield { width: 56px; padding: 6px 8px; font-size: 12px; }
+.transport-bpm .slider { width: 140px; }
+.transport-bpm .slider-val { min-width: 30px; }
 .soundbank { display: flex; align-items: center; gap: 6px; }
 .soundbank-select { width: auto; padding: 6px 8px; font-size: 11px; }
 .soundbank-url { width: 200px; padding: 6px 8px; font-size: 11px; }
