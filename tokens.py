@@ -106,10 +106,10 @@ def parse_repetition_token(token: str) -> tuple[str, int]:
 
     try:
         count = int(count_str)
-        if count < 1:
-            raise ValueError(f"Repetition count must be >= 1, got {count}")
     except ValueError as exc:
         raise ValueError(f"Bad repetition count '{count_str}' in '{token}'") from exc
+    if count < 1:
+        raise ValueError(f"Repetition count must be >= 1, got {count}")
 
     return base_token, count
 
@@ -174,7 +174,9 @@ def _normalize_key_token(base_token: str) -> str:
         t = t[:-3]
     elif low.endswith("m"):
         t = t[:-1]
-    t = (t[0].upper() + t[1:]) if t else t
+    # Lowercase the accidental too, so "GBm"/"F#M" normalize the same as
+    # "Gbm"/"F#m" instead of failing NOTE_TO_PC lookup on a stray uppercase B.
+    t = (t[0].upper() + t[1:].lower()) if t else t
     t = _KEY_SHARP_TO_FLAT.get(t, t)
     if t not in NOTE_TO_PC:
         raise ValueError(f"Bad key '{base_token}'")

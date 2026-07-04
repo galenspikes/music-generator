@@ -239,7 +239,9 @@ def _generate_locked(spec: dict) -> GenerationResult:
             "swing": float(getattr(args, "swing", 0.0)),
             "pan_spread": float(getattr(args, "pan_spread", 0.0)),
         }
-        if args.perc_main:
+        if getattr(args, "no_perc", False):
+            arr_overrides["perc"]["main"] = ""  # explicit silence (gap-analysis I1)
+        elif args.perc_main is not None:
             arr_overrides["perc"]["main"] = args.perc_main
         if args.voice_instrument:
             voices: dict = {}

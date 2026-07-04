@@ -60,6 +60,18 @@ def test_generate_song_roundtrip(tmp_path):
     assert r.midi[:4] == b"MThd"
 
 
+def test_generate_song_no_perc_silences_drums():
+    # gap-analysis I1, song-path regression: "no_perc"/explicit-empty perc_main
+    # used to be dropped by a truthy check when forwarding UI overrides into
+    # the arrangement, so a song always kept its own YAML drum pattern
+    # regardless of what the UI asked for.
+    with_drums = api.generate({"song": "songs/kiss.yml"})
+    assert any(m.channel == mg.DRUM_CH for m in _midi_notes(with_drums.midi))
+
+    silenced = api.generate({"song": "songs/kiss.yml", "no_perc": True})
+    assert not any(m.channel == mg.DRUM_CH for m in _midi_notes(silenced.midi))
+
+
 def test_generate_bad_recipe_raises():
     with pytest.raises(api.GenerationError):
         api.generate({"mode": "ostinato", "keys": "C::definitely_not_a_recipe"})

@@ -345,18 +345,7 @@ def build_drum_timeline_from_main(
     Assumes 'main_pat' already quantized (e.g., via quantize_to_grid).
     Returns list of (when_beats, duration_beats, hits_set).
     """
-    if not main_pat:
-        return []
-    out = []
-    pos = 0.0
-    while pos < beats_total:
-        for beats, hits in main_pat:
-            if pos >= beats_total:
-                break
-            dur = min(beats, max(0.0, beats_total - pos))
-            out.append((pos, dur, hits))
-            pos += dur
-    return out
+    return build_drum_segment(0.0, beats_total, main_pat, None, 0.0)
 
 
 def build_drum_timeline_with_fills(
@@ -368,22 +357,7 @@ def build_drum_timeline_with_fills(
     Bar-less unroll: each iteration chooses either main or a fill motif
     based on fill_rate. If intr_pats is None or fill_rate==0, falls back to main only.
     """
-    tl: list[tuple[float, float, list[PercHit]]] = []
-    pos = 0.0
-    if not main_pat:
-        return tl
-
-    while pos < beats_total:
-        pattern = choose_perc_pattern(main_pat, intr_pats, fill_rate)
-        for beats, hits in pattern:
-            if pos >= beats_total:
-                break
-            dur = min(beats, max(0.0, beats_total - pos))
-            if dur <= 0.0:
-                break
-            tl.append((pos, dur, hits))
-            pos += dur
-    return tl
+    return build_drum_segment(0.0, beats_total, main_pat, intr_pats, fill_rate)
 
 
 def build_drum_segment(start_beats: float,
@@ -534,7 +508,7 @@ def build_perc_from_args(args) -> PercPlan:
         if intr_from_group:
             plan_intr = (plan_intr or []) + intr_from_group
 
-    if getattr(args, "perc_intr_keys", None) and args.perc_intr_keys:
+    if getattr(args, "perc_intr_keys", None):
         for key in args.perc_intr_keys:
             _, intr_from_group = fetch_group(key)
             if intr_from_group:

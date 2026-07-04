@@ -38,7 +38,7 @@ The instrument boots maximally *deviated*, not at home.
 
 | Control | Problem | Fix shipped |
 |---|---|---|
-| `perc_main` | empty → forced `"sh,sh,sh,sh"`; drums can't be silenced | explicit `--perc-main ""` (or `--no-perc`) now means silence; unspecified still falls back to the default groove. `percussion.py::build_perc_from_args`. |
+| `perc_main` | empty → forced `"sh,sh,sh,sh"`; drums can't be silenced | explicit `--perc-main ""` (or `--no-perc`) now means silence; unspecified still falls back to the default groove. `percussion.py::build_perc_from_args`, and (a follow-up fix, same pass) the `--song`/arrangement override builders in `music_generator.py` and `generator_api.py`, which had the identical truthy-check bug on their own copy of the logic and never honored `--no-perc` at all. |
 | `perc_interrupters` | empty → forced default fill | an explicitly empty `--perc-interrupters` (bare flag, zero values) is now honored as "no interrupters" instead of forcing the default fill vocabulary. Same function. |
 | `bass_style` | no `none`; bass mandatory | added `"none"` to `BASS_STYLES`; `build_harmony_events` drops the SATB bass voice entirely and skips `build_bass_line`. |
 | `satb_style` / `voicing` | no *static* option — `block` still voice-leads | added `--satb-style static`; `build_chord_timeline(..., static=True)` freezes the exact voicing across an unchanged chord instead of calling `pick_soprano`'s anti-stagnation logic. |

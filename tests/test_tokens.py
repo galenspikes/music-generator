@@ -183,10 +183,17 @@ def test_repetition_token():
     assert M.parse_repetition_token("C::maj*4") == ("C::maj", 4)
 
 
-@pytest.mark.parametrize("bad", ["*4", "C*", "C*x", "C*0"])
+@pytest.mark.parametrize("bad", ["*4", "C*", "C*x", "C*0", "C*-1"])
 def test_repetition_errors(bad):
     with pytest.raises(ValueError):
         M.parse_repetition_token(bad)
+
+
+def test_repetition_negative_count_keeps_specific_message():
+    # the count<1 check must not be swallowed by the surrounding int() parse's
+    # except clause and replaced with the generic "Bad repetition count" message
+    with pytest.raises(ValueError, match="must be >= 1"):
+        M.parse_repetition_token("C*-1")
 
 
 def test_chain_repetition():
@@ -221,6 +228,16 @@ def test_key_roots_preserves_colon_tokens():
 def test_key_roots_normalizes_enharmonic_and_strips_minor():
     # bare roots: sharps -> flats, minor marker stripped (quality comes from --chords)
     assert M.key_roots("ostinato", "C#,Gm,F#m") == ["Db", "G", "Gb"]
+
+
+def test_key_roots_normalizes_unicode_accidentals():
+    assert M.key_roots("ostinato", "C♯,G♭") == ["Db", "Gb"]
+
+
+def test_key_roots_case_insensitive_flat_accidental():
+    # an uppercase accidental letter ("GBm") must normalize the same as the
+    # lowercase spelling ("Gbm") instead of failing the NOTE_TO_PC lookup.
+    assert M.key_roots("ostinato", "GBm,Gbm") == ["Gb", "Gb"]
 
 
 def test_key_roots_rejects_bad_key():

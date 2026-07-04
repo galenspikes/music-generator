@@ -954,7 +954,9 @@ def main():
         perc_over: dict = {}
         if _cli_set("perc_fill_rate", "--perc-fill-rate"):
             perc_over["fill_rate"] = float(args.perc_fill_rate)
-        if args.perc_main:
+        if args.no_perc:
+            perc_over["main"] = ""  # explicit silence (gap-analysis I1)
+        elif _cli_set("perc_main", "--perc-main"):
             perc_over["main"] = args.perc_main
         if perc_over:
             arr_overrides["perc"] = perc_over

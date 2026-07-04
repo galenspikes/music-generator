@@ -101,3 +101,24 @@ def test_render_song(slug, tmp_path):
         encoding="utf-8")
     _run(["--song", str(song), "--out", slug])
     _assert_valid_midi(slug)
+
+
+def test_render_song_no_perc_silences_drums(slug, tmp_path):
+    # gap-analysis I1, song-path regression: --no-perc used to be ignored when
+    # rendering a --song file, because the CLI's arr_overrides builder checked
+    # `if args.perc_main:` instead of whether --perc-main/--no-perc was set.
+    song = tmp_path / "song.yml"
+    song.write_text(
+        "title: t\ntempo: 120\n"
+        "defaults: {instrument: piano, chord_length: h}\n"
+        "sections:\n"
+        "  - {name: a, repeat: 1, keys: 'C::maj, F::maj'}\n",
+        encoding="utf-8")
+    _run(["--song", str(song), "--no-perc", "--out", slug])
+    files = sorted(glob.glob(str(OUT / slug / "*.mid")))
+    assert files
+    mid = mido.MidiFile(files[-1])
+    drum_notes = [m for tr in mid.tracks for m in tr
+                  if m.type == "note_on" and m.velocity > 0
+                  and m.channel == mg.DRUM_CH]
+    assert not drum_notes
