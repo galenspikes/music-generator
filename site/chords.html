@@ -251,9 +251,40 @@ sup.fn a{color:var(--amber);font-family:var(--mono);padding:0 1px;}
   .head-inner{gap:16px;}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
+
+/* ---- shared cross-surface nav (matches site/index.html's) ---- */
+.chd-nav{position:sticky;top:0;z-index:200;background:rgba(16,18,21,0.92);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--edge);}
+.chd-nav-inner{display:flex;align-items:center;justify-content:space-between;
+  gap:24px;padding:11px 0;}
+.chd-nav-brand{font-family:var(--mono);font-size:0.72rem;font-weight:600;
+  letter-spacing:0.14em;text-transform:uppercase;color:var(--engrave);white-space:nowrap;}
+.chd-nav-brand:hover{color:var(--amber);text-decoration:none;}
+.chd-nav-links{display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  list-style:none;margin:0;padding:0;}
+.chd-nav-links a{font-family:var(--mono);font-size:0.72rem;letter-spacing:0.02em;
+  color:var(--ink-dim);}
+.chd-nav-links a:hover{color:var(--ink);text-decoration:none;}
+.chd-nav-links a[aria-current="page"]{color:var(--amber);}
+.chd-nav-cta{color:var(--amber)!important;font-weight:500;}
+@media (max-width:640px){.chd-nav-links li:not(:last-child){display:none;}}
 </style>
 </head>
 <body>
+
+  <nav class="chd-nav">
+    <div class="wrap chd-nav-inner">
+      <a class="chd-nav-brand" href="index.html">Music Generator</a>
+      <ul class="chd-nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="chords.html" aria-current="page">Chords</a></li>
+        <li><a href="https://github.com/galenspikes/music-generator/tree/main/docs">Docs</a></li>
+        <li><a href="https://github.com/galenspikes/music-generator">GitHub</a></li>
+        <li><a class="chd-nav-cta" href="https://huggingface.co/spaces/gsp87/music-generator">Player →</a></li>
+      </ul>
+    </div>
+  </nav>
 
   <header class="rack-head">
     <div class="wrap head-inner">

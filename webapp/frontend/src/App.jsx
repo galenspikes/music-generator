@@ -404,9 +404,10 @@ export default function App() {
       <footer className="footer">
         <div className="credit">
           Music Generator — © 2026 <strong>Galen Spikes</strong> · MIT licensed ·{" "}
-          <a href="https://github.com/galenspikes/music-generator">source</a> ·{" "}
-          <a href="https://github.com/galenspikes/music-generator/tree/main/docs">docs</a> ·{" "}
-          <a href="/showcase/" target="_blank" rel="noreferrer">showcase</a>
+          <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">home</a> ·{" "}
+          <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">chords</a> ·{" "}
+          <a href="https://github.com/galenspikes/music-generator/tree/main/docs" target="_blank" rel="noreferrer">docs</a> ·{" "}
+          <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">github</a>
         </div>
         <div className="credit-sub">
           in-process seam · {params.length} parameters · browser-MIDI preview

@@ -151,20 +151,29 @@ Track 2 publish docs straight from the repo.
   showcase is mounted at that path; point it at the showcase's real URL as part
   of Track 4 (shared nav).
 
-### Track 4 — A shared navigation bar across every surface
+### Track 4 — A shared navigation bar across every surface ✅ done
 
-Define one header — **Home · Player · Chords · Docs · GitHub** — and put it on
-every surface so they feel like one product:
+One canonical cross-surface set — **Home · Player · Chords · Docs · GitHub** —
+now appears on every surface (each omits the link to itself), with identical
+targets so "Docs" always means the same page:
 
-- `site/index.html`: already has this nav; align the labels/targets.
-- `site/chords.html`: **currently only has a footer back-link** (`:308`) — add
-  the shared header.
-- `webapp` shell: it has internal tabs (Listen/Library/Editor/Docs); add the
-  cross-surface links (Home/Chords/GitHub) to its footer/header.
-- `space/app.py`: it has a markdown link row; align it to the same set (it's
-  already close — Chord reference · Showcase · Grammar).
+- **Home** → `https://galenspikes.github.io/music-generator/`
+- **Player** → the Hugging Face Space
+- **Chords** → the showcase's `chords.html`
+- **Docs** → `github.com/…/tree/main/docs` (public now; repoint to the MkDocs
+  site once Track 2 ships)
+- **GitHub** → the repo
 
-Keep the link set identical everywhere so "Docs" always means the same page.
+Applied:
+- `site/index.html`: added Docs + GitHub to the nav; CTA relabelled "Player →".
+- `site/chords.html`: added a sticky top nav (previously only a footer
+  back-link), styled to match the page's dark rack theme.
+- `space/app.py`: link row realigned to Home · Chords · Docs · GitHub.
+- `webapp` footer: realigned to home · chords · docs · github, and the broken
+  relative `/showcase/` link now points at the showcase's real URL.
+
+Remaining polish (optional): mirror the nav into the webapp *header* (not just
+the footer), and repoint Docs to the styled docs site when Track 2 lands.
 
 ### Track 5 — De-duplicate, mark the source of truth
 
