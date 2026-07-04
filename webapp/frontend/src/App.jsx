@@ -70,6 +70,7 @@ export default function App() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
   const [saveDesc, setSaveDesc] = useState("");
+  const [activeModule, setActiveModule] = useState("Harmony"); // For mobile module picker
 
   const playerRef = useRef(null);
   const vizRef = useRef(null);
@@ -349,22 +350,45 @@ export default function App() {
       )}
 
       {tab === "editor" && (
-        <main className="modules">
-          {grouped.map(([group, ps]) => (
-            <Panel
-              key={group}
-              group={group}
-              accent={GROUP_ACCENT[group] || "#9aa4b8"}
-              collapsed={!!collapsed[group]}
-              onToggle={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}
-            >
-              {ps.map((p) => (
-                <Param key={p.name} param={p} value={spec[p.name]}
-                  onChange={setField(p.name)} grooves={grooves} instruments={instruments} />
-              ))}
-            </Panel>
-          ))}
-        </main>
+        <>
+          <main className="modules">
+            {grouped.map(([group, ps]) => {
+              const isMobile = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+              if (isMobile && group !== activeModule) return null;
+              return (
+                <Panel
+                  key={group}
+                  group={group}
+                  accent={GROUP_ACCENT[group] || "#9aa4b8"}
+                  collapsed={!!collapsed[group]}
+                  onToggle={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}
+                >
+                  {ps.map((p) => (
+                    <Param key={p.name} param={p} value={spec[p.name]}
+                      onChange={setField(p.name)} grooves={grooves} instruments={instruments} />
+                  ))}
+                </Panel>
+              );
+            })}
+          </main>
+
+          {typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 640px)").matches && (
+            <div className="module-picker">
+              <div className="module-picker-handle" />
+              <div className="module-picker-grid">
+                {GROUP_ORDER.map((group) => (
+                  <button
+                    key={group}
+                    className={`module-picker-btn ${activeModule === group ? "active" : ""}`}
+                    onClick={() => setActiveModule(group)}
+                  >
+                    {group}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {tab === "docs" && <Docs spec={spec} setField={setField} setTab={setTab} />}

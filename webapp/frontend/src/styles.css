@@ -815,17 +815,80 @@ midi-visualizer {
   .brand h1 { font-size: 16px; letter-spacing: 0.08em; }
   .logo { font-size: 20px; }
 
+  /* ---- module picker (bottom sheet) ---- */
+  .module-picker {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 150;
+    background: var(--rack2);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .module-picker-handle {
+    height: 4px;
+    background: var(--metal);
+    margin: 8px auto;
+    width: 40px;
+    border-radius: 2px;
+  }
+  .module-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 8px;
+    padding: 8px 12px 12px;
+  }
+  .module-picker-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid var(--edge);
+    background: var(--metal);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--engrave-dim);
+    transition: all 0.12s;
+  }
+  .module-picker-btn.active {
+    background: var(--metal-hi);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 12px rgba(255, 180, 77, 0.2);
+  }
+  .module-picker-btn:active {
+    transform: scale(0.95);
+  }
+
   /* ---- sticky bottom transport: seed · live · RUN in the thumb zone ---- */
   .transport {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
-    gap: 10px; justify-content: stretch;
-    background: rgba(14, 17, 24, 0.96);
-    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-    border-top: 1px solid var(--line-hi);
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+    z-index: 149;
+    gap: 10px;
+    justify-content: stretch;
+    background: linear-gradient(180deg, rgba(14, 17, 24, 0.96), rgba(14, 17, 24, 0.98));
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--line);
+    padding: 10px 12px;
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
   }
-  .run { flex: 1; padding: 14px; font-size: 14px; text-align: center; }
+  .run {
+    flex: 1;
+    padding: 14px;
+    font-size: 0.75rem;
+    text-align: center;
+    font-weight: 700;
+  }
   .statustext { display: none; }
 
   /* ---- deck stacks; presets become a horizontal scroll strip ---- */
@@ -850,11 +913,17 @@ midi-visualizer {
   /* ---- song bar wraps cleanly ---- */
   .song-current { flex-basis: 100%; order: 3; }
 
+  /* ---- modules: one at a time on mobile ---- */
+  .modules { display: flex; flex-direction: column; gap: 0; }
+  .panel { border-radius: 0; margin: 0; }
+  .panel-body { padding: 16px 14px; }
+
   /* ---- param rows stack: label over a full-width control ---- */
   .param, .param.wide { grid-template-columns: 1fr; gap: 8px; }
   .param-control { justify-content: flex-start; }
   .param-control > * { width: 100%; }
   .knob { width: auto; }
+  .knob-svg { width: 56px; height: 56px; }
   .segmented { width: 100%; }
   .segmented .seg { flex: 1; text-align: center; }
 
