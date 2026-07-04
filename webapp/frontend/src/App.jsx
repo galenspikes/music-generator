@@ -42,8 +42,19 @@ const SEED_OVERRIDES = {
 const pretty = (name) => name.replace(/_/g, " ");
 
 // Same soundfont for the main player and the instrument-preview player, so a
-// preview actually matches what playback sounds like.
-const SOUND_FONT = "https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus";
+// preview actually matches what playback sounds like. These are the only two
+// publicly-hosted soundfont directories in the browser-playable format
+// html-midi-player expects (verified reachable; there is no larger public
+// library of these — most .sf2 soundfonts are not usable here without an
+// offline conversion step, see docs/design-notes/ui-ux-roadmap.md Thread D).
+const SOUND_BANKS = [
+  { id: "sgm_plus", label: "General MIDI",
+    url: "https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus" },
+  { id: "salamander", label: "Salamander Piano (piano only)",
+    url: "https://storage.googleapis.com/magentadata/js/soundfonts/salamander",
+    note: "Acoustic grand piano samples only — other instruments will be silent or wrong." },
+];
+const DEFAULT_SOUND_BANK = SOUND_BANKS[0].id;
 
 export default function App() {
   const [params, setParams] = useState(null);
@@ -70,6 +81,24 @@ export default function App() {
   const [instrumentCatalog, setInstrumentCatalog] = useState([]);
   const [previewing, setPreviewing] = useState(false);
   const previewPlayerRef = useRef(null);
+
+  // Sound bank is a playback setting, not part of the musical spec — it
+  // doesn't get saved into presets/songs, just remembered locally.
+  const [soundBank, setSoundBank] = useState(
+    () => (typeof localStorage !== "undefined" && localStorage.getItem("mg_sound_bank")) || DEFAULT_SOUND_BANK
+  );
+  const [customSoundFont, setCustomSoundFont] = useState(
+    () => (typeof localStorage !== "undefined" && localStorage.getItem("mg_custom_soundfont")) || ""
+  );
+  useEffect(() => {
+    if (typeof localStorage !== "undefined") localStorage.setItem("mg_sound_bank", soundBank);
+  }, [soundBank]);
+  useEffect(() => {
+    if (typeof localStorage !== "undefined") localStorage.setItem("mg_custom_soundfont", customSoundFont);
+  }, [customSoundFont]);
+  const soundFontUrl = soundBank === "custom"
+    ? (customSoundFont || SOUND_BANKS[0].url)
+    : (SOUND_BANKS.find((b) => b.id === soundBank)?.url || SOUND_BANKS[0].url);
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
   const [presets, setPresets] = useState([]);
@@ -83,6 +112,13 @@ export default function App() {
   const vizRef = useRef(null);
   const debounceRef = useRef(null);
   const reqIdRef = useRef(0);
+
+  // Switching banks mid-playback would otherwise mix old audio buffers with
+  // newly-loaded samples — stop and let the player reload cleanly.
+  useEffect(() => {
+    try { playerRef.current && playerRef.current.stop(); } catch (_) { /* not ready yet */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [soundFontUrl]);
 
   // Load schema, vocab, songs, presets on mount.
   useEffect(() => {
@@ -305,6 +341,8 @@ export default function App() {
           <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">GitHub</a>
         </nav>
         <div className="transport">
+          <SoundBankPicker bank={soundBank} onBankChange={setSoundBank}
+            customUrl={customSoundFont} onCustomUrlChange={setCustomSoundFont} />
           <button className="run" title="reroll the seed for a fresh variation"
             onClick={() => setField("seed")(Math.floor(Math.random() * 999999))}>
             ⚄ new take
@@ -343,13 +381,13 @@ export default function App() {
         <div className="player-wrap">
           <midi-player
             ref={playerRef}
-            sound-font={SOUND_FONT}
+            sound-font={soundFontUrl}
             visualizer="#viz"
           />
           <midi-visualizer ref={vizRef} id="viz" type="piano-roll" />
           {/* Hidden — plays instrument-preview snippets without disturbing the
               main player's song/state. */}
-          <midi-player ref={previewPlayerRef} sound-font={SOUND_FONT} style={{ display: "none" }} />
+          <midi-player ref={previewPlayerRef} sound-font={soundFontUrl} style={{ display: "none" }} />
           <div className="deck-foot">
             <div className="stems">
               {tracks.map((t) => (
@@ -517,6 +555,34 @@ const SPECIAL = {
   perc_interrupters: (v, oc) => <PercList value={v} kind="drums" onChange={oc} />,
   chord_interrupters: (v, oc) => <PercList value={v} kind="chord" onChange={oc} />,
 };
+
+/* Which sound bank the browser plays through — a playback setting (not saved
+   into presets/songs). Only two public banks exist in the format the player
+   can load; a custom-URL field covers anyone hosting their own. */
+function SoundBankPicker({ bank, onBankChange, customUrl, onCustomUrlChange }) {
+  const current = SOUND_BANKS.find((b) => b.id === bank);
+  return (
+    <div className="soundbank">
+      <select className="dropdown soundbank-select" value={bank}
+        onChange={(e) => onBankChange(e.target.value)} title="Sound bank (browser playback)">
+        {SOUND_BANKS.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+        <option value="custom">Custom URL…</option>
+      </select>
+      {bank === "custom" && (
+        <input
+          className="textfield mono soundbank-url"
+          placeholder="https://.../soundfont-dir"
+          value={customUrl}
+          onChange={(e) => onCustomUrlChange(e.target.value)}
+        />
+      )}
+      {current?.note && (
+        <span className="info soundbank-note" data-tip={current.note} tabIndex={0}
+          role="button" aria-label={current.note}>⚠</span>
+      )}
+    </div>
+  );
+}
 
 /* The friendly short aliases (epiano, strings, ...) stay a plain text+datalist
    field — quick to type, and still accepts a raw GM number. "browse" reveals

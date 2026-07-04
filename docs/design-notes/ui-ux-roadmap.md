@@ -122,8 +122,9 @@ front door) **without hiding anything**:
 
 ## Thread D — Sound & instrument switching *(new)*
 
-**Status: v1 shipped (2026-07-04).** See below — the fix-the-code-first pass
-that came before the picker UI, plus the picker itself.
+**Status: v1 and v2 shipped (2026-07-04).** v3 (per-voice soundfonts) is the
+only piece still open. See below for what each version turned out to mean once
+the real technical constraints were checked instead of assumed.
 
 The explicit ask: make it easy and fun to change sounds and instruments, including
 using soundfonts beyond the one hardcoded today.
@@ -169,17 +170,26 @@ previously-invisible `--voice-instrument` engine feature is now a real per-voice
 16 families / 128 instruments render, filtering narrows correctly, click-select
 and click-preview both work end to end against `/api/generate`.
 
-- **v2 — a soundfont library/browser (the actual ask, not yet started):**
-  3. Bundle/host a small curated set of soundfonts (a few permissively-licensed
-     `.sf2`s beyond the single Magenta default) and add a picker to swap the whole
-     palette, not just the GM program within one bank.
-  4. Resolve the preview-vs-master question from large-efforts-tradeoffs.md: once
-     the webapp can pick a soundfont, decide whether `render.py`'s local master
-     render uses that same choice (unifying preview = master) or keeps a documented,
-     deliberate split.
-- **v3 — stretch, only if v2 lands well:** per-voice soundfont assignment (not just
+- **v2 — shipped (2026-07-04), scope narrowed by a real constraint.** "Bundle a
+  curated set of soundfonts" turned out not to be possible the way originally
+  imagined: `.sf2` files aren't usable by the browser at all — `html-midi-player`
+  needs soundfonts pre-converted into its own sample-directory format, and only
+  two such directories are publicly hosted anywhere (verified, not guessed):
+  `sgm_plus` (full GM, the existing default) and `salamander` (piano-only).
+  Shipped what's actually real: a **sound-bank picker** in the transport bar
+  (General MIDI / Salamander Piano / custom URL for anyone hosting their own
+  converted directory), with a warning badge on Salamander since only piano
+  will sound correct through it. Persisted in `localStorage`, not saved into
+  presets/songs (it's a playback setting, not musical content). Separately, gave
+  the **master/CLI side** real soundfont switching, which *is* fully general
+  since FluidSynth loads any `.sf2`: `render.py` gained `--list-soundfonts` and
+  bare-name resolution against `SoundFonts/` (`--sf2 arachno` instead of a full
+  path). The preview-vs-master question from large-efforts-tradeoffs.md is now
+  **decided**: a deliberate, permanent split, not a unification — see that doc's
+  fact #4 for why unifying would require a real audio-conversion subsystem.
+- **v3 — stretch, still open:** per-voice soundfont assignment (not just
   per-voice GM program) — e.g. drums from one bank, epiano from another. Bigger
-  surface area; revisit after v2 proves out the single-soundfont-swap UX.
+  surface area, and constrained by the same 2-bank reality above; low priority.
 
 ---
 

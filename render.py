@@ -32,6 +32,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 GENERATOR = SCRIPT_DIR / "music_generator.py"
 CONFIG_PATH = SCRIPT_DIR / "config.json"
+SOUNDFONTS_DIR = SCRIPT_DIR / "SoundFonts"
 
 FX_PRESETS: dict[str, list[str]] = {
     "none": [],
@@ -57,6 +58,29 @@ def find_tool(name: str) -> str | None:
         if Path(cand).is_file():
             return cand
     return shutil.which(name)
+
+
+def list_soundfonts(soundfonts_dir: Path = SOUNDFONTS_DIR) -> list[str]:
+    """Available .sf2 filenames in the soundfonts directory (unsorted glob,
+    sorted for stable output). SoundFonts/ is user-supplied and gitignored —
+    there's nothing bundled to discover in a fresh checkout."""
+    if not soundfonts_dir.is_dir():
+        return []
+    return sorted(p.name for p in soundfonts_dir.glob("*.sf2"))
+
+
+def resolve_sf2(value: str | None, soundfonts_dir: Path = SOUNDFONTS_DIR) -> str | None:
+    """Resolve --sf2 for convenience: a real path (or one containing a path
+    separator) is used as-is; a bare name resolves against the soundfonts
+    directory, trying the name as given and with a .sf2 suffix. Falls back to
+    the original value unchanged if nothing matches, so existing full-path
+    usage and error handling are unaffected."""
+    if not value or Path(value).is_file() or "/" in value or "\\" in value:
+        return value
+    for candidate in (soundfonts_dir / value, soundfonts_dir / f"{value}.sf2"):
+        if candidate.is_file():
+            return str(candidate)
+    return value
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict:
@@ -152,7 +176,11 @@ def build_parser(default_sf2: str | None, default_output_dir: str) -> argparse.A
     p = argparse.ArgumentParser(
         description="Generate MIDI and optionally render/normalize audio.",
         allow_abbrev=False)  # don't let --chorus match --chorus-super
-    p.add_argument("--sf2", default=default_sf2)
+    p.add_argument("--sf2", default=default_sf2,
+                   help="SoundFont path, or a bare name resolved against "
+                   "SoundFonts/ (e.g. --sf2 arachno for SoundFonts/arachno.sf2).")
+    p.add_argument("--list-soundfonts", action="store_true",
+                   help=f"List .sf2 files found in {SOUNDFONTS_DIR}/ and exit.")
     p.add_argument("--fx", default="dry")
     p.add_argument("--chorus-super", dest="fx", action="store_const",
                    const="chorus-super")
@@ -171,6 +199,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser(cfg.get("default_sf2"),
                           _config_output_dir(cfg) or "audio")
     args, forwarded = parser.parse_known_args(argv)
+
+    if args.list_soundfonts:
+        names = list_soundfonts(SOUNDFONTS_DIR)
+        if not names:
+            print(f"No .sf2 files found in {SOUNDFONTS_DIR}/ "
+                  "(SoundFonts/ is gitignored — supply your own).")
+        else:
+            print(f"Available soundfonts in {SOUNDFONTS_DIR}/:")
+            for name in names:
+                print(f"  {name}")
+        return 0
+
+    args.sf2 = resolve_sf2(args.sf2, SOUNDFONTS_DIR)
 
     # Generator args: forwarded unknowns + config defaults + (--sf2 is dual-use)
     gen_args = list(forwarded) + [str(x) for x in

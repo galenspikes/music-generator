@@ -20,8 +20,22 @@ Four facts about today's system bound every choice below:
    the *next* load, not live.
 3. **The engine is deterministic / seedable.** `build_flat_midi` guarantees identical
    output for a given seed. The project's ethos is hand-authored and reproducible.
-4. **Two synthesis paths already exist.** Browser preview (Magenta soundfont) vs.
-   master render (FluidSynth + `arachno.sf2` on the CLI). Preview ≠ final.
+4. **Two synthesis paths already exist, and stay unmerged — decided.** Browser
+   preview uses a soundfont hosted in the specific pre-converted directory format
+   `html-midi-player`/Magenta.js requires (per-note sample files + a JSON
+   manifest) — only two such directories are publicly known to exist:
+   `sgm_plus` (full General MIDI, the default) and `salamander` (a high-quality
+   *piano-only* bank, program 0 only). Master render uses FluidSynth + any local
+   `.sf2` file (`render.py --sf2`, now with `--list-soundfonts` / bare-name
+   resolution against `SoundFonts/`, see
+   [ui-ux-roadmap.md](ui-ux-roadmap.md) Thread D). **Unifying them would mean
+   converting arbitrary `.sf2` files into the browser's directory format** — a
+   real audio-processing subsystem (re-sampling every instrument's velocity
+   layers into individual encoded audio files plus a manifest), not a config
+   change. That's out of scope, so the split is permanent by choice, not by
+   neglect: preview picks from the 2 known browser-compatible banks (plus a
+   custom-URL escape hatch for anyone hosting their own in that format); master
+   picks from any local `.sf2`. Preview ≠ final was always going to be true here.
 
 ---
 
@@ -33,8 +47,8 @@ Four facts about today's system bound every choice below:
   *schedule and synthesize*. This thread runs through Phases 3 and 4.
 - **Determinism vs. learned/stochastic behavior.** Anything trained or heavily random
   fights fact #3 (reproducibility, seedable renders) and the hand-authored ethos.
-- **Preview vs. master fidelity** (fact #4). Any UI/transport work must decide whether
-  to unify the two soundfonts or embrace a deliberate preview-vs-master split.
+- **Preview vs. master fidelity** (fact #4) — **decided: deliberate split**, not
+  unified. See fact #4 above for why unifying isn't a small change.
 - **Hosting cost / the public path.** The going-public + HF-Space direction favors
   *client-side* work (cheap, stateless) over *stateful per-connection servers*.
 
@@ -114,8 +128,8 @@ Phase 3 has made anything live to expose.
 depth, and add a small **performance surface** (a few big always-on gestural controls)
 as the front door — but only invest in the skeuomorphic polish (A) *after* Phase 3A
 makes the controls respond live. Until then, B with grouped Home/Deviation sections is
-the honest most-value-per-effort step. Decide the preview-vs-master soundfont question
-(fact #4) here.
+the honest most-value-per-effort step. The preview-vs-master soundfont question
+(fact #4) is now decided (deliberate split) — see fact #4 above.
 
 ---
 

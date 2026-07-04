@@ -85,6 +85,11 @@ body {
 .topnav a:hover { color: var(--accent); }
 
 .transport { display: flex; align-items: center; gap: 12px; }
+.soundbank { display: flex; align-items: center; gap: 6px; }
+.soundbank-select { width: auto; padding: 6px 8px; font-size: 11px; }
+.soundbank-url { width: 200px; padding: 6px 8px; font-size: 11px; }
+.soundbank-note { color: var(--accent-warn); border-color: color-mix(in srgb, var(--accent-warn) 45%, var(--line-hi)); }
+.soundbank-note:hover { border-color: var(--accent-warn); color: var(--accent-warn); }
 .run {
   font-family: var(--mono);
   font-size: 0.68rem;
