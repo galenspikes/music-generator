@@ -1,13 +1,3 @@
----
-title: Music Generator
-emoji: 🎵
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # Music Generator
 
 A Python music-generation system. A compact token DSL describes chords,
@@ -19,9 +9,11 @@ expositions, and minimalist process music.
 The token DSL is the core of the project; the
 [token grammar reference](docs/reference/token-grammar.md) documents it in full.
 
-**Live demo:** a hosted web UI for generating and hearing pieces lives in
-[`space/`](space/) (a Gradio app for Hugging Face Spaces). A static project
-showcase lives in [`site/`](site/) (served via GitHub Pages).
+**Live demo:** the React/FastAPI webapp in [`webapp/`](webapp/) is deployed as a
+Hugging Face Space via [`Dockerfile`](Dockerfile) — see
+[`space/README.md`](space/README.md) for the deployment details. A static
+project showcase also lives in [`site/`](site/) (served via GitHub Pages, and
+mirrored at `/showcase` on the Space).
 
 ## Features
 

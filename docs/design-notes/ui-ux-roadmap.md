@@ -9,8 +9,11 @@ Instrument switching) the prior docs flagged but didn't plan. This is the active
 for the React webapp (`webapp/frontend/`) — the primary surface going forward.*
 
 **Scope decisions (locked, 2026-07-04):**
-- **Primary surface: the React webapp.** The HF Space and static showcase stay
-  promotional/secondary; new UX work lands here.
+- **Primary surface: the React webapp.** New UX work lands here. **Update
+  (2026-07-04):** the HF Space now *runs* this webapp directly (via the root
+  `Dockerfile`, replacing the old standalone Gradio demo) — it's the same
+  surface, not a separate one, so it gets every improvement below for free.
+  The static showcase stays promotional/secondary.
 - **Visual direction: keep the tactile hardware-synth aesthetic** (Bazille visual
   density + tactility, DM-1's sequencer grid and per-pad feel) already underway
   (knob click-to-edit, mobile-first redesign). Not up for reconsideration.
