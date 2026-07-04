@@ -695,6 +695,7 @@ midi-visualizer {
   width: 100%; background: var(--slot); border: 1px solid var(--line-hi); color: var(--text);
   border-radius: 8px; padding: 10px 12px; resize: vertical; min-height: 90px;
   font-family: var(--mono); font-size: 14px; line-height: 1.6;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .harm-text:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
 .harm-text.err { border-color: #ff6b6b; box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.12); }
@@ -721,13 +722,13 @@ midi-visualizer {
 
 .harm-build { display: flex; flex-direction: column; gap: 6px; }
 .cblock { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; background: var(--slot); border: 1px solid var(--line-hi); border-radius: 8px; padding: 5px 6px; }
-.cblock select, .cblock input { font-family: var(--mono); font-size: 12px; background: #0a0c12; border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 5px 6px; min-width: 0; }
+.cblock select, .cblock input { font-family: var(--mono); font-size: 12px; background: #0a0c12; border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 5px 6px; min-width: 0; transition: border-color 0.12s, box-shadow 0.12s; }
 .cblock select.rec { flex: 1 1 90px; }
 .cblock .inv { width: 42px; }
 .cblock .bass { width: 62px; }
 .cblock .rep { width: 46px; }
 .cblock.raw input { flex: 1; }
-.cblock select:focus, .cblock input:focus { outline: none; border-color: var(--accent); }
+.cblock select:focus, .cblock input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255, 180, 77, 0.15); }
 .cx { border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 4px; }
 .cx:hover { color: #ff8f8f; }
 .cadd { align-self: flex-start; font-family: var(--mono); font-size: 12px; color: var(--accent); background: transparent; border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line-hi)); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
@@ -738,6 +739,7 @@ midi-visualizer {
 .perc-text {
   width: 100%; background: var(--slot); border: 1px solid var(--line-hi); color: var(--text);
   border-radius: 8px; padding: 9px 11px; font-family: var(--mono); font-size: 13px; min-height: 50px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .perc-text:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent); }
 .perc-text.err { border-color: #ff6b6b; box-shadow: 0 0 0 3px rgba(255,107,107,0.12); }
