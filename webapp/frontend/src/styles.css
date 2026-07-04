@@ -537,10 +537,20 @@ midi-visualizer {
   text-align: center;
   width: 50px;
   margin-top: 2px;
+  transition: all 0.12s;
 }
 .knob-edit:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 180, 77, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 180, 77, 0.2), 0 0 8px rgba(255, 180, 77, 0.3);
+  padding: 5px 8px;
+}
+
+@media (max-width: 640px) {
+  .knob-edit {
+    font-size: 13px;
+    padding: 6px 8px;
+    width: 60px;
+  }
 }
 
 /* ---- slider ---- */
