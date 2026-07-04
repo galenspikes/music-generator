@@ -4,6 +4,16 @@
 across the project's public surfaces so a visitor can move freely between the
 showcase, the live instrument, the chord reference, and the docs.*
 
+> **Update (resolved so far):**
+> - **Bug B is fixed at the root** — the repo was made **public**, so every
+>   `github.com/galenspikes/music-generator/…` link (grammar, CLI reference,
+>   source, etc.) now resolves. Track 2 (publish styled docs) remains a nice-to-have,
+>   not a fix.
+> - **Bug A is fixed (interim)** — "Open the player" now points at the Hugging
+>   Face Space, and its copy was trimmed to match what the Space actually offers.
+>   When the React `webapp/` gets a public URL, repoint there and restore the
+>   richer "per-voice / shareable settings" copy.
+
 ---
 
 ## 1. The two reported bugs
