@@ -947,6 +947,12 @@ midi-visualizer {
   .seg { padding: 10px 12px; }
   .tchip, .hm, .seq-opt { padding: 9px 13px; }
   .tag button, .cx { font-size: 18px; padding: 4px 8px; }
+
+  /* ---- sequencer: touch-friendly grid cells on mobile ---- */
+  .seq-cell { height: 32px; }
+  .seq-name { width: 72px; }
+  .seq-cells { gap: 4px; }
+  .seq-row { gap: 10px; }
   .tab { padding: 13px 8px; font-size: 10.5px; }
 
   /* ---- 16px inputs: stops iOS Safari auto-zoom on focus ---- */
