@@ -5,9 +5,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import ChordCard from "./ChordCard.jsx";
 import { parseKeys } from "@shared/api.js";
-import { splitTopLevel, parseToken, blocksToKeys, defaultChordBlock } from "./tokenFormat.js";
+import { splitTopLevel, parseToken, blocksToKeys, defaultChordBlock, makeId } from "./tokenFormat.js";
 import { realizeChord } from "./chordNotes.js";
-import { playProgression, stopAll, INSTRUMENTS } from "./audio.js";
+import { playChord, playSustain, playArpeggio, playProgression, stopAll, INSTRUMENTS } from "./audio.js";
+import Stepper from "./Stepper.jsx";
+
+const MIN_BPM = 40;
+const MAX_BPM = 220;
 
 // A group segment's nested chords are exposed once, ignoring both the
 // group's and its own repeat counts — the transport previews the shape of
@@ -22,9 +26,15 @@ function flattenForPreview(segments) {
   return out;
 }
 
+const withIds = (blocks) => blocks.map((b) => ({ ...b, id: makeId() }));
+
 export default function Builder({ initialKeys, recipes, instrumentId, setInstrumentId, onKeysChange, onSaveRequest }) {
-  const [blocks, setBlocks] = useState(() => splitTopLevel(initialKeys || "").map(parseToken));
+  const [blocks, setBlocks] = useState(() => withIds(splitTopLevel(initialKeys || "").map(parseToken)));
   const [parsed, setParsed] = useState({ ok: true, segments: [] });
+  const [modeById, setModeById] = useState({});
+  const [activeId, setActiveId] = useState(null);
+  const [bpm, setBpm] = useState(96);
+  const [arpeggiate, setArpeggiate] = useState(false);
   const debounce = useRef(null);
 
   const keys = blocksToKeys(blocks);
@@ -52,12 +62,53 @@ export default function Builder({ initialKeys, recipes, instrumentId, setInstrum
 
   const segments = parsed.ok ? parsed.segments : [];
 
+  const stopEverything = () => {
+    stopAll();
+    setActiveId(null);
+  };
+
+  const triggerChord = (block, parsedChord) => {
+    if (!parsedChord) return;
+    if (block.kind === "raw") {
+      // A group token ([A, G]*16): preview its shape once, ignoring mode.
+      if (parsedChord.type === "group" && parsedChord.chords) {
+        playProgression(
+          parsedChord.chords.map((c) => ({ notes: realizeChord(c) })),
+          { instrumentId, bpm: 160 }
+        );
+      } else {
+        playChord(realizeChord(parsedChord), { instrumentId });
+      }
+      setActiveId(null);
+      return;
+    }
+    const mode = modeById[block.id] || "strike";
+    const notes = realizeChord(parsedChord);
+    if (mode === "strike") {
+      playChord(notes, { instrumentId });
+      setActiveId(null);
+    } else if (mode === "arpeggio") {
+      playArpeggio(notes, { instrumentId, loop: false });
+      setActiveId(null);
+    } else {
+      // sustain / loop: tapping again stops it.
+      if (activeId === block.id) {
+        stopEverything();
+      } else {
+        if (mode === "sustain") playSustain(notes, { instrumentId });
+        else playArpeggio(notes, { instrumentId, loop: true });
+        setActiveId(block.id);
+      }
+    }
+  };
+
   const playAll = () => {
     const flat = flattenForPreview(segments);
     if (!flat.length) return;
+    setActiveId(null);
     playProgression(
       flat.map((c) => ({ notes: realizeChord(c) })),
-      { instrumentId, bpm: 96 }
+      { instrumentId, bpm, arpeggiate }
     );
   };
 
@@ -67,9 +118,16 @@ export default function Builder({ initialKeys, recipes, instrumentId, setInstrum
         <button className="transport-btn play" onClick={playAll} disabled={!segments.length}>
           ▸ Play progression
         </button>
-        <button className="transport-btn stop" onClick={stopAll}>
+        <button className="transport-btn stop" onClick={stopEverything}>
           ■ Stop
         </button>
+        <button
+          className={"transport-btn arp-toggle" + (arpeggiate ? " on" : "")}
+          onClick={() => setArpeggiate((a) => !a)}
+        >
+          Arpeggiate
+        </button>
+        <Stepper value={bpm} min={MIN_BPM} max={MAX_BPM} step={4} label="bpm" onChange={setBpm} />
         <div className="instrument-toggle">
           {INSTRUMENTS.map((inst) => (
             <button
@@ -88,11 +146,14 @@ export default function Builder({ initialKeys, recipes, instrumentId, setInstrum
       <div className="builder-cards">
         {blocks.map((b, i) => (
           <ChordCard
-            key={i}
+            key={b.id}
             block={b}
             recipes={recipes}
             parsed={segments[i]}
-            instrumentId={instrumentId}
+            mode={modeById[b.id] || "strike"}
+            onModeChange={(m) => setModeById((mm) => ({ ...mm, [b.id]: m }))}
+            active={activeId === b.id}
+            onStrike={() => triggerChord(b, segments[i])}
             onChange={(patch) => setBlock(i, patch)}
             onRemove={() => removeBlock(i)}
             onMoveUp={() => moveBlock(i, -1)}

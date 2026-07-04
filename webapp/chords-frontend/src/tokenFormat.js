@@ -77,6 +77,12 @@ export function serializeToken(b) {
 
 export const blocksToKeys = (blocks) => blocks.map(serializeToken).join(", ");
 
+// A stable id per block (not part of the token grammar) so ephemeral,
+// per-chord UI state — like the Strike/Sustain/Arpeggio/Loop playback mode —
+// survives reordering instead of being keyed by array index.
+let nextId = 1;
+export const makeId = () => nextId++;
+
 export function defaultChordBlock() {
-  return { kind: "chord", root: "C", recipe: "maj7", inv: "", bass: "", rep: 1 };
+  return { kind: "chord", root: "C", recipe: "maj7", inv: "", bass: "", rep: 1, id: makeId() };
 }

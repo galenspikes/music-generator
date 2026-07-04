@@ -208,6 +208,30 @@ so both are omitted to avoid redundancy. The footer keeps the fuller set.
   tab renders the same `docs/` tree in-app (`/api/docs`) and deliberately swaps
   the chord-recipes page for the interactive browser (`app.py` `_DOC_EXCLUDE`).
 
+### Track 6 — Add the standalone Chord Recipes instrument to the shared nav ✅ done
+
+A fifth surface joined the ecosystem: `webapp/chords-frontend/`, a standalone,
+installable (PWA), tap-driven chord-progression builder + library, mounted at
+`/chords` on the same backend as `webapp/`. Labeled **"Chord Builder"** in the
+shared nav (distinct from the existing **"Chords"** entry, which is the
+read-only `chords.html` pitch-class analyser — "Chords" explains a recipe,
+"Chord Builder" composes a progression from them) and added, each surface
+omitting itself:
+
+- `site/index.html`: nav bar, a hero CTA ("Build a progression"), and the footer.
+- `chord_reference.py` (the generator for `site/chords.html` — never hand-edit
+  the generated file, see Track 5): nav bar.
+- `webapp/frontend/src/App.jsx`: header nav and footer.
+- `webapp/chords-frontend/src/App.jsx`: a new footer linking back to Home, the
+  full instrument, the chord reference, and GitHub.
+
+Deployment note: unlike "Player" (which links the `huggingface.co/spaces/…`
+wrapper page), "Chord Builder" links the Space's direct container URL
+(`https://gsp87-music-generator.hf.space/chords/`) — the wrapper page embeds
+the app in an iframe and doesn't forward arbitrary sub-paths, but the
+Space's own `*.hf.space` subdomain serves the FastAPI app directly, so a
+`/chords` sub-path resolves there. Confirmed reachable post-deploy.
+
 ---
 
 ## 4. Decisions needed before implementing

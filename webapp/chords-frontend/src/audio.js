@@ -1,9 +1,12 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 // Client-side soundfont playback via smplr (https://github.com/danigb/smplr) —
-// pure Web Audio, no Tone.js/@magenta dependency, so a single chord can be
-// struck instantly with no backend round-trip. The AudioContext + instrument
-// are created lazily on first user gesture (iOS/Chrome autoplay policy),
-// mirroring site/_chords.js's ensureAudio() pattern.
+// pure Web Audio, no Tone.js/@magenta dependency, so a chord can be struck
+// instantly with no backend round-trip. The AudioContext + instrument are
+// created lazily on first user gesture (iOS/Chrome autoplay policy).
+//
+// Playback modes mirror site/_chords.js's transport (Short/Sustain/Arpeggio/
+// Loop): Strike is a short, auto-releasing hit; Sustain rings until stopped;
+// Arpeggio plays each note in turn once; Loop repeats that arpeggio.
 import { Soundfont } from "smplr";
 
 export const INSTRUMENTS = [
@@ -11,11 +14,16 @@ export const INSTRUMENTS = [
   { id: "electric_piano_1", label: "Electric Piano" },
 ];
 
+const STRIKE_SECONDS = 1.4; // auto-release length for a short "strike"
+const ARPEGGIO_NOTE_SECONDS = 0.9;
+const ARPEGGIO_GAP_MS = 150;
+
 let ctx = null;
 let instrument = null;
 let currentInstrumentId = null;
-let activeStops = [];
-let progressionTimers = [];
+let activeStops = []; // currently-ringing notes
+let stepTimers = []; // scheduled one-shot setTimeouts (progression steps, arpeggio steps)
+let loopInterval = null; // setInterval id driving a repeating arpeggio
 
 async function ensureInstrument(instrumentId) {
   if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -28,41 +36,88 @@ async function ensureInstrument(instrumentId) {
   return instrument;
 }
 
-// Stop only the currently-ringing notes (used between progression steps —
-// does NOT cancel already-scheduled future steps).
 function stopNotes() {
   for (const stop of activeStops) stop();
   activeStops = [];
 }
 
-// Full stop: cancels any scheduled progression steps too. Call this whenever
-// the user starts a new, independent playback action.
+function clearSchedule() {
+  for (const t of stepTimers) clearTimeout(t);
+  stepTimers = [];
+  if (loopInterval) {
+    clearInterval(loopInterval);
+    loopInterval = null;
+  }
+}
+
+// Full stop: cancels any scheduled progression/arpeggio/loop steps and any
+// currently-ringing notes. Call this whenever the user starts a new,
+// independent playback action, or taps Stop.
 export function stopAll() {
-  for (const timer of progressionTimers) clearTimeout(timer);
-  progressionTimers = [];
+  clearSchedule();
   stopNotes();
 }
 
-async function strike(midiNotes, instrumentId, velocity) {
+async function strikeNotes(midiNotes, instrumentId, velocity, durationSec) {
   const inst = await ensureInstrument(instrumentId);
   stopNotes();
-  activeStops = (midiNotes || []).map((note) => inst.start({ note, velocity }));
+  activeStops = (midiNotes || []).map((note) => inst.start({ note, velocity, duration: durationSec ?? undefined }));
 }
 
+// A short, percussive hit — all notes together, auto-releasing.
 export async function playChord(midiNotes, { instrumentId = INSTRUMENTS[0].id, velocity = 92 } = {}) {
   if (!midiNotes || midiNotes.length === 0) return;
-  stopAll(); // a one-off chord tap also cancels any running progression
-  await strike(midiNotes, instrumentId, velocity);
+  stopAll();
+  await strikeNotes(midiNotes, instrumentId, velocity, STRIKE_SECONDS);
+}
+
+// All notes together, ringing until stopAll() is called.
+export async function playSustain(midiNotes, { instrumentId = INSTRUMENTS[0].id, velocity = 92 } = {}) {
+  if (!midiNotes || midiNotes.length === 0) return;
+  stopAll();
+  await strikeNotes(midiNotes, instrumentId, velocity, null);
+}
+
+// Notes one at a time, ascending; `loop: true` repeats until stopAll().
+export async function playArpeggio(
+  midiNotes,
+  { instrumentId = INSTRUMENTS[0].id, velocity = 92, loop = false } = {}
+) {
+  if (!midiNotes || midiNotes.length === 0) return;
+  stopAll();
+  await ensureInstrument(instrumentId);
+  let i = 0;
+  const step = () => {
+    strikeNotes([midiNotes[i % midiNotes.length]], instrumentId, velocity, ARPEGGIO_NOTE_SECONDS);
+    i++;
+    if (!loop && i >= midiNotes.length) clearSchedule();
+  };
+  step();
+  loopInterval = setInterval(step, ARPEGGIO_GAP_MS);
 }
 
 // chords: [{ notes: number[] }], each held until the next one starts.
-export async function playProgression(chords, { instrumentId = INSTRUMENTS[0].id, bpm = 96 } = {}) {
+export async function playProgression(
+  chords,
+  { instrumentId = INSTRUMENTS[0].id, bpm = 96, arpeggiate = false } = {}
+) {
   stopAll();
   if (!chords || chords.length === 0) return;
   await ensureInstrument(instrumentId);
-  const beatMs = (60 / bpm) * 1000 * 2; // two beats per chord strike
+  const beatMs = (60 / bpm) * 1000 * 2; // two beats per chord
   chords.forEach((chord, i) => {
-    const timer = setTimeout(() => strike(chord.notes, instrumentId, 92), i * beatMs);
-    progressionTimers.push(timer);
+    const at = i * beatMs;
+    if (arpeggiate) {
+      chord.notes.forEach((note, j) => {
+        const t = setTimeout(
+          () => strikeNotes([note], instrumentId, 92, Math.min(ARPEGGIO_NOTE_SECONDS, beatMs / 1000)),
+          at + j * ARPEGGIO_GAP_MS
+        );
+        stepTimers.push(t);
+      });
+    } else {
+      const t = setTimeout(() => strikeNotes(chord.notes, instrumentId, 92, (beatMs / 1000) * 0.9), at);
+      stepTimers.push(t);
+    }
   });
 }

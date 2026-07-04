@@ -70,6 +70,16 @@ input {
   padding: 12px 12px 32px;
 }
 
+.app-footer {
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.app-footer a { color: var(--ink-dim); }
+.app-footer a:hover { color: var(--ink); }
+
 /* --- Builder --- */
 
 .builder-transport {
@@ -92,6 +102,9 @@ input {
 .transport-btn.play { background: var(--green); color: var(--rack); font-weight: 600; }
 .transport-btn.stop { background: var(--metal-lo); color: var(--red); }
 .transport-btn:disabled { opacity: 0.4; cursor: default; }
+
+.arp-toggle { color: var(--ink-dim); }
+.arp-toggle.on { background: var(--blue); color: var(--rack); font-weight: 600; }
 
 .instrument-toggle { display: flex; gap: 4px; margin-left: auto; }
 
@@ -148,6 +161,7 @@ input {
 }
 
 .strike-btn:disabled { opacity: 0.35; }
+.strike-btn.playing { background: var(--red); }
 
 .card-chord-label {
   font-family: var(--mono);
@@ -175,6 +189,18 @@ input {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.mode-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mode-pill {
+  min-height: 36px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
 }
 
 .raw-card {

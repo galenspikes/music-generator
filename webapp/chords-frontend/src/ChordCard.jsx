@@ -6,15 +6,23 @@ import React from "react";
 import RootPicker from "./RootPicker.jsx";
 import RecipePicker from "./RecipePicker.jsx";
 import InversionPicker from "./InversionPicker.jsx";
-import RepeatStepper from "./RepeatStepper.jsx";
-import { realizeChord } from "./chordNotes.js";
-import { playChord, playProgression } from "./audio.js";
+import Stepper from "./Stepper.jsx";
+
+export const MODES = [
+  { id: "strike", label: "Strike" },
+  { id: "sustain", label: "Sustain" },
+  { id: "arpeggio", label: "Arp" },
+  { id: "loop", label: "Loop" },
+];
 
 export default function ChordCard({
   block,
   recipes,
   parsed,
-  instrumentId,
+  mode,
+  onModeChange,
+  active,
+  onStrike,
   onChange,
   onRemove,
   onMoveUp,
@@ -24,18 +32,7 @@ export default function ChordCard({
 }) {
   const recipeInfo = recipes.find((r) => r.name === block.recipe);
   const maxInversion = recipeInfo ? recipeInfo.intervals.length - 1 : 3;
-
-  const strike = () => {
-    if (!parsed) return;
-    if (parsed.type === "group" && parsed.chords) {
-      playProgression(
-        parsed.chords.map((c) => ({ notes: realizeChord(c) })),
-        { instrumentId, bpm: 160 }
-      );
-    } else {
-      playChord(realizeChord(parsed), { instrumentId });
-    }
-  };
+  const isToggle = mode === "sustain" || mode === "loop";
 
   const reorderControls = (
     <div className="card-reorder">
@@ -54,7 +51,7 @@ export default function ChordCard({
   if (block.kind === "raw") {
     return (
       <div className="chord-card raw-card">
-        <button className="strike-btn" onClick={strike} disabled={!parsed} aria-label="Play">
+        <button className="strike-btn" onClick={onStrike} disabled={!parsed} aria-label="Play">
           ▸
         </button>
         <code className="raw-text">{block.text}</code>
@@ -66,8 +63,13 @@ export default function ChordCard({
   return (
     <div className="chord-card">
       <div className="card-top">
-        <button className="strike-btn" onClick={strike} disabled={!parsed} aria-label="Play chord">
-          ▸
+        <button
+          className={"strike-btn" + (isToggle && active ? " playing" : "")}
+          onClick={onStrike}
+          disabled={!parsed}
+          aria-label={isToggle && active ? "Stop" : "Play chord"}
+        >
+          {isToggle && active ? "■" : "▸"}
         </button>
         <span className="card-chord-label">{parsed ? parsed.label : "…"}</span>
         {reorderControls}
@@ -77,7 +79,18 @@ export default function ChordCard({
         <RecipePicker value={block.recipe} recipes={recipes} onChange={(recipe) => onChange({ recipe, inv: "" })} />
         <InversionPicker value={block.inv} maxInversion={maxInversion} onChange={(inv) => onChange({ inv })} />
         <RootPicker value={block.bass} onChange={(bass) => onChange({ bass })} label="Bass" allowNone />
-        <RepeatStepper value={block.rep} onChange={(rep) => onChange({ rep })} />
+        <Stepper value={block.rep} onChange={(rep) => onChange({ rep })} />
+      </div>
+      <div className="mode-row">
+        {MODES.map((m) => (
+          <button
+            key={m.id}
+            className={"pill mode-pill" + (mode === m.id ? " on" : "")}
+            onClick={() => onModeChange(m.id)}
+          >
+            {m.label}
+          </button>
+        ))}
       </div>
     </div>
   );
