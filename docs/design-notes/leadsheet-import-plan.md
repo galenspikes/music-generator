@@ -3,6 +3,10 @@
 Planning doc. Goal: take a lead sheet PDF and produce a **song.yml** (sections +
 chords) for the arrangement layer.
 
+**Status: deferred.** Per [ui-ux-roadmap.md](ui-ux-roadmap.md), this waits until the
+webapp instrument's core UI/UX threads ship — a lead-sheet importer is only worth
+building once there's a UX worth feeding it into. No work starts here yet.
+
 **Decisions (locked):**
 - PDFs are a **mix** of born-digital and scans → **agent-assisted vision
   extraction is the primary path** (robust to both); the deterministic
