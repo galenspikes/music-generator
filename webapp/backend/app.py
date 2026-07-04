@@ -72,14 +72,17 @@ def vocab() -> dict:
     except Exception:
         pass
     instruments = []
+    instrument_catalog = []
     try:
         import music_generator as mg
         instruments = sorted(mg.GM_ALIASES.keys())
+        instrument_catalog = list(mg.GM_CATALOG)
     except Exception:
         pass
     return {"recipes": recipes, "drums": drums,
             "grooves": grooves, "perc_lib": perc_lib,
-            "instruments": instruments}
+            "instruments": instruments,
+            "instrument_catalog": instrument_catalog}
 
 
 @app.get("/api/schema")

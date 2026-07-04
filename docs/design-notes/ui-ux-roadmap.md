@@ -122,6 +122,9 @@ front door) **without hiding anything**:
 
 ## Thread D — Sound & instrument switching *(new)*
 
+**Status: v1 shipped (2026-07-04).** See below — the fix-the-code-first pass
+that came before the picker UI, plus the picker itself.
+
 The explicit ask: make it easy and fun to change sounds and instruments, including
 using soundfonts beyond the one hardcoded today.
 
@@ -145,14 +148,28 @@ using soundfonts beyond the one hardcoded today.
   soundfont) vs. master (FluidSynth + arachno.sf2)" as an explicitly **undecided**
   question. This thread is where it gets decided.
 
-**Proposed sequencing:**
-- **v1 — upgrade what exists, no new infra:**
-  1. Replace the bare datalist with a real instrument picker: grouped/categorized,
-     click-to-preview (play one note through the current soundfont), still one GM
-     program per voice.
-  2. Surface the per-voice instrument override in the Editor rack — the engine
-     already does this; it's a UI gap, not an engine gap.
-- **v2 — a soundfont library/browser (the actual ask):**
+**v1 — shipped (2026-07-04).** Before touching the picker UI, the underlying
+data was too thin to browse: `GM_ALIASES` (`mtheory.py`) was a flat ~40-entry
+curated list with only comment-based grouping — no family metadata a picker
+could group by, and no path to the other ~90 General MIDI instruments at all.
+Fixed the data first: added `GM_CATALOG`, the full 128-program GM Level 1 set
+with real `family` metadata (the 16 standard GM families), additive alongside
+the existing short aliases (`GM_ALIASES` untouched — still the CLI/song
+vocabulary); extended `resolve_instrument` to also resolve full catalog names.
+Exposed it via `/api/vocab`'s new `instrument_catalog` field. Only then built
+the UI: `InstrumentPicker` gained a "browse" panel — family-grouped, filterable,
+click-to-select, click-to-preview (▶) — layered over the existing text+datalist
+field (short aliases and raw GM numbers still work unchanged). Preview plays a
+literal, undecorated Cmaj7 vamp through the chosen instrument via a hidden
+second `<midi-player>`, reusing Thread A's `--no-perc`/`bass-style
+none`/`satb-style static` rather than adding a second synthesis path. The
+previously-invisible `--voice-instrument` engine feature is now a real per-voice
+(soprano/alto/tenor/bass) picker in the Voicing panel, replacing the generic
+"type VOICE=NAME" taglist. Verified in a real browser session (Playwright):
+16 families / 128 instruments render, filtering narrows correctly, click-select
+and click-preview both work end to end against `/api/generate`.
+
+- **v2 — a soundfont library/browser (the actual ask, not yet started):**
   3. Bundle/host a small curated set of soundfonts (a few permissively-licensed
      `.sf2`s beyond the single Magenta default) and add a picker to swap the whole
      palette, not just the GM program within one bank.

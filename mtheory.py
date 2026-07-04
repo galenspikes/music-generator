@@ -27,6 +27,8 @@ __all__ = [
     "VOICE_ORDER",
     "VOICE_RANGE_MAP",
     "GM_ALIASES",
+    "GM_CATALOG",
+    "GM_FAMILIES",
     "NOTE_TO_PC",
     "DUR_MAP",
     "parse_key_name",
@@ -109,6 +111,78 @@ GM_ALIASES = {
     "synthbrass": 62,
 }
 
+# The full General MIDI Level 1 sound set (programs 0-127), for browsing the
+# whole palette. GM_ALIASES above stays the primary CLI/song vocabulary (short,
+# memorable names); this catalog is additive — it's what lets a picker UI group
+# and search all 128 instruments instead of the ~40 hand-picked aliases.
+GM_PROGRAM_NAMES = [
+    "Acoustic Grand Piano", "Bright Acoustic Piano", "Electric Grand Piano",
+    "Honky-tonk Piano", "Electric Piano 1", "Electric Piano 2", "Harpsichord",
+    "Clavinet",
+    "Celesta", "Glockenspiel", "Music Box", "Vibraphone", "Marimba",
+    "Xylophone", "Tubular Bells", "Dulcimer",
+    "Drawbar Organ", "Percussive Organ", "Rock Organ", "Church Organ",
+    "Reed Organ", "Accordion", "Harmonica", "Tango Accordion",
+    "Acoustic Guitar (nylon)", "Acoustic Guitar (steel)",
+    "Electric Guitar (jazz)", "Electric Guitar (clean)",
+    "Electric Guitar (muted)", "Overdriven Guitar", "Distortion Guitar",
+    "Guitar Harmonics",
+    "Acoustic Bass", "Electric Bass (finger)", "Electric Bass (pick)",
+    "Fretless Bass", "Slap Bass 1", "Slap Bass 2", "Synth Bass 1",
+    "Synth Bass 2",
+    "Violin", "Viola", "Cello", "Contrabass", "Tremolo Strings",
+    "Pizzicato Strings", "Orchestral Harp", "Timpani",
+    "String Ensemble 1", "String Ensemble 2", "Synth Strings 1",
+    "Synth Strings 2", "Choir Aahs", "Voice Oohs", "Synth Voice",
+    "Orchestra Hit",
+    "Trumpet", "Trombone", "Tuba", "Muted Trumpet", "French Horn",
+    "Brass Section", "Synth Brass 1", "Synth Brass 2",
+    "Soprano Sax", "Alto Sax", "Tenor Sax", "Baritone Sax", "Oboe",
+    "English Horn", "Bassoon", "Clarinet",
+    "Piccolo", "Flute", "Recorder", "Pan Flute", "Blown Bottle",
+    "Shakuhachi", "Whistle", "Ocarina",
+    "Lead 1 (square)", "Lead 2 (sawtooth)", "Lead 3 (calliope)",
+    "Lead 4 (chiff)", "Lead 5 (charang)", "Lead 6 (voice)",
+    "Lead 7 (fifths)", "Lead 8 (bass + lead)",
+    "Pad 1 (new age)", "Pad 2 (warm)", "Pad 3 (polysynth)", "Pad 4 (choir)",
+    "Pad 5 (bowed)", "Pad 6 (metallic)", "Pad 7 (halo)", "Pad 8 (sweep)",
+    "FX 1 (rain)", "FX 2 (soundtrack)", "FX 3 (crystal)",
+    "FX 4 (atmosphere)", "FX 5 (brightness)", "FX 6 (goblins)",
+    "FX 7 (echoes)", "FX 8 (sci-fi)",
+    "Sitar", "Banjo", "Shamisen", "Koto", "Kalimba", "Bag pipe", "Fiddle",
+    "Shanai",
+    "Tinkle Bell", "Agogo", "Steel Drums", "Woodblock", "Taiko Drum",
+    "Melodic Tom", "Synth Drum", "Reverse Cymbal",
+    "Guitar Fret Noise", "Breath Noise", "Seashore", "Bird Tweet",
+    "Telephone Ring", "Helicopter", "Applause", "Gunshot",
+]
+
+# (family name, first program, last program + 1) — the 16 standard GM families.
+GM_FAMILIES = [
+    ("Piano", 0, 8), ("Chromatic Percussion", 8, 16), ("Organ", 16, 24),
+    ("Guitar", 24, 32), ("Bass", 32, 40), ("Strings", 40, 48),
+    ("Ensemble", 48, 56), ("Brass", 56, 64), ("Reed", 64, 72),
+    ("Pipe", 72, 80), ("Synth Lead", 80, 88), ("Synth Pad", 88, 96),
+    ("Synth Effects", 96, 104), ("Ethnic", 104, 112),
+    ("Percussive", 112, 120), ("Sound Effects", 120, 128),
+]
+
+
+def _gm_family(program: int) -> str:
+    for name, lo, hi in GM_FAMILIES:
+        if lo <= program < hi:
+            return name
+    return "Other"
+
+
+# The full browsable catalog: [{"program": int, "name": str, "family": str}, ...]
+GM_CATALOG: tuple[dict, ...] = tuple(
+    {"program": i, "name": name, "family": _gm_family(i)}
+    for i, name in enumerate(GM_PROGRAM_NAMES)
+)
+
+_GM_NAME_TO_PROGRAM = {entry["name"].lower(): entry["program"] for entry in GM_CATALOG}
+
 # -------- Key parsing --------
 NOTE_TO_PC = {
     "C": 0,
@@ -156,13 +230,17 @@ def parse_key_name(kname: str) -> tuple[int, bool]:
 
 def resolve_instrument(arg: str) -> int:
     """
-    Accepts either a GM program number (0-127) or a friendly alias string.
-    Returns the GM program number.
+    Accepts a GM program number (0-127), a friendly short alias (GM_ALIASES,
+    e.g. "epiano"), or a full General MIDI instrument name (GM_CATALOG, e.g.
+    "Electric Piano 1"). Returns the GM program number.
     """
     s = arg.strip()
     if s.isdigit():
         return max(0, min(127, int(s)))
-    return GM_ALIASES.get(s.lower(), 0)  # default to Acoustic Grand (0)
+    low = s.lower()
+    if low in GM_ALIASES:
+        return GM_ALIASES[low]
+    return _GM_NAME_TO_PROGRAM.get(low, 0)  # default to Acoustic Grand (0)
 
 
 def clamp_to_range(n: int, lo: int, hi: int) -> int:

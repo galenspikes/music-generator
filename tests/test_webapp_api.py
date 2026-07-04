@@ -44,6 +44,19 @@ def test_vocab_endpoint():
     assert r.status_code == 200
     assert len(body["recipes"]) > 0
     assert len(body["drums"]) > 0
+    assert len(body["instruments"]) > 0
+
+
+def test_vocab_endpoint_instrument_catalog():
+    # Thread D: the full, family-grouped GM catalog for the instrument picker,
+    # alongside (not replacing) the short curated alias list.
+    r = client.get("/api/vocab")
+    body = r.json()
+    catalog = body["instrument_catalog"]
+    assert len(catalog) == 128
+    assert all({"program", "name", "family"} <= set(e) for e in catalog)
+    families = {e["family"] for e in catalog}
+    assert "Piano" in families and "Bass" in families and "Strings" in families
 
 
 def test_generate_endpoint_returns_midi():

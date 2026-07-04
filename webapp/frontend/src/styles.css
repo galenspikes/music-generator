@@ -824,6 +824,48 @@ midi-visualizer {
 .perc-idx { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--slot); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; margin-top: 3px; }
 .perc-row-body { flex: 1; min-width: 0; }
 
+/* ---- instrument picker (main + per-voice) ---- */
+.instrument-picker { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.instrument-row { display: flex; gap: 6px; align-items: stretch; }
+.instrument-row .textfield { flex: 1; min-width: 0; }
+.preview-btn {
+  font-family: var(--mono); font-size: 13px; color: var(--accent);
+  background: var(--slot); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line-hi));
+  border-radius: 7px; padding: 0 12px; cursor: pointer; line-height: 1;
+}
+.preview-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.preview-btn:disabled { opacity: 0.4; cursor: default; }
+.browse-toggle {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  background: var(--slot); border: 1px solid var(--line-hi);
+  border-radius: 7px; padding: 0 10px; cursor: pointer; white-space: nowrap;
+}
+.browse-toggle.on, .browse-toggle:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, var(--line-hi)); }
+
+.instrument-browser {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  background: var(--slot); border: 1px solid var(--line-hi); border-radius: 8px;
+}
+.instrument-groups { display: flex; flex-direction: column; gap: 10px; max-height: 280px; overflow-y: auto; }
+.instrument-group-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 70%, #fff); margin-bottom: 5px;
+}
+.instrument-group-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.ichip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; border: 1px solid var(--line-hi);
+  background: var(--panel); color: var(--muted); border-radius: 999px; padding: 5px 11px; cursor: pointer;
+}
+.ichip.on { color: #fff; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+.ichip-play { color: var(--accent); cursor: pointer; }
+.instrument-empty { color: var(--muted); font-size: 12px; padding: 6px 0; }
+
+.voice-instruments { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.voice-row { display: flex; align-items: center; gap: 7px; }
+.voice-name { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 60px; flex-shrink: 0; text-transform: capitalize; }
+.voice-row .textfield { flex: 1; min-width: 0; }
+
 .footer { margin-top: 24px; color: var(--muted); font-family: var(--mono); font-size: 11px; text-align: center; }
 .footer a { color: var(--accent); text-decoration: none; }
 .footer a:hover { text-decoration: underline; }

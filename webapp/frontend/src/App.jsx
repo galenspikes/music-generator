@@ -41,6 +41,10 @@ const SEED_OVERRIDES = {
 
 const pretty = (name) => name.replace(/_/g, " ");
 
+// Same soundfont for the main player and the instrument-preview player, so a
+// preview actually matches what playback sounds like.
+const SOUND_FONT = "https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus";
+
 export default function App() {
   const [params, setParams] = useState(null);
   const [spec, setSpec] = useState(null);
@@ -63,6 +67,9 @@ export default function App() {
   const [downloadUrl, setDownloadUrl] = useState("");
 
   const [instruments, setInstruments] = useState([]);
+  const [instrumentCatalog, setInstrumentCatalog] = useState([]);
+  const [previewing, setPreviewing] = useState(false);
+  const previewPlayerRef = useRef(null);
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
   const [presets, setPresets] = useState([]);
@@ -89,6 +96,7 @@ export default function App() {
         setParams(schema.params);
         setGrooves(vocab.grooves || []);
         setInstruments(vocab.instruments || []);
+        setInstrumentCatalog(vocab.instrument_catalog || []);
         setSongs(songsData.songs || []);
         setPresets(presetsData.presets || []);
 
@@ -194,6 +202,45 @@ export default function App() {
     }
   }
 
+  // Play one short, undecorated snippet through the chosen instrument — a
+  // literal Cmaj7 vamp (no drums, no bass, frozen voicing) so the timbre is
+  // all you hear. Reuses Thread A's --no-perc/--bass-style none/--satb-style
+  // static rather than adding a second synthesis path for previews.
+  async function previewInstrument(instrumentValue) {
+    if (!instrumentValue || previewing) return;
+    setPreviewing(true);
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          spec: {
+            mode: "ostinato", keys: "C::maj7", chord_len: "h", seconds: 1.5,
+            bpm: 120, seed: 1, no_perc: true, bass_style: "none",
+            satb_style: "static", instrument: instrumentValue,
+          },
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const bytes = Uint8Array.from(atob(data.midi), (c) => c.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "audio/midi" }));
+      const player = previewPlayerRef.current;
+      if (!player) return;
+      try { player.stop(); } catch (_) {}
+      const onLoad = () => {
+        player.removeEventListener("load", onLoad);
+        try { player.start(); } catch (_) {}
+      };
+      player.addEventListener("load", onLoad);
+      player.src = url;
+    } catch (_) {
+      // best-effort preview; a failed preview shouldn't disturb the editor
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
   // Unlock Web Audio on the first user gesture. Browsers (and especially
   // cross-origin iframes like the Hugging Face Space embed) start the shared
   // AudioContext suspended; without an explicit resume the midi-player reports
@@ -296,10 +343,13 @@ export default function App() {
         <div className="player-wrap">
           <midi-player
             ref={playerRef}
-            sound-font="https://storage.googleapis.com/magentadata/js/soundfonts/sgm_plus"
+            sound-font={SOUND_FONT}
             visualizer="#viz"
           />
           <midi-visualizer ref={vizRef} id="viz" type="piano-roll" />
+          {/* Hidden — plays instrument-preview snippets without disturbing the
+              main player's song/state. */}
+          <midi-player ref={previewPlayerRef} sound-font={SOUND_FONT} style={{ display: "none" }} />
           <div className="deck-foot">
             <div className="stems">
               {tracks.map((t) => (
@@ -365,7 +415,9 @@ export default function App() {
                 >
                   {ps.map((p) => (
                     <Param key={p.name} param={p} value={spec[p.name]}
-                      onChange={setField(p.name)} grooves={grooves} instruments={instruments} />
+                      onChange={setField(p.name)} grooves={grooves} instruments={instruments}
+                      instrumentCatalog={instrumentCatalog}
+                      onPreviewInstrument={previewInstrument} previewing={previewing} />
                   ))}
                 </Panel>
               );
@@ -466,24 +518,128 @@ const SPECIAL = {
   chord_interrupters: (v, oc) => <PercList value={v} kind="chord" onChange={oc} />,
 };
 
-function InstrumentPicker({ value, instruments, onChange }) {
+/* The friendly short aliases (epiano, strings, ...) stay a plain text+datalist
+   field — quick to type, and still accepts a raw GM number. "browse" reveals
+   the full 128-instrument GM catalog grouped by family, filterable, with a
+   preview button per instrument and on the current selection. */
+function InstrumentPicker({ value, instruments, catalog = [], onChange,
+                           onPreview, previewing }) {
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState("");
+
+  const groups = React.useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    const byFamily = new Map();
+    for (const entry of catalog) {
+      if (q && !entry.name.toLowerCase().includes(q) &&
+          !entry.family.toLowerCase().includes(q)) continue;
+      if (!byFamily.has(entry.family)) byFamily.set(entry.family, []);
+      byFamily.get(entry.family).push(entry);
+    }
+    return byFamily;
+  }, [catalog, filter]);
+
+  const current = String(value ?? "").trim().toLowerCase();
+
   return (
-    <div className="param-control" style={{ width: "100%" }}>
-      <input
-        className="textfield mono" list="instrument-list"
-        value={value ?? ""} spellCheck={false}
-        placeholder="epiano, strings, 0–127…"
-        onChange={(e) => onChange(e.target.value)}
-        style={{ width: "100%" }}
-      />
+    <div className="instrument-picker">
+      <div className="instrument-row">
+        <input
+          className="textfield mono" list="instrument-list"
+          value={value ?? ""} spellCheck={false}
+          placeholder="epiano, strings, 0–127…"
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button className="preview-btn" title="preview this sound"
+          disabled={previewing || !value} onClick={() => onPreview(value)}>
+          {previewing ? "…" : "▶"}
+        </button>
+        <button className={"browse-toggle" + (open ? " on" : "")}
+          onClick={() => setOpen((o) => !o)}>
+          {open ? "close" : "browse ▾"}
+        </button>
+      </div>
       <datalist id="instrument-list">
         {instruments.map((name) => <option key={name} value={name} />)}
       </datalist>
+      {open && (
+        <div className="instrument-browser">
+          <input
+            className="textfield mono" placeholder="filter by name or family…"
+            value={filter} onChange={(e) => setFilter(e.target.value)}
+          />
+          <div className="instrument-groups">
+            {groups.size === 0 && <div className="instrument-empty">no matches</div>}
+            {[...groups.entries()].map(([family, entries]) => (
+              <div className="instrument-group" key={family}>
+                <div className="instrument-group-label">{family}</div>
+                <div className="instrument-group-items">
+                  {entries.map((e) => (
+                    <button
+                      key={e.program}
+                      className={"ichip" + (current === e.name.toLowerCase() ? " on" : "")}
+                      title={`GM ${e.program}`}
+                      onClick={() => onChange(e.name)}
+                    >
+                      <span
+                        className="ichip-play"
+                        title={`preview ${e.name}`}
+                        onClick={(ev) => { ev.stopPropagation(); onPreview(e.name); }}
+                      >▶</span>
+                      {e.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Param({ param, value, onChange, grooves, instruments }) {
+const VOICES = ["soprano", "alto", "tenor", "bass"];
+
+/* Per-voice instrument override (--voice-instrument VOICE=NAME), as four
+   compact pickers instead of the generic "type VOICE=NAME, hit enter" taglist. */
+function VoiceInstrumentPicker({ value = [], instruments, onChange, onPreview }) {
+  const map = {};
+  for (const entry of value || []) {
+    const s = String(entry);
+    const eq = s.indexOf("=");
+    if (eq > 0) map[s.slice(0, eq).trim()] = s.slice(eq + 1).trim();
+  }
+  const setVoice = (voice, name) => {
+    const next = VOICES
+      .map((v) => [v, v === voice ? name : map[v]])
+      .filter(([, n]) => n)
+      .map(([v, n]) => `${v}=${n}`);
+    onChange(next);
+  };
+  return (
+    <div className="voice-instruments">
+      {VOICES.map((voice) => (
+        <div className="voice-row" key={voice}>
+          <span className="voice-name">{voice}</span>
+          <input
+            className="textfield mono" list="instrument-list"
+            value={map[voice] || ""} spellCheck={false}
+            placeholder="(same as main)"
+            onChange={(e) => setVoice(voice, e.target.value)}
+          />
+          {map[voice] && (
+            <button className="preview-btn" title={`preview ${voice}`}
+              onClick={() => onPreview(map[voice])}>▶</button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Param({ param, value, onChange, grooves, instruments, instrumentCatalog,
+                onPreviewInstrument, previewing }) {
   // Preset-groove pickers (perc_main_key / perc_intr_keys) — discoverable
   // dropdowns/chips instead of blank text fields.
   if (param.name === "perc_main_key") {
@@ -517,7 +673,21 @@ function Param({ param, value, onChange, grooves, instruments }) {
           <span>{pretty(param.name)}</span>
           {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
-        <InstrumentPicker value={value} instruments={instruments} onChange={onChange} />
+        <InstrumentPicker value={value} instruments={instruments}
+          catalog={instrumentCatalog} onChange={onChange}
+          onPreview={onPreviewInstrument} previewing={previewing} />
+      </div>
+    );
+  }
+  if (param.name === "voice_instrument") {
+    return (
+      <div className="param wide">
+        <div className="param-label">
+          <span>{pretty(param.name)}</span>
+          {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
+        </div>
+        <VoiceInstrumentPicker value={value} instruments={instruments}
+          onChange={onChange} onPreview={onPreviewInstrument} />
       </div>
     );
   }
