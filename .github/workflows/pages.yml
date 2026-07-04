@@ -1,18 +1,23 @@
-name: Deploy showcase to GitHub Pages
+name: Deploy showcase + docs to GitHub Pages
 
-# This is the SINGLE authoritative publisher of the GitHub Pages site: it serves
-# the static showcase in `site/` at the Pages root. Do not add a second workflow
-# that runs `deploy-pages` — each deployment replaces the whole site, so two
-# publishers race on the `pages` concurrency group and the last one wins. To add
-# another surface (e.g. the PWA on branch claude/ios-app-feasibility-yozsr3),
-# assemble it into this job's artifact under a subpath (e.g. `site/app/`) so a
-# single deploy publishes everything. See docs/design-notes/ecosystem-navigation-plan.md.
+# This is the SINGLE authoritative publisher of the GitHub Pages site. It
+# assembles one artifact and deploys it once:
+#   /       → the static showcase in `site/`
+#   /docs/  → the MkDocs (Material) docs built from `docs/`
+# Do not add a second workflow that runs `deploy-pages` — each deployment
+# replaces the whole site, so two publishers race on the `pages` concurrency
+# group and the last one wins. To add another surface (e.g. the PWA on branch
+# claude/ios-app-feasibility-yozsr3), assemble it into this artifact under a
+# subpath too. See docs/design-notes/ecosystem-navigation-plan.md.
 
 on:
   push:
     branches: [main]
     paths:
       - "site/**"
+      - "docs/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -34,9 +39,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install docs dependencies
+        run: pip install -r requirements-docs.txt
+      - name: Assemble Pages site (showcase at /, docs at /docs/)
+        run: |
+          rm -rf _public
+          mkdir -p _public
+          cp -r site/. _public/
+          mkdocs build -d _public/docs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: _public
       - id: deployment
         uses: actions/deploy-pages@v4

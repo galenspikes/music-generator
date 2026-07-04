@@ -120,16 +120,23 @@ it unbreaks the grammar link, the CLI reference, "View on GitHub", the webapp
 "source"/"docs" links, and the Space grammar link *simultaneously*, and lets
 Track 2 publish docs straight from the repo.
 
-### Track 2 — Give `docs/` a public home
+### Track 2 — Give `docs/` a public home ✅ done
 
-- Add **MkDocs (Material)** — the tree is already Diátaxis-shaped, so
-  `docs/index.md` becomes the site map for near-free. Build to a subpath of the
-  Pages site (e.g. `/docs/`).
-- Replace **every** `github.com/.../blob/main/docs/...` link (site ×3, space ×1,
-  webapp footer ×1) with the published docs URL, e.g.
-  `…github.io/music-generator/docs/reference/token-grammar/`.
-- This is the durable fix for Bug B: the grammar gets a real, styled, public
-  page — and so does the CLI reference and everything else.
+- **Done:** added **MkDocs (Material)** — `mkdocs.yml` (Diátaxis-ordered nav
+  over all 57 pages), `requirements-docs.txt` (`mkdocs-material`). The site
+  builds locally with `mkdocs build` and is published to `/docs/` under the
+  Pages root by the single `pages.yml` deploy (Track 3). Light/dark toggle,
+  code-copy, section nav, and a footer link row back to showcase/instrument/repo.
+- **Done:** every "Docs" link now points at the published site
+  (`…github.io/music-generator/docs/`), and the homepage's grammar and CLI
+  deep-links point at the styled pages
+  (`…/docs/reference/token-grammar/`, `…/docs/reference/cli-reference/`).
+- **Follow-up (pre-existing, not introduced here):** several docs pages link to
+  repo *source files* with `../../voicing.py`-style relative paths (they resolve
+  when browsing on GitHub but 404 on the MkDocs site) and a few use
+  `decisions/` instead of `decisions/index.md`. The build is intentionally
+  **non-strict** so these don't block deploys; converting them to absolute
+  GitHub URLs (now that the repo is public) is a good cleanup pass.
 
 ### Track 3 — One Pages deployment, no collisions ✅ done
 

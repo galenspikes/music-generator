@@ -406,7 +406,7 @@ export default function App() {
           Music Generator — © 2026 <strong>Galen Spikes</strong> · MIT licensed ·{" "}
           <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">home</a> ·{" "}
           <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">chords</a> ·{" "}
-          <a href="https://github.com/galenspikes/music-generator/tree/main/docs" target="_blank" rel="noreferrer">docs</a> ·{" "}
+          <a href="https://galenspikes.github.io/music-generator/docs/" target="_blank" rel="noreferrer">docs</a> ·{" "}
           <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">github</a>
         </div>
         <div className="credit-sub">

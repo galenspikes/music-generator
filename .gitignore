@@ -35,3 +35,7 @@ songs/*.pdf
 
 # Private provenance / research material (kept local, never committed)
 docs/sources/
+
+# MkDocs local build output (docs are published by pages.yml)
+_site_docs/
+_public/

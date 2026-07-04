@@ -171,7 +171,7 @@ with gr.Blocks(head=HEAD, title="Music Generator", theme=gr.themes.Soft()) as de
         "playback happens right in your browser.\n\n"
         f"[Home]({SITE}/) &middot; "
         f"[Chords]({SITE}/chords.html) &middot; "
-        "[Docs](https://github.com/galenspikes/music-generator/tree/main/docs) &middot; "
+        "[Docs](https://galenspikes.github.io/music-generator/docs/) &middot; "
         "[GitHub](https://github.com/galenspikes/music-generator)"
     )
 

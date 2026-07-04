@@ -1,0 +1,128 @@
+site_name: Music Generator docs
+site_description: >-
+  A token DSL for chords, percussion, and melody → harmony + voices + percussion
+  → MIDI. Tutorials, how-to guides, the token-grammar reference, and design notes.
+site_url: https://galenspikes.github.io/music-generator/docs/
+repo_url: https://github.com/galenspikes/music-generator
+repo_name: galenspikes/music-generator
+edit_uri: edit/main/docs/
+copyright: Music Generator · MIT licensed · Galen Spikes
+
+# Published to GitHub Pages under /docs/ by .github/workflows/pages.yml, which
+# builds into a staging dir. site_dir here is deliberately NOT "site" (that's the
+# static showcase) so a local `mkdocs build` can't clobber the showcase.
+docs_dir: docs
+site_dir: _site_docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.details
+
+# The showcase, live instrument, and repo — same wayfinding set as the other
+# surfaces (see docs/design-notes/ecosystem-navigation-plan.md).
+extra:
+  social:
+    - icon: fontawesome/solid/house
+      link: https://galenspikes.github.io/music-generator/
+      name: Showcase
+    - icon: fontawesome/solid/play
+      link: https://huggingface.co/spaces/gsp87/music-generator
+      name: Live instrument
+    - icon: fontawesome/brands/github
+      link: https://github.com/galenspikes/music-generator
+      name: GitHub
+
+nav:
+  - Home: index.md
+  - Tutorials:
+      - tutorials/index.md
+      - Your first groove: tutorials/01-first-groove.md
+      - Your first song: tutorials/02-your-first-song.md
+      - From idea to EP: tutorials/03-from-idea-to-ep.md
+  - How-to guides:
+      - how-to/index.md
+      - Write chord progressions: how-to/write-chord-progressions.md
+      - Build percussion patterns: how-to/build-percussion-patterns.md
+      - Write melodies: how-to/write-melodies.md
+      - Create an arrangement: how-to/create-an-arrangement.md
+      - Render audio: how-to/render-audio.md
+      - Use the web instrument: how-to/use-the-web-instrument.md
+      - Set up for development: how-to/set-up-for-development.md
+  - Reference:
+      - reference/index.md
+      - Token grammar: reference/token-grammar.md
+      - CLI reference: reference/cli-reference.md
+      - Chord recipes: reference/chord-recipes.md
+      - Percussion letters: reference/percussion-letters.md
+      - Charts & recipes: reference/charts.md
+  - Explanation:
+      - explanation/index.md
+      - Architecture: explanation/architecture.md
+      - Data flow: explanation/data-flow.md
+      - How harmony works: explanation/how-harmony-works.md
+      - How percussion works: explanation/how-percussion-works.md
+      - The token system: explanation/token-system-report.md
+      - Music-theory companion: explanation/music-theory-companion.md
+      - Control-surface companion: explanation/control-surface-companion.md
+      - Stasis and function: explanation/stasis-and-function.md
+      - Song studies:
+          - Kiss On My List: explanation/song-studies/kiss-on-my-list.md
+      - Decisions (ADRs):
+          - explanation/decisions/index.md
+          - ADR-0001 · Colon chord tokens: explanation/decisions/0001-colon-chord-tokens.md
+          - ADR-0002 · Named chord recipes: explanation/decisions/0002-named-chord-recipes.md
+          - ADR-0003 · Probability in the token: explanation/decisions/0003-probability-in-the-token.md
+          - ADR-0004 · Shared operator algebra: explanation/decisions/0004-shared-operator-algebra.md
+          - ADR-0005 · Scale-degree melody: explanation/decisions/0005-scale-degree-melody.md
+          - ADR-0006 · Interrupters: explanation/decisions/0006-interrupters.md
+          - ADR template: explanation/decisions/0000-template.md
+  - Token grammar (deep dive):
+      - token-grammar/index.md
+      - Formalization: token-grammar/formalization.md
+      - Living musical ideas: token-grammar/living-musical-ideas.md
+      - Barber fugue study: token-grammar/barber-fugue-study.md
+  - Design notes:
+      - design-notes/index.md
+      - Roadmap (Phase 2): design-notes/roadmap-phase2.md
+      - Arrangement plan: design-notes/arrangement-plan.md
+      - Melody primitive plan: design-notes/melody-primitive-plan.md
+      - Lead-sheet import plan: design-notes/leadsheet-import-plan.md
+      - Refactor & hardening plan: design-notes/refactor-plan.md
+      - Webapp UI design: design-notes/webapp-ui-design.md
+      - Ecosystem & navigation plan: design-notes/ecosystem-navigation-plan.md
+      - Gap analysis: design-notes/gap-analysis.md
+      - Controllability audit: design-notes/controllability-audit.md
+      - Literal-mode workflow audit: design-notes/literal-mode-workflow-audit.md
+      - Large-efforts trade-offs: design-notes/large-efforts-tradeoffs.md
+      - UI homework: design-notes/ui-homework.md
+      - UI homework 2: design-notes/ui-homework-2.md
+  - About: about/index.md

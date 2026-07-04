@@ -23,8 +23,9 @@ kept deliberately separate so each page does exactly one job:
 ## Start here
 
 - **Just want to hear it?** → run `make demo` (plays the flagship, *Kiss On My
-  List*) or open the browser [demo gallery](../site/index.html). The whole demo
-  library — songs and capability presets — is `python cook_song.py list`.
+  List*) or open the browser [demo gallery](https://galenspikes.github.io/music-generator/).
+  The whole demo library — songs and capability presets — is
+  `python cook_song.py list`.
 - **New here?** → [Tutorial 1: Your first groove](tutorials/01-first-groove.md) *(planned)*
 - **Want the big picture?** → [Architecture](explanation/architecture.md)
 - **Writing tokens?** → [Token grammar reference](reference/token-grammar.md)
