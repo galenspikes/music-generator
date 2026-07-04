@@ -251,6 +251,11 @@ export default function App() {
             </p>
           </div>
         </div>
+        <nav className="topnav">
+          <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">Home</a>
+          <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">Chords</a>
+          <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
         <div className="transport">
           <button className="run" title="reroll the seed for a fresh variation"
             onClick={() => setField("seed")(Math.floor(Math.random() * 999999))}>

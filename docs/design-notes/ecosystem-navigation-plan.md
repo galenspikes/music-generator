@@ -180,8 +180,9 @@ Applied:
 - `webapp` footer: realigned to home · chords · docs · github, and the broken
   relative `/showcase/` link now points at the showcase's real URL.
 
-Remaining polish (optional): mirror the nav into the webapp *header* (not just
-the footer), and repoint Docs to the styled docs site when Track 2 lands.
+Also done: the webapp now carries the cross-surface nav in its **header** too
+(Home · Chords · GitHub) — Player is the app itself and Docs is the in-app ❐ tab,
+so both are omitted to avoid redundancy. The footer keeps the fuller set.
 
 ### Track 5 — De-duplicate, mark the source of truth ✅ done
 
