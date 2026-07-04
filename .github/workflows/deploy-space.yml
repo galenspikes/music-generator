@@ -43,7 +43,12 @@ jobs:
             echo "Add it under Settings → Secrets and variables → Actions to enable."
             exit 0
           fi
-          git clone "https://gsp87:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" hf-space
+          # Clone one level *above* the checked-out repo, not inside it — a
+          # destination nested inside the rsync source directory has rsync
+          # copy the destination into itself mid-transfer ("file has
+          # vanished", exit 24), which is exactly what broke this the first
+          # time it ran.
+          git clone "https://gsp87:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" ../hf-space
           rsync -a --delete \
             --exclude='.git' \
             --exclude-from='.dockerignore' \
@@ -53,9 +58,9 @@ jobs:
             --exclude='requirements-dev.txt' \
             --exclude='requirements-docs.txt' \
             --exclude='mkdocs.yml' \
-            ./ hf-space/
-          cp space/README.md hf-space/README.md
-          cd hf-space
+            ./ ../hf-space/
+          cp space/README.md ../hf-space/README.md
+          cd ../hf-space
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add -A
