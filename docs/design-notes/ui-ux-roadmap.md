@@ -31,6 +31,14 @@ for the React webapp (`webapp/frontend/`) — the primary surface going forward.
 
 ## Thread A — Reach a controllable, faithful home *(engine-facing; small, do first)*
 
+**Status: mostly shipped (2026-07-04).** Percussion and bass can now genuinely be
+turned off, chords can be voiced statically (no wobble), and baggage is cut from the
+webapp schema. Still open: the single-source-of-truth `GroundState` (flipping the
+*default* rest-state to neutral) and the literal `vamp` one-liner — both deferred
+until the home's actual content is settled by ear (see [ui-homework.md](ui-homework.md)).
+Details in [controllability-audit.md](controllability-audit.md) and
+[gap-analysis.md](gap-analysis.md) Phase 0.
+
 This is [gap-analysis.md](gap-analysis.md) Phase 0, spec'd in
 [controllability-audit.md](controllability-audit.md). It's listed here because it's a
 prerequisite for an *honest* control surface — right now several knobs lie (defaults

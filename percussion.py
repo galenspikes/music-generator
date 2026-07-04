@@ -498,11 +498,17 @@ def build_perc_from_args(args) -> PercPlan:
     stage_specs: list[PercStage] = []
     fill_curve: tuple[float, float] | None = None
 
-    if getattr(args, "perc_main", None):
-        plan_main = parse_main(args.perc_main)
+    perc_main_arg = getattr(args, "perc_main", None)
+    if getattr(args, "no_perc", False) or perc_main_arg == "":
+        plan_main = []  # explicit silence; never fall back to the default groove
+    elif perc_main_arg:
+        plan_main = parse_main(perc_main_arg)
 
-    if getattr(args, "perc_interrupters", None) and args.perc_interrupters:
-        plan_intr = parse_intr_list(args.perc_interrupters)
+    perc_intr_arg = getattr(args, "perc_interrupters", None)
+    if perc_intr_arg is not None:
+        # Explicitly provided (even an empty list from a bare flag) — honor it
+        # instead of falling back to the default fill vocabulary below.
+        plan_intr = parse_intr_list(perc_intr_arg) if perc_intr_arg else []
 
     groups: dict[str, dict] = {}
     if getattr(args, "perc_lib", None):
@@ -598,7 +604,7 @@ def build_perc_from_args(args) -> PercPlan:
     if plan_main is None:
         plan_main = parse_main("sh,sh,sh,sh")
 
-    if not plan_intr:
+    if plan_intr is None:
         plan_intr = parse_intr_list(["qk,er,qs,er"])
 
     return PercPlan(

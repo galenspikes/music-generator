@@ -17,6 +17,27 @@ def test_follow_returns_empty():
     assert M.build_bass_line([], "root") == []
 
 
+def test_none_returns_empty():
+    assert M.build_bass_line(TL, "none") == []
+
+
+def test_none_is_a_valid_bass_style():
+    assert "none" in M.BASS_STYLES
+
+
+def test_bass_style_none_drops_satb_bass_entirely():
+    # bass_style="none" must not just skip build_bass_line — it also has to
+    # drop the SATB-generated bass note, so there's no bass at all (gap I3:
+    # bass used to be mandatory even when nobody asked for it).
+    events, _end = M.build_harmony_events(TL, satb_style="block",
+                                          bass_style="none",
+                                          split_stems=True)
+    assert not any(e[0] == "voice" and e[3][0] == "bass" for e in events)
+    # the other three voices are still there
+    voices_present = {e[3][0] for e in events if e[0] == "voice"}
+    assert voices_present == {"soprano", "alto", "tenor"}
+
+
 def test_root_pulses_the_bass_note():
     line = M.build_bass_line(TL, "root", step=0.5)
     # 2 beats / 0.5 = 4 notes per chord, 8 total

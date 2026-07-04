@@ -159,12 +159,24 @@ def test_parse_perc_chord_kind():
 
 # --- parameter_schema ----------------------------------------------------------
 
-def test_schema_covers_every_parser_flag():
+def test_schema_covers_every_parser_flag_except_hidden_baggage():
+    # Every real instrument control is auto-derived and never silently
+    # dropped — except the deliberate HIDDEN_PARAMS baggage cut
+    # (controllability-audit.md): mode, process/fugue, CLI/render plumbing.
     schema = api.parameter_schema()
     schema_names = {p["name"] for p in schema}
     parser_dests = {a.dest for a in mg.build_parser()._actions
                     if a.dest != "help"}
-    assert schema_names == parser_dests  # nothing hidden, nothing invented
+    assert schema_names == parser_dests - api.HIDDEN_PARAMS
+    assert schema_names.isdisjoint(api.HIDDEN_PARAMS)
+
+
+def test_hidden_params_still_work_as_spec_keys():
+    # Hidden from the rack, but not actually removed: the CLI and song YAML
+    # still use these, so they must remain valid namespace attributes.
+    ns = vars(mg.build_parser().parse_args([]))
+    for name in api.HIDDEN_PARAMS:
+        assert name in ns
 
 
 def test_schema_entries_are_well_formed():

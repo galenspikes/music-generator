@@ -475,7 +475,8 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
 
     chord_tl = build_chord_timeline(seq, beats_total, chord_len_beats,
                                     chord_intr,
-                                    chord_fill_rate=args.chord_fill_rate)
+                                    chord_fill_rate=args.chord_fill_rate,
+                                    static=(args.satb_style == "static"))
     chord_tl = fill_chords_to_end(chord_tl, beats_total)
 
     perc_plan = build_perc_from_args(args)
@@ -650,9 +651,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--bass-style",
         choices=list(BASS_STYLES),
         default="follow",
-        help="Bass line generator: 'follow' (bass tracks the SATB voicing), or "
-        "an independent line: root, octaves, fifths, walking, arp. "
-        "Requires split stems.")
+        help="Bass line generator: 'follow' (bass tracks the SATB voicing), "
+        "'none' (no bass voice at all), or an independent line: root, "
+        "octaves, fifths, walking, arp. Requires split stems.")
     ap.add_argument(
         "--bass-step",
         type=float,
@@ -691,9 +692,11 @@ def build_parser() -> argparse.ArgumentParser:
                     default=[],
                     help='Motifs like "ec,er,sc" (multiple allowed)')
     ap.add_argument("--satb-style",
-                    choices=["block", "counterpoint", "arpeggio"],
+                    choices=["block", "static", "counterpoint", "arpeggio"],
                     default="block",
-                    help="Voicing style for SATB harmony: block chords or counterpoint lines.")
+                    help="Voicing style for SATB harmony: block chords (re-voices "
+                    "each hit), static (freezes the voicing across an unchanged "
+                    "chord — no wobble), or counterpoint/arpeggio lines.")
     ap.add_argument(
         "--voicing",
         choices=["satb", "dense"],
@@ -724,7 +727,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--perc-main",
                     type=str,
                     default=None,
-                    help='Pattern like "qk,eh,esh,er"')
+                    help='Pattern like "qk,eh,esh,er". Pass "" for silence.')
+    ap.add_argument("--no-perc",
+                    action="store_true",
+                    help="Silence percussion entirely (same as --perc-main '').")
     ap.add_argument("--perc-interrupters",
                     nargs="*",
                     default=None,

@@ -8,14 +8,14 @@ import Docs from "./Docs.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
-  "Percussion", "Dynamics", "Process", "Render", "More",
+  "Percussion", "Dynamics", "Render", "More",
 ];
 
 // Patchbay-style accent per rack module.
 const GROUP_ACCENT = {
   Engine: "#46e0d0", Harmony: "#a98cff", Voicing: "#6aa8ff", Bass: "#ffb454",
   Melody: "#5ad17f", Percussion: "#ff6b9d", Dynamics: "#46c8e0",
-  Process: "#ff8a4c", Render: "#9aa4b8", More: "#9aa4b8",
+  Render: "#9aa4b8", More: "#9aa4b8",
 };
 
 const PRESETS = [
@@ -376,7 +376,7 @@ export default function App() {
             <div className="module-picker">
               <div className="module-picker-handle" />
               <div className="module-picker-grid">
-                {GROUP_ORDER.map((group) => (
+                {grouped.map(([group]) => (
                   <button
                     key={group}
                     className={`module-picker-btn ${activeModule === group ? "active" : ""}`}

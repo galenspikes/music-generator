@@ -307,3 +307,48 @@ def test_perc_main_key_without_explicit_lib():
     perc_plan = M.build_perc_from_args(args)
     assert perc_plan.main is not None
     assert len(perc_plan.main) > 0
+
+
+def _base_args(**overrides):
+    argv = ["--mode", "ostinato", "--keys", "C::maj7", "--seconds", "8"]
+    for flag, value in overrides.items():
+        if value is True:
+            argv.append(flag)
+        else:
+            argv += [flag, value]
+    return M.build_parser().parse_args(argv)
+
+
+def test_perc_main_defaults_to_the_forced_groove_when_unspecified():
+    # Regression guard: today's un-neutral default is unchanged unless the
+    # caller explicitly asks for silence (gap-analysis I1's fix must not
+    # flip the default for existing callers).
+    plan = M.build_perc_from_args(_base_args())
+    assert len(plan.main) > 0
+
+
+def test_perc_main_explicit_empty_string_means_silence():
+    # gap-analysis I1: an explicit empty --perc-main used to be
+    # indistinguishable from "not specified" and got forced to a hi-hat
+    # groove. It must now mean silence.
+    plan = M.build_perc_from_args(_base_args(**{"--perc-main": ""}))
+    assert plan.main == []
+
+
+def test_no_perc_flag_means_silence():
+    plan = M.build_perc_from_args(_base_args(**{"--no-perc": True}))
+    assert plan.main == []
+
+
+def test_perc_interrupters_explicit_empty_is_honored():
+    # gap-analysis I2: passing --perc-interrupters with zero values used to
+    # be indistinguishable from not passing the flag at all, and got the
+    # default fill vocabulary forced in anyway.
+    plan = M.build_perc_from_args(_base_args(**{"--perc-interrupters": True}))
+    assert plan.interrupters == []
+
+
+def test_perc_interrupters_default_to_forced_fill_when_unspecified():
+    plan = M.build_perc_from_args(_base_args())
+    assert plan.interrupters is not None
+    assert len(plan.interrupters) > 0

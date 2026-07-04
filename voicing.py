@@ -306,7 +306,7 @@ def build_arpeggio_events(
     return events
 
 
-BASS_STYLES = ("follow", "root", "octaves", "fifths", "walking", "arp")
+BASS_STYLES = ("follow", "none", "root", "octaves", "fifths", "walking", "arp")
 
 
 def _bass_note_for_pc(pc: int, center: int, lo: int, hi: int) -> int:
@@ -338,7 +338,7 @@ def build_bass_line(
     bass note (so slash/pedal basses are respected). Returns
     ``[(when_beats, dur_beats, midi_note)]`` for the bass voice.
     """
-    if not chord_tl or style in ("follow", None):
+    if not chord_tl or style in ("follow", "none", None):
         return []
 
     lo, hi = BASS_RANGE

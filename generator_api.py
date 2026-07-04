@@ -484,18 +484,24 @@ def validate(spec: dict) -> ValidationResult:
 # --- schema (introspected, never hand-mirrored) --------------------------------
 
 def parameter_schema() -> list[dict]:
-    """Every CLI parameter as a UI-renderable spec, derived from build_parser.
+    """Every controllable CLI parameter as a UI-renderable spec, derived from
+    build_parser.
 
     Annotations (group + control hint + range) live in PARAM_ANNOTATIONS; any
     flag not annotated still appears (group 'More', inferred control), so the
-    UI can never silently omit a parameter.
+    UI can never silently omit a real instrument control. HIDDEN_PARAMS is the
+    one deliberate exception: baggage (mode, the parked process/fugue group,
+    CLI/render plumbing) that the controllability audit flagged for removal
+    from the surface. Those flags stay fully functional on the CLI and in song
+    YAML — they're just not rendered as rack controls. See
+    docs/design-notes/controllability-audit.md.
     """
     defaults = vars(mg.build_parser().parse_args([]))
     out: list[dict] = []
     seen: set[str] = set()
     for action in mg.build_parser()._actions:
         dest = action.dest
-        if dest in ("help",) or dest in seen:
+        if dest in ("help",) or dest in seen or dest in HIDDEN_PARAMS:
             continue
         seen.add(dest)
         out.append(_param_spec(action, defaults.get(dest)))
@@ -553,12 +559,22 @@ def _default_control(kind: str, choices) -> str:
     return "text"
 
 
+# Baggage cut from the webapp control surface (controllability-audit.md): the
+# parked mode switch and process/fugue group, plus CLI/render plumbing that
+# isn't an instrument control. The underlying flags still work on the CLI and
+# in song YAML — see parameter_schema()'s docstring.
+HIDDEN_PARAMS: set[str] = {
+    "mode",
+    "process", "process_cell", "process_reps", "process_stages",
+    "fugue", "fugue_countersubject",
+    "out", "no_play", "song", "sf2", "poly", "perc_lib",
+}
+
 # Presentation metadata: which rack panel a flag lives in, its control, ranges.
 # Completeness is guaranteed by parameter_schema's catch-all, so this only needs
 # to grow when we want nicer placement — never to keep the UI in sync.
 PARAM_ANNOTATIONS: dict[str, dict] = {
-    # Engine / mode
-    "mode": {"group": "Engine", "control": "segmented"},
+    # Engine
     "seconds": {"group": "Engine", "control": "slider", "min": 4, "max": 600, "step": 2},
     "bpm": {"group": "Engine", "control": "slider", "min": 40, "max": 300, "step": 1},
     "seed": {"group": "Engine", "control": "int", "min": 0, "max": 999999},
@@ -594,7 +610,6 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     "perc_stages": {"group": "Percussion", "control": "taglist"},
     "perc_fill_rate": {"group": "Percussion", "control": "knob", "min": 0, "max": 1, "step": 0.01},
     "perc_fill_curve": {"group": "Percussion", "control": "text"},
-    "perc_lib": {"group": "Percussion", "control": "text"},
     "perc_main_key": {"group": "Percussion", "control": "text"},
     "perc_intr_keys": {"group": "Percussion", "control": "taglist"},
     # Dynamics
@@ -602,23 +617,11 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     "velocity_mode_drums": {"group": "Dynamics", "control": "segmented"},
     "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01},
     "pan_spread": {"group": "Dynamics", "control": "knob", "min": 0, "max": 1, "step": 0.01},
-    # Process / fugue
-    "process": {"group": "Process", "control": "segmented"},
-    "process_cell": {"group": "Process", "control": "text", "multiline": True},
-    "process_reps": {"group": "Process", "control": "slider", "min": 1, "max": 16, "step": 1},
-    "process_stages": {"group": "Process", "control": "slider", "min": 1, "max": 16, "step": 1},
-    "fugue": {"group": "Process", "control": "text"},
-    "fugue_countersubject": {"group": "Process", "control": "text"},
     # Render / audio (FluidSynth — used by the Phase-2 audio path)
-    "sf2": {"group": "Render", "control": "text"},
     "gain": {"group": "Render", "control": "knob", "min": 0, "max": 1, "step": 0.01},
     "reverb": {"group": "Render", "control": "toggle"},
     "chorus": {"group": "Render", "control": "toggle"},
-    "poly": {"group": "Render", "control": "slider", "min": 16, "max": 512, "step": 16},
     "split_stems": {"group": "Render", "control": "toggle"},
-    "song": {"group": "Render", "control": "text"},
-    "out": {"group": "Render", "control": "text"},
-    "no_play": {"group": "Render", "control": "toggle"},
 }
 
 

@@ -337,16 +337,24 @@ def build_chord_timeline(
         base_len_beats: float,
         interrupters: list[list[tuple[float, str]]] | None = None,
         chord_fill_rate: float = 0.0,  # <-- add this
+        static: bool = False,
 ) -> list[tuple[float, float, tuple[int, int, int, int]]]:
     """
     Returns [(when_beats, dur_beats, (s,a,t,b))].
     At each step, either place a straight chord slice of base_len_beats,
     or (with probability chord_fill_rate) place a random interrupter motif.
     Truncates at beats_total and sustains the last chord to reach the end.
+
+    `static=True` freezes the voicing across an unchanged chord: identical
+    consecutive (root, pcs, bass) reuse the exact previous (s,a,t,b) instead of
+    re-voicing through `realize_SATB` (whose anti-stagnation logic would
+    otherwise wobble the soprano between two chord tones every hit).
     """
     out: list[tuple[float, float, tuple[int, int, int, int]]] = []
     pos = 0.0
     prev_sop: int | None = None
+    prev_chord_key: tuple | None = None
+    prev_voicing: tuple[int, int, int, int] | None = None
     i = 0
 
     while pos < beats_total:
@@ -354,6 +362,7 @@ def build_chord_timeline(
         root_pc = entry.root_pc
         pcs = list(entry.pcs)
         bass_pc = entry.bass_pc
+        chord_key = (root_pc, tuple(sorted(pcs)), bass_pc)
 
         use_intr = (interrupters and chord_fill_rate > 0.0 and
                     random.random() < chord_fill_rate)
@@ -367,12 +376,17 @@ def build_chord_timeline(
             if dur <= 0.0:
                 break
             if flag == 'c':
-                sop, alto, tenor, bass = realize_SATB(prev_sop,
-                                                      root_pc,
-                                                      pcs,
-                                                      bass_pc=bass_pc)
+                if static and prev_voicing is not None and chord_key == prev_chord_key:
+                    sop, alto, tenor, bass = prev_voicing
+                else:
+                    sop, alto, tenor, bass = realize_SATB(prev_sop,
+                                                          root_pc,
+                                                          pcs,
+                                                          bass_pc=bass_pc)
                 out.append((pos, dur, (sop, alto, tenor, bass)))
                 prev_sop = sop
+                prev_chord_key = chord_key
+                prev_voicing = (sop, alto, tenor, bass)
             pos += dur
 
         i += 1
@@ -473,11 +487,13 @@ def build_harmony_events(
 
     if custom_bass:
         # drop any SATB-generated bass, then lay down the independent bass line
+        # (bass_style == "none" drops it and stops here: no bass at all)
         events = [
             e for e in events if not (e[0] == "voice" and e[3][0] == "bass")
         ]
-        for when, dur, note in build_bass_line(chord_tl, bass_style, bass_step):
-            events.append(("voice", when + when_offset, dur, ("bass", note)))
-            voice_max = max(voice_max, when + when_offset + dur)
+        if bass_style != "none":
+            for when, dur, note in build_bass_line(chord_tl, bass_style, bass_step):
+                events.append(("voice", when + when_offset, dur, ("bass", note)))
+                voice_max = max(voice_max, when + when_offset + dur)
 
     return events, voice_max

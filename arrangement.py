@@ -30,7 +30,7 @@ BASE_DEFAULTS: dict = {
     "instrument": "piano",
     "voices": {},                       # voice name -> instrument
     "bass": {"style": "follow", "step": 0.5},
-    "satb": "block",                    # block | arpeggio | counterpoint
+    "satb": "block",                    # block | static | arpeggio | counterpoint
     "chord_length": "h",
     "tempo": 120,
     "chords": ["triads", "sevenths"],   # families for bare roots (colon tokens ignore)
@@ -194,7 +194,8 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
         seq = mg.build_progression(roots, sec["chords"], sec["chords_order"],
                                    max_chords=len(roots))
         sec_beats = _section_beats(sec, len(seq), chord_len)
-        chord_tl = mg.build_chord_timeline(seq, sec_beats, chord_len)
+        chord_tl = mg.build_chord_timeline(seq, sec_beats, chord_len,
+                                           static=(sec["satb"] == "static"))
 
         # tempo + per-voice programs at the boundary
         events.append(("tempo", start, 0.0, int(sec["tempo"])))
