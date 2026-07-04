@@ -70,6 +70,16 @@ input {
   padding: 12px 12px 32px;
 }
 
+.app-footer {
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.app-footer a { color: var(--ink-dim); }
+.app-footer a:hover { color: var(--ink); }
+
 /* --- Builder --- */
 
 .builder-transport {

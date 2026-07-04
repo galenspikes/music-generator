@@ -87,6 +87,15 @@ export default function App() {
         defaultTitle={loaded.title}
         defaultTags={loaded.tags}
       />
+
+      <footer className="app-footer">
+        <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">home</a> ·{" "}
+        <a href="https://gsp87-music-generator.hf.space/" target="_blank" rel="noreferrer">full instrument</a> ·{" "}
+        <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">
+          chord reference
+        </a>{" "}
+        · <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">github</a>
+      </footer>
     </div>
   );
 }

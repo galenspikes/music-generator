@@ -404,6 +404,7 @@ export default function App() {
         <nav className="topnav">
           <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">Home</a>
           <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">Chords</a>
+          <a href="https://gsp87-music-generator.hf.space/chords/" target="_blank" rel="noreferrer">Chord Builder</a>
           <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">GitHub</a>
         </nav>
         <div className="transport">
@@ -635,6 +636,7 @@ export default function App() {
           Music Generator — © 2026 <strong>Galen Spikes</strong> · MIT licensed ·{" "}
           <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">home</a> ·{" "}
           <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">chords</a> ·{" "}
+          <a href="https://gsp87-music-generator.hf.space/chords/" target="_blank" rel="noreferrer">chord builder</a> ·{" "}
           <a href="https://galenspikes.github.io/music-generator/docs/" target="_blank" rel="noreferrer">docs</a> ·{" "}
           <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">github</a>
         </div>
