@@ -633,6 +633,38 @@ REPO_ROOT = Path(__file__).resolve().parent
 SONGS_DIR = REPO_ROOT / "songs"
 PRESETS_DIR = REPO_ROOT / "presets" / "user"
 
+_SLUG_UNSAFE_RE = re.compile(r"[^a-z0-9_-]+")
+_SLUG_DASH_RUN_RE = re.compile(r"-{2,}")
+
+
+def slugify(name: str) -> str:
+    """Turn arbitrary text into a filesystem-safe identifier: lowercase,
+    ``[a-z0-9_-]+``, no leading/trailing hyphens or repeated hyphens.
+
+    Every preset/song name that reaches the filesystem goes through this —
+    it's the only thing standing between a name coming from an HTTP path
+    parameter and a path-traversal write (``../../etc/passwd``), since a raw
+    ``PRESETS_DIR / f"{name}.json"`` does not resolve or reject ``..``
+    segments. Underscores are kept literal (not folded to ``-``) so this is
+    idempotent for existing ``songs/*.yml`` filenames like
+    ``four_organs`` / ``girl_from_ipanema`` — a raw name already in that form
+    round-trips unchanged, so it's safe to apply on every read as well as
+    every write.
+    """
+    slug = _SLUG_UNSAFE_RE.sub("-", name.strip().lower())
+    slug = _SLUG_DASH_RUN_RE.sub("-", slug).strip("-")
+    return slug or "untitled"
+
+
+def _safe_path_for(directory: Path, name: str, suffix: str) -> Path:
+    """Slugify ``name`` and join it to ``directory``, then verify the result
+    can't have escaped (defense in depth on top of slugify's character
+    restriction)."""
+    path = directory / f"{slugify(name)}{suffix}"
+    if path.resolve().parent != directory.resolve():
+        raise GenerationError(f"Invalid name '{name}'")
+    return path
+
 
 def list_songs() -> list[dict]:
     """List all available songs (from songs/*.yml)."""
@@ -659,7 +691,7 @@ def load_song(name: str) -> dict:
     """Load a song YAML and return all params (defaults + derived)."""
     import yaml
 
-    song_path = SONGS_DIR / f"{name}.yml"
+    song_path = _safe_path_for(SONGS_DIR, name, ".yml")
     if not song_path.exists():
         raise GenerationError(f"Song '{name}' not found")
 
@@ -748,7 +780,7 @@ def load_preset(name: str) -> dict:
     """Load a user preset and return the spec."""
     import json
 
-    preset_path = PRESETS_DIR / f"{name}.json"
+    preset_path = _safe_path_for(PRESETS_DIR, name, ".json")
     if not preset_path.exists():
         raise GenerationError(f"Preset '{name}' not found")
 
@@ -765,7 +797,7 @@ def save_preset(name: str, spec: dict, title: str = "", description: str = "") -
     from datetime import datetime
 
     PRESETS_DIR.mkdir(parents=True, exist_ok=True)
-    preset_path = PRESETS_DIR / f"{name}.json"
+    preset_path = _safe_path_for(PRESETS_DIR, name, ".json")
 
     data = {
         "title": title or name,
@@ -779,3 +811,20 @@ def save_preset(name: str, spec: dict, title: str = "", description: str = "") -
         return data
     except Exception as e:
         raise GenerationError(f"Failed to save preset '{name}': {e}")
+
+
+def delete_preset(name: str) -> None:
+    """Delete a user preset. No-op (not an error) if it doesn't exist."""
+    preset_path = _safe_path_for(PRESETS_DIR, name, ".json")
+    preset_path.unlink(missing_ok=True)
+
+
+# The reserved preset name the app tries to boot into (docs/design-notes/
+# ui-homework.md: "the home, or a user-defined home preset" instead of always
+# the same hardcoded demo). Saving a preset under this name is how a user
+# designates their home; it's just a preset like any other otherwise.
+HOME_PRESET_NAME = "home"
+
+
+def has_home_preset() -> bool:
+    return _safe_path_for(PRESETS_DIR, HOME_PRESET_NAME, ".json").exists()

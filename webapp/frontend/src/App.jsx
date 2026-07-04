@@ -41,6 +41,24 @@ const SEED_OVERRIDES = {
 
 const pretty = (name) => name.replace(/_/g, " ");
 
+// Mirrors generator_api.slugify() — good enough for a client-side preview and
+// for URL-encoding; the server has final say on the actual saved filename.
+const slugify = (text) => {
+  const s = (text || "").trim().toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-").replace(/-{2,}/g, "-").replace(/^-+|-+$/g, "");
+  return s || "untitled";
+};
+
+// The reserved preset name the app boots into, if the user has saved one —
+// see generator_api.HOME_PRESET_NAME.
+const HOME_PRESET = "home";
+
+const matchesFilter = (query, ...fields) => {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return fields.some((f) => (f || "").toLowerCase().includes(q));
+};
+
 // Same soundfont for the main player and the instrument-preview player, so a
 // preview actually matches what playback sounds like. These are the only two
 // publicly-hosted soundfont directories in the browser-playable format
@@ -106,6 +124,8 @@ export default function App() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveTitle, setSaveTitle] = useState("");
   const [saveDesc, setSaveDesc] = useState("");
+  const [saveAsHome, setSaveAsHome] = useState(false);
+  const [libraryFilter, setLibraryFilter] = useState("");
   const [activeModule, setActiveModule] = useState("Harmony"); // For mobile module picker
 
   const playerRef = useRef(null);
@@ -143,15 +163,22 @@ export default function App() {
         setSpec({ ...base, ...overrides });
         setStatus("idle");
 
-        // Auto-load "kiss" song as the opening demo
-        loadSong("kiss");
+        // Boot into the user's home preset if they've set one (ui-homework.md:
+        // "the home, or a user-defined home preset") — otherwise the opening demo.
+        const hasHome = (presetsData.presets || []).some((p) => p.name === HOME_PRESET);
+        if (hasHome) loadPreset(HOME_PRESET);
+        else loadSong("kiss");
       })
       .catch((e) => { setError(String(e)); setStatus("error"); });
   }, []);
 
+  const refreshPresets = () =>
+    fetch("/api/presets").then((r) => r.json())
+      .then((data) => setPresets(data.presets || [])).catch(() => {});
+
   // Load a song by name
   const loadSong = (name) => {
-    fetch(`/api/songs/${name}`)
+    fetch(`/api/songs/${encodeURIComponent(name)}`)
       .then((r) => r.json())
       .then((data) => {
         setCurrentSong(name);
@@ -167,7 +194,7 @@ export default function App() {
 
   // Load a preset by name
   const loadPreset = (name) => {
-    fetch(`/api/presets/${name}`)
+    fetch(`/api/presets/${encodeURIComponent(name)}`)
       .then((r) => r.json())
       .then((data) => {
         setCurrentSong(null);
@@ -177,31 +204,54 @@ export default function App() {
       .catch((e) => console.log("Preset load failed:", e.message));
   };
 
-  // Save current spec as a preset
-  const handleSavePreset = async (presetName) => {
+  // Save current spec as a preset. `slug` is what's used in the URL (and thus
+  // the filename); `title` is the free-text display name.
+  const savePresetAs = async (slug, title, description, spec_) => {
+    const res = await fetch(`/api/presets/${encodeURIComponent(slug)}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ spec: spec_, title: title || slug, description }),
+    });
+    if (!res.ok) throw new Error(`save failed: HTTP ${res.status}`);
+  };
+
+  const handleSavePreset = async (title) => {
     if (!spec) return;
     try {
-      const res = await fetch(`/api/presets/${presetName}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          spec,
-          title: saveTitle || presetName,
-          description: saveDesc,
-        }),
-      });
-      if (res.ok) {
-        // Refresh presets list
-        fetch("/api/presets")
-          .then((r) => r.json())
-          .then((data) => setPresets(data.presets || []))
-          .catch(() => {});
-        setShowSaveDialog(false);
-        setSaveTitle("");
-        setSaveDesc("");
-      }
+      await savePresetAs(slugify(title), title, saveDesc, spec);
+      if (saveAsHome) await savePresetAs(HOME_PRESET, title, saveDesc, spec);
+      await refreshPresets();
+      setShowSaveDialog(false);
+      setSaveTitle("");
+      setSaveDesc("");
+      setSaveAsHome(false);
     } catch (e) {
       console.log("Save failed:", e.message);
+    }
+  };
+
+  const handleDeletePreset = async (name, ev) => {
+    ev.stopPropagation(); // don't trigger the card's onClick (load)
+    if (typeof window !== "undefined" &&
+        !window.confirm(`Delete preset "${name}"?`)) return;
+    try {
+      await fetch(`/api/presets/${encodeURIComponent(name)}`, { method: "DELETE" });
+      await refreshPresets();
+    } catch (e) {
+      console.log("Delete failed:", e.message);
+    }
+  };
+
+  const handleSetAsHome = async (name, ev) => {
+    ev.stopPropagation();
+    try {
+      const r = await fetch(`/api/presets/${encodeURIComponent(name)}`);
+      const data = await r.json();
+      const meta = presets.find((p) => p.name === name);
+      await savePresetAs(HOME_PRESET, meta?.title || name, meta?.description || "", data.spec);
+      await refreshPresets();
+    } catch (e) {
+      console.log("Set-as-home failed:", e.message);
     }
   };
 
@@ -407,10 +457,16 @@ export default function App() {
 
       {tab === "library" && (
         <section className="library-page">
+          <input
+            className="textfield mono lib-filter"
+            placeholder="filter songs & presets…"
+            value={libraryFilter}
+            onChange={(e) => setLibraryFilter(e.target.value)}
+          />
           <div className="lib-section">
             <div className="lib-section-label">Songs</div>
             <div className="lib-grid">
-              {songs.map((s) => (
+              {songs.filter((s) => matchesFilter(libraryFilter, s.title, s.description)).map((s) => (
                 <div key={s.name} className={"lib-card" + (currentSong === s.name ? " active" : "")}
                   onClick={() => loadSong(s.name)}>
                   <div className="lib-card-title">{s.title}</div>
@@ -423,12 +479,24 @@ export default function App() {
             <div className="lib-section">
               <div className="lib-section-label">My Presets</div>
               <div className="lib-grid">
-                {presets.map((p) => (
+                {presets.filter((p) => matchesFilter(libraryFilter, p.title, p.description))
+                  .map((p) => (
                   <div key={p.name} className="lib-card"
                     onClick={() => loadPreset(p.name)}>
-                    <div className="lib-card-title">{p.title || p.name}</div>
+                    <div className="lib-card-title">
+                      {p.name === HOME_PRESET && <span className="lib-home-badge" title="loads on startup">⌂</span>}
+                      {p.title || p.name}
+                    </div>
                     {p.description && <div className="lib-card-desc">{p.description}</div>}
                     {p.saved && <div className="lib-card-meta">{p.saved.slice(0, 10)}</div>}
+                    <div className="lib-card-actions">
+                      {p.name !== HOME_PRESET && (
+                        <button className="lib-card-action" title="set as home (loads on startup)"
+                          onClick={(ev) => handleSetAsHome(p.name, ev)}>⌂</button>
+                      )}
+                      <button className="lib-card-action lib-card-delete" title="delete preset"
+                        onClick={(ev) => handleDeletePreset(p.name, ev)}>×</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -491,7 +559,7 @@ export default function App() {
               <label>Preset name:</label>
               <input
                 type="text"
-                placeholder="my-groove"
+                placeholder="My Cool Groove"
                 value={saveTitle}
                 onChange={(e) => setSaveTitle(e.target.value)}
                 onKeyDown={(e) => {
@@ -500,6 +568,7 @@ export default function App() {
                   }
                 }}
               />
+              {saveTitle && <div className="modal-hint">saves as: {slugify(saveTitle)}</div>}
             </div>
             <div className="modal-field">
               <label>Description:</label>
@@ -510,8 +579,13 @@ export default function App() {
                 rows={3}
               />
             </div>
+            <label className="modal-checkbox">
+              <input type="checkbox" checked={saveAsHome}
+                onChange={(e) => setSaveAsHome(e.target.checked)} />
+              Also use as my home preset (loads on startup)
+            </label>
             <div className="modal-actions">
-              <button onClick={() => setShowSaveDialog(false)}>Cancel</button>
+              <button onClick={() => { setShowSaveDialog(false); setSaveAsHome(false); }}>Cancel</button>
               <button onClick={() => {
                 if (saveTitle) handleSavePreset(saveTitle);
               }} disabled={!saveTitle}>Save</button>

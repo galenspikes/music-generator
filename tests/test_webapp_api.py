@@ -145,3 +145,41 @@ def test_recipes_endpoint():
     maj = next(x for x in recipes if x["name"] == "maj")
     assert maj["intervals"] == [0, 4, 7]
     assert maj["category"]
+
+
+# --- presets (Thread B) ---------------------------------------------------------
+
+@pytest.fixture
+def presets_dir(tmp_path, monkeypatch):
+    import generator_api as api
+    d = tmp_path / "presets" / "user"
+    monkeypatch.setattr(api, "PRESETS_DIR", d)
+    return d
+
+
+def test_preset_save_load_delete_roundtrip(presets_dir):
+    r = client.post("/api/presets/My Groove",
+                    json={"spec": {"keys": "C::maj7"}, "title": "My Groove"})
+    assert r.status_code == 200
+
+    names = {p["name"] for p in client.get("/api/presets").json()["presets"]}
+    assert "my-groove" in names
+
+    r = client.get("/api/presets/My Groove")
+    assert r.status_code == 200
+    assert r.json()["spec"] == {"keys": "C::maj7"}
+
+    r = client.delete("/api/presets/My Groove")
+    assert r.status_code == 200
+    assert client.get("/api/presets/My Groove").status_code == 404
+
+
+def test_preset_delete_missing_is_idempotent(presets_dir):
+    r = client.delete("/api/presets/never-existed")
+    assert r.status_code == 200
+
+
+def test_preset_path_traversal_rejected(presets_dir):
+    r = client.get("/api/presets/..%2F..%2F..%2Fetc%2Fpasswd")
+    assert r.status_code == 404
+    assert not (presets_dir.parent.parent / "etc" / "passwd.json").exists()

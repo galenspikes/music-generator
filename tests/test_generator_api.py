@@ -211,3 +211,80 @@ def test_schema_names_are_valid_spec_keys():
     ns = vars(mg.build_parser().parse_args([]))
     for p in api.parameter_schema():
         assert p["name"] in ns
+
+
+# --- presets (Thread B) ---------------------------------------------------------
+
+@pytest.fixture
+def presets_dir(tmp_path, monkeypatch):
+    d = tmp_path / "presets" / "user"
+    monkeypatch.setattr(api, "PRESETS_DIR", d)
+    return d
+
+
+def test_slugify_preserves_underscore_names():
+    # existing songs/*.yml filenames (four_organs, girl_from_ipanema, ...) must
+    # round-trip unchanged, since load_song/load_preset re-slugify on read.
+    assert api.slugify("four_organs") == "four_organs"
+    assert api.slugify("Kiss") == "kiss"
+
+
+def test_slugify_sanitizes_unsafe_characters():
+    assert api.slugify("My Cool Groove!") == "my-cool-groove"
+    assert api.slugify("  spaced  ") == "spaced"
+    assert api.slugify("") == "untitled"
+
+
+def test_slugify_neutralizes_path_traversal():
+    slug = api.slugify("../../../etc/passwd")
+    assert "/" not in slug and ".." not in slug
+
+
+def test_save_load_delete_preset_roundtrip(presets_dir):
+    api.save_preset("my-groove", {"keys": "C::maj7"}, title="My Groove")
+    assert api.load_preset("my-groove") == {"keys": "C::maj7"}
+    names = {p["name"] for p in api.list_presets()}
+    assert "my-groove" in names
+
+    api.delete_preset("my-groove")
+    assert not (presets_dir / "my-groove.json").exists()
+    with pytest.raises(api.GenerationError):
+        api.load_preset("my-groove")
+
+
+def test_delete_missing_preset_is_not_an_error(presets_dir):
+    api.delete_preset("never-existed")  # must not raise
+
+
+def test_save_preset_name_is_slugified_on_disk(presets_dir):
+    api.save_preset("My Cool Groove!", {"keys": "C"})
+    assert (presets_dir / "my-cool-groove.json").exists()
+
+
+def test_load_preset_rejects_path_traversal(presets_dir):
+    # the attempted escape resolves to a slug ("etc-passwd") that simply
+    # doesn't exist as a saved preset -- it must not read/write outside
+    # PRESETS_DIR under any circumstance.
+    with pytest.raises(api.GenerationError):
+        api.load_preset("../../../etc/passwd")
+
+
+def test_save_preset_path_traversal_cannot_write_outside_presets_dir(tmp_path, monkeypatch):
+    # The real proof: reading a bogus traversed path would 404 "not found"
+    # even without sanitization, since nothing exists there anyway. Writing
+    # is the actual exploit surface -- confirm a traversal-style name can't
+    # make save_preset land a file outside PRESETS_DIR.
+    sandbox = tmp_path / "sandbox" / "presets"
+    monkeypatch.setattr(api, "PRESETS_DIR", sandbox)
+    escape_target = tmp_path / "escaped.json"
+
+    api.save_preset("../../escaped", {"keys": "C"})
+
+    assert not escape_target.exists()
+    assert list(sandbox.glob("*.json"))  # landed safely inside instead
+
+
+def test_home_preset_detection(presets_dir):
+    assert api.has_home_preset() is False
+    api.save_preset(api.HOME_PRESET_NAME, {"keys": "C::maj7"})
+    assert api.has_home_preset() is True

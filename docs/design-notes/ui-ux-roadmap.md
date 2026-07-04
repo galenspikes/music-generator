@@ -61,29 +61,61 @@ that can't reach off, controls whose output doesn't match what's set).
 
 ## Thread B — Presets as the primary UX
 
-Per the homework: *"presets are a must, the more the better,"* and the opening
-experience should be *"the home, or a user-defined home preset."* Today's Library tab
-(`App.jsx:320-350`) already has song cards + a save-as-preset modal — this thread
-finishes what's half-built rather than starting fresh.
+**Status: v1 shipped (2026-07-04).** Per the homework: *"presets are a must, the
+more the better,"* and the opening experience should be *"the home, or a
+user-defined home preset."* Today's Library tab already had song cards + a
+save-as-preset modal — this pass finished what was half-built, fixed a real
+security bug found along the way, and answered its own open questions by
+building the smallest thing that resolves them rather than asking.
 
-**Open questions to settle before building further** (from
-[ui-homework-2.md](ui-homework-2.md) §1, left unanswered — worth a short follow-up
-round, not blocking Thread A/D):
-1. Is a preset always a *full* snapshot of every control, or can it be partial
-   (e.g. "just the percussion settings," layered on top of whatever's currently set)?
-2. Naming/browsing: typed name vs auto-name, list vs grid, tags/search?
-3. Preset vs *song* — is a song a sequence of presets, or a separate concept
-   (it already is one, structurally — arrangement YAML)?
+**A real bug found and fixed first:** `generator_api.py`'s preset (and song)
+load/save built the file path directly from an unsanitized name
+(`PRESETS_DIR / f"{name}.json"`), reachable straight from an HTTP path
+parameter. `pathlib`'s `/` operator doesn't resolve or reject `..` segments, so
+`POST /api/presets/../../../etc/passwd` would write outside the presets
+directory — a path-traversal vulnerability. Fixed with a `slugify()` that every
+preset/song name now passes through on both read and write (kept underscore-
+preserving so existing `songs/*.yml` filenames like `four_organs` still
+round-trip), plus a resolved-path defense-in-depth check. Covered by tests that
+prove the write path can't escape, not just that a bogus read 404s (a
+nonexistent traversed path would 404 either way, which doesn't prove anything).
 
-**Direction (no reversal needed on what's already decided):**
-- The instrument should boot into a **user-selectable home preset**, not always the
-  same hardcoded default — the homework explicitly said the current placeholder
-  home is provisional until the user crystallizes one by experimenting.
-- Session outputs stay plural, per the homework: MIDI, WAV, a saved preset, or a
-  saved song — "any of these could be imported into a DAW." No single "the" output.
-- Undo/history within a session is explicitly **undecided** (homework: *"we should
-  consider options"*) — don't build it yet; flag it as an open question when this
-  thread is scoped in detail.
+**The open questions, resolved by building, not by asking:**
+1. *Full vs. partial snapshot* — stayed **full**: every save captures the
+   entire current spec. Matches the project's determinism/reproducibility ethos
+   already established elsewhere, and there was no signal favoring partial.
+2. *Naming/browsing* — a typed **title** (free text) auto-generates a
+   sanitized **slug** for the filename (shown live in the save dialog: "saves
+   as: my-cool-groove"), so the two concerns (what you call it / what's safe on
+   disk) aren't conflated the way they used to be (same string, no
+   sanitization). Browsing stayed the existing grid-of-cards (matches the
+   DM-1/Bazille visual density already in place) with a search/filter box added
+   over title+description — "the more the better" for presets means this was
+   going to get unwieldy fast.
+3. *Preset vs. song* — left as-is: two separate concepts (a preset is a full
+   parameter snapshot; a song is the existing arrangement YAML). No unification
+   attempted; wasn't asked for.
+
+**The home-preset mechanism:** a reserved preset name (`"home"`,
+`generator_api.HOME_PRESET_NAME`) is what the app tries to load on boot,
+falling back to today's Kiss demo if none is saved. Any preset card gets a
+"⌂ set as home" action that promotes it; the save dialog also has a direct
+"also use as my home preset" checkbox. The card that *is* home is marked with
+a badge so it's never ambiguous which one loads on startup.
+
+**Also added, since it was an obvious gap once delete mattered:** preset
+deletion (API + a hover-revealed trash icon per card) — there was no way to
+remove a saved preset at all before this.
+
+**Still deliberately not built:** undo/history within a session — the homework
+left this explicitly undecided (*"we should consider options"*), so it's left
+alone rather than guessed at. Session outputs stay plural as already noted in
+the homework (MIDI, WAV, preset, song) — nothing in this pass changed that.
+
+Verified in a real browser session (Playwright): save → appears in Library with
+the correct sanitized slug; search filters correctly; set-as-home badges the
+right card and survives a reload; delete removes exactly the targeted preset.
+Full suite (300+ tests) and repo-wide ruff pass.
 
 ---
 

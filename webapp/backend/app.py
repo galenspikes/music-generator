@@ -175,6 +175,13 @@ def save_preset(name: str, req: SavePresetRequest) -> dict:
     return data
 
 
+@app.delete("/api/presets/{name}")
+def delete_preset(name: str) -> dict:
+    """Delete a user preset (idempotent: deleting a missing preset is not an error)."""
+    api.delete_preset(name)
+    return {"ok": True}
+
+
 # The full docs/ tree (Diátaxis: tutorials / how-to / reference / explanation,
 # plus design-notes, token-grammar deep-dives, about) surfaced in the in-app
 # Docs tab. Slugs are the doc's path under docs/ without the .md suffix (e.g.

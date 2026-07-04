@@ -308,15 +308,30 @@ body {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;
 }
 .lib-card {
+  position: relative;
   background: var(--panel-hi); border: 1px solid var(--line);
   border-radius: 10px; padding: 14px 16px; cursor: pointer;
   transition: border-color .12s, background .12s;
 }
 .lib-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--panel-hi)); }
 .lib-card.active { border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--panel-hi)); }
-.lib-card-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+.lib-card-title { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); padding-right: 46px; }
 .lib-card-desc { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
 .lib-card-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 8px; opacity: 0.6; }
+.lib-home-badge { color: var(--accent); margin-right: 4px; }
+.lib-filter { margin-bottom: 4px; }
+.lib-card-actions {
+  position: absolute; top: 10px; right: 10px; display: flex; gap: 4px;
+  opacity: 0; transition: opacity .12s;
+}
+.lib-card:hover .lib-card-actions { opacity: 1; }
+.lib-card-action {
+  width: 22px; height: 22px; display: inline-grid; place-items: center;
+  border-radius: 6px; border: 1px solid var(--line-hi); background: var(--slot);
+  color: var(--muted); cursor: pointer; font-size: 12px; line-height: 1;
+}
+.lib-card-action:hover { color: var(--accent); border-color: var(--accent); }
+.lib-card-delete:hover { color: #ff8f8f; border-color: #ff8f8f; }
 
 /* ---- deck (player) ---- */
 .deck {
@@ -895,6 +910,11 @@ midi-visualizer {
   width: 100%; padding: 8px 10px; border-radius: 6px;
   background: var(--slot); border: 1px solid var(--line); color: var(--text);
   font-family: var(--mono); font-size: 12px;
+}
+.modal-hint { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 5px; }
+.modal-checkbox {
+  display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+  margin-bottom: 4px; cursor: pointer;
 }
 .modal-field input:focus, .modal-field textarea:focus { border-color: var(--accent); outline: none; }
 .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
