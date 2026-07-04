@@ -172,6 +172,25 @@ def test_parse_keys_error_pinpoints_token():
     assert r["error_index"] == 1
 
 
+def test_parse_keys_exposes_pitch_classes_for_client_audio():
+    # root_pc/pcs/bass_pc are what a client-side synth realizes into concrete
+    # MIDI notes without re-parsing note-name strings (see chordNotes.js).
+    c = api.parse_keys("C::maj7")["chords"][0]
+    assert c["root_pc"] == 0
+    assert c["pcs"] == [0, 4, 7, 11]
+    assert c["bass_pc"] is None
+
+    slash = api.parse_keys("G::maj/C")["chords"][0]
+    assert slash["root_pc"] == 7
+    assert slash["bass_pc"] == 0
+
+
+def test_parse_keys_bare_root_has_no_pitch_classes():
+    c = api.parse_keys("C")["chords"][0]
+    assert c["pcs"] == []
+    assert c["bass_pc"] is None
+
+
 # --- parse_perc ----------------------------------------------------------------
 
 def test_parse_perc_drums_friendly_names():
@@ -334,3 +353,58 @@ def test_home_preset_detection(presets_dir):
     assert api.has_home_preset() is False
     api.save_preset(api.HOME_PRESET_NAME, {"keys": "C::maj7"})
     assert api.has_home_preset() is True
+
+
+# --- chord progressions (standalone Chord Recipes app) --------------------------
+
+@pytest.fixture
+def progressions_dir(tmp_path, monkeypatch):
+    d = tmp_path / "presets" / "progressions"
+    monkeypatch.setattr(api, "PROGRESSIONS_DIR", d)
+    return d
+
+
+def test_save_load_delete_progression_roundtrip(progressions_dir):
+    saved = api.save_progression(
+        "ii-v-i", "D::min7, G::7, C::maj7", title="ii-V-I turnaround",
+        tags=["jazz"], tempo=96,
+    )
+    assert saved["keys"] == "D::min7, G::7, C::maj7"
+
+    loaded = api.load_progression("ii-v-i")
+    assert loaded["title"] == "ii-V-I turnaround"
+    assert loaded["tags"] == ["jazz"]
+    assert loaded["tempo"] == 96
+
+    names = {p["name"] for p in api.list_progressions()}
+    assert "ii-v-i" in names
+
+    api.delete_progression("ii-v-i")
+    assert not (progressions_dir / "ii-v-i.json").exists()
+    with pytest.raises(api.GenerationError):
+        api.load_progression("ii-v-i")
+
+
+def test_delete_missing_progression_is_not_an_error(progressions_dir):
+    api.delete_progression("never-existed")  # must not raise
+
+
+def test_progression_name_is_slugified_on_disk(progressions_dir):
+    api.save_progression("My Cool Vamp!", "C::maj7")
+    assert (progressions_dir / "my-cool-vamp.json").exists()
+
+
+def test_load_progression_rejects_path_traversal(progressions_dir):
+    with pytest.raises(api.GenerationError):
+        api.load_progression("../../../etc/passwd")
+
+
+def test_save_progression_path_traversal_cannot_write_outside_progressions_dir(tmp_path, monkeypatch):
+    sandbox = tmp_path / "sandbox" / "progressions"
+    monkeypatch.setattr(api, "PROGRESSIONS_DIR", sandbox)
+    escape_target = tmp_path / "escaped.json"
+
+    api.save_progression("../../escaped", "C::maj7")
+
+    assert not escape_target.exists()
+    assert list(sandbox.glob("*.json"))

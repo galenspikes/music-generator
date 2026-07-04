@@ -1,0 +1,469 @@
+/* Music Generator — Copyright (c) 2026 Galen Spikes. MIT License. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--rack);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* Mobile-first: this is the base layout. A wider viewport just adds a
+   max-width wrapper so the instrument doesn't stretch edge-to-edge. */
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  background: var(--rack2);
+  border-bottom: 1px solid var(--edge);
+}
+
+.app-title {
+  font-family: var(--mono);
+  color: var(--amber);
+  letter-spacing: 0.02em;
+  font-size: 1.05rem;
+}
+
+.app-tabs { display: flex; gap: 6px; }
+
+.app-tab {
+  background: var(--metal);
+  color: var(--ink-dim);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  padding: 10px 14px;
+  min-height: 44px;
+}
+
+.app-tab.on {
+  background: var(--amber-dim);
+  color: var(--rack);
+  font-weight: 600;
+}
+
+.app-main {
+  flex: 1;
+  padding: 12px 12px 32px;
+}
+
+/* --- Builder --- */
+
+.builder-transport {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.transport-btn {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.transport-btn.play { background: var(--green); color: var(--rack); font-weight: 600; }
+.transport-btn.stop { background: var(--metal-lo); color: var(--red); }
+.transport-btn:disabled { opacity: 0.4; cursor: default; }
+
+.instrument-toggle { display: flex; gap: 4px; margin-left: auto; }
+
+.instrument-btn {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal-lo);
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+}
+
+.instrument-btn.on { background: var(--blue); color: var(--rack); }
+
+.builder-err {
+  background: rgba(255, 106, 77, 0.12);
+  border: 1px solid var(--red);
+  color: var(--red);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.builder-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chord-card {
+  background: var(--rack2);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.strike-btn {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--edge);
+  background: var(--amber);
+  color: var(--rack);
+  font-size: 1.1rem;
+}
+
+.strike-btn:disabled { opacity: 0.35; }
+
+.card-chord-label {
+  font-family: var(--mono);
+  color: var(--engrave);
+  font-size: 1.05rem;
+  flex: 1;
+}
+
+.card-reorder { display: flex; gap: 4px; margin-left: auto; }
+
+.mini-btn {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink-dim);
+}
+
+.mini-btn:disabled { opacity: 0.3; }
+.mini-btn.danger { color: var(--red); }
+
+.card-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.raw-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.raw-text {
+  flex: 1;
+  font-family: var(--mono);
+  color: var(--ink-dim);
+  overflow-wrap: anywhere;
+}
+
+.add-chord-btn, .save-btn {
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px dashed var(--metal-hi);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 0.95rem;
+}
+
+.save-btn {
+  margin-top: 14px;
+  border: 1px solid var(--edge);
+  background: var(--amber-dim);
+  color: var(--rack);
+  font-weight: 600;
+}
+
+.save-btn:disabled { opacity: 0.4; }
+
+/* --- chips (open a Sheet) --- */
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+}
+
+.chip-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-dim);
+}
+
+.chip-value {
+  font-family: var(--mono);
+  font-size: 1rem;
+}
+
+/* --- Sheet (bottom popup) --- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+}
+
+.sheet {
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--rack2);
+  border-top: 1px solid var(--metal-hi);
+  border-radius: 16px 16px 0 0;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sheet-title { font-weight: 600; color: var(--engrave); }
+
+.sheet-close {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-size: 1.1rem;
+}
+
+.picker-grid.roots-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.picker-btn {
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 1rem;
+}
+
+.picker-btn.on { background: var(--amber); color: var(--rack); font-weight: 600; }
+.bare-btn { width: 100%; margin-bottom: 10px; font-family: var(--sans); font-size: 0.9rem; }
+
+.recipe-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal-lo);
+  color: var(--ink);
+  font-size: 16px; /* keep iOS from zooming on focus */
+}
+
+.recipe-group { margin-bottom: 14px; }
+.recipe-group-label { font-size: 0.75rem; color: var(--ink-dim); text-transform: uppercase; margin-bottom: 6px; }
+
+.recipe-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.recipe-card-btn {
+  text-align: left;
+  min-height: 52px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.recipe-card-btn.on { border-color: var(--amber); background: var(--metal-hi); }
+.recipe-card-name { color: var(--amber); font-size: 0.95rem; }
+.recipe-card-notes { font-size: 0.72rem; color: var(--ink-dim); }
+.recipe-empty { color: var(--ink-dim); padding: 12px 0; }
+
+.inv-picker, .stepper { display: flex; align-items: center; gap: 6px; }
+.inv-label, .stepper-label { font-size: 0.7rem; color: var(--ink-dim); }
+
+.pill-row { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; }
+.pill-row.wrap { flex-wrap: wrap; overflow-x: visible; }
+
+.pill {
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.pill.on { background: var(--blue); color: var(--rack); font-weight: 600; }
+.pill.add-tag { border-style: dashed; color: var(--ink-dim); }
+
+.stepper-btn {
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-size: 1.1rem;
+}
+
+.stepper-value { min-width: 20px; text-align: center; font-family: var(--mono); }
+
+/* --- Save dialog --- */
+
+.save-title-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+
+.save-title-input, .tag-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal-lo);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.tag-input { width: 100px; }
+.save-tags-label { font-size: 0.75rem; color: var(--ink-dim); margin: 14px 0 6px; }
+
+.save-confirm-btn {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: var(--amber);
+  color: var(--rack);
+  font-weight: 600;
+}
+
+.save-confirm-btn:disabled { opacity: 0.4; }
+
+/* --- Library --- */
+
+.library-empty { color: var(--ink-dim); padding: 24px 4px; text-align: center; }
+
+.library-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.library-card {
+  background: var(--rack2);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.library-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.library-card-title { font-weight: 600; color: var(--engrave); }
+.library-card-tempo { font-size: 0.75rem; color: var(--ink-dim); }
+
+.library-card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+
+.mini-chip {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  background: var(--metal);
+  border-radius: 6px;
+  padding: 3px 8px;
+  color: var(--ink);
+}
+
+.library-card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+
+.tag-chip {
+  font-size: 0.7rem;
+  color: var(--blue);
+  background: rgba(74, 163, 224, 0.12);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.library-card-actions { display: flex; gap: 8px; }
+
+.lib-load-btn, .lib-delete-btn, .lib-delete-confirm, .lib-delete-cancel {
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.lib-load-btn { background: var(--blue); color: var(--rack); font-weight: 600; }
+.lib-delete-confirm { background: var(--red); color: var(--rack); }
+
+/* --- Wider viewports: a bit more breathing room, multi-column library --- */
+@media (min-width: 640px) {
+  .app { border-left: 1px solid var(--edge); border-right: 1px solid var(--edge); }
+  .card-fields { flex-wrap: nowrap; }
+  .recipe-cards { grid-template-columns: 1fr 1fr 1fr; }
+  .library-grid { grid-template-columns: 1fr 1fr; }
+  .sheet { max-width: 480px; margin: 0 auto; border-radius: 16px 16px 0 0; }
+}

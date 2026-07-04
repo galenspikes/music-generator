@@ -1,0 +1,26 @@
+/* Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
+   Shared palette so the standalone Chord Recipes app reads as the same
+   instrument family as site/chords.html and the main webapp (colors lifted
+   from site/_chords.css). */
+:root {
+  --rack: #101215;
+  --rack2: #15181c;
+  --metal-hi: #3b4149;
+  --metal: #2b3037;
+  --metal-lo: #20242a;
+  --edge: #0a0b0d;
+  --bevel: rgba(255, 255, 255, 0.07);
+  --screen: #0b0e0c;
+  --screen-edge: #04120a;
+  --engrave: #aeb4be;
+  --engrave-dim: #79808b;
+  --amber: #ffb44d;
+  --amber-dim: #c07d2c;
+  --green: #5fe08a;
+  --red: #ff6a4d;
+  --blue: #4aa3e0;
+  --ink: #d6dbe2;
+  --ink-dim: #9aa1ab;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}

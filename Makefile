@@ -55,4 +55,6 @@ webapp: ## Run the web editor backend (edit every parameter live and hear it)
 	@echo "Backend → http://127.0.0.1:8753"
 	@echo "In another terminal start the UI:"
 	@echo "  cd webapp/frontend && npm install && npm run dev   # → http://localhost:5173"
+	@echo "...and/or the standalone Chord Recipes instrument:"
+	@echo "  cd webapp/chords-frontend && npm install && npm run dev   # → http://localhost:5174"
 	PYTHONPATH=$(CURDIR) $(VENV)/bin/uvicorn app:app --app-dir webapp/backend --port 8753

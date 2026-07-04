@@ -362,6 +362,7 @@ def _describe_token(tok: str) -> dict:
             "token": t, "label": _PCN[pc] + ("m" if is_minor else ""),
             "root": _PCN[pc], "recipe": "min" if is_minor else None,
             "inversion": None, "bass": None, "notes": [], "bare": True,
+            "root_pc": pc, "pcs": [], "bass_pc": None,
         }
     cd = mg.parse_colon_key_token(t)
     base, slash = (t.rsplit("/", 1) + [None])[:2] if "/" in t else (t, None)
@@ -378,6 +379,8 @@ def _describe_token(tok: str) -> dict:
         "recipe": recipe_name, "inversion": int(inv) if inv else None,
         "bass": bass_name, "notes": [_PCN[p] for p in (cd.pcs if cd else ())],
         "bare": False,
+        "root_pc": root_pc, "pcs": list(cd.pcs) if cd else [],
+        "bass_pc": cd.bass_pc if cd else None,
     }
 
 
@@ -865,3 +868,82 @@ HOME_PRESET_NAME = "home"
 
 def has_home_preset() -> bool:
     return _safe_path_for(PRESETS_DIR, HOME_PRESET_NAME, ".json").exists()
+
+
+# Chord-progression presets: a lighter save format than the full-spec presets
+# above — just a `keys` token string plus display metadata, for the standalone
+# chord-recipes instrument (webapp/chords-frontend). Deliberately not a `spec`
+# dict: this app never touches instrument/percussion/arrangement params.
+PROGRESSIONS_DIR = REPO_ROOT / "presets" / "progressions"
+
+
+def list_progressions() -> list[dict]:
+    """List saved chord progressions with metadata."""
+    progressions = []
+    PROGRESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    for prog_file in sorted(PROGRESSIONS_DIR.glob("*.json")):
+        try:
+            import json
+            data = json.loads(prog_file.read_text())
+            progressions.append({
+                "name": prog_file.stem,
+                "title": data.get("title", prog_file.stem),
+                "tags": data.get("tags", []),
+                "keys": data.get("keys", ""),
+                "tempo": data.get("tempo"),
+                "saved": data.get("saved", ""),
+            })
+        except Exception:
+            pass
+    return progressions
+
+
+def load_progression(name: str) -> dict:
+    """Load a saved chord progression."""
+    import json
+
+    prog_path = _safe_path_for(PROGRESSIONS_DIR, name, ".json")
+    if not prog_path.exists():
+        raise GenerationError(f"Progression '{name}' not found")
+
+    try:
+        return json.loads(prog_path.read_text())
+    except Exception as e:
+        raise GenerationError(f"Failed to load progression '{name}': {e}")
+
+
+def save_progression(
+    name: str,
+    keys: str,
+    title: str = "",
+    tags: list[str] | None = None,
+    tempo: int | None = None,
+    voicing: str | None = None,
+) -> dict:
+    """Save a chord progression with metadata."""
+    import json
+    from datetime import datetime
+
+    PROGRESSIONS_DIR.mkdir(parents=True, exist_ok=True)
+    prog_path = _safe_path_for(PROGRESSIONS_DIR, name, ".json")
+
+    data = {
+        "title": title or name,
+        "tags": tags or [],
+        "keys": keys,
+        "tempo": tempo,
+        "voicing": voicing,
+        "saved": datetime.now().isoformat(),
+    }
+
+    try:
+        prog_path.write_text(json.dumps(data, indent=2))
+        return data
+    except Exception as e:
+        raise GenerationError(f"Failed to save progression '{name}': {e}")
+
+
+def delete_progression(name: str) -> None:
+    """Delete a saved chord progression. No-op (not an error) if it doesn't exist."""
+    prog_path = _safe_path_for(PROGRESSIONS_DIR, name, ".json")
+    prog_path.unlink(missing_ok=True)
