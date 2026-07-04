@@ -60,6 +60,19 @@ def test_generate_song_roundtrip(tmp_path):
     assert r.midi[:4] == b"MThd"
 
 
+def test_generate_accepts_inline_song_yaml_text():
+    # The lead-sheet importer's path: raw song.yml text in the spec, never
+    # written anywhere durable -- an alternative to "song" (a file path).
+    yml_text = (
+        "title: Inline Test\ntempo: 100\n"
+        "sections:\n  - {name: A, keys: 'C::maj7, F::maj7'}\n"
+    )
+    r = api.generate({"song_yaml": yml_text})
+    assert r.mode == "song"
+    assert r.midi[:4] == b"MThd"
+    assert len(_midi_notes(r.midi)) > 0
+
+
 def test_generate_song_no_perc_silences_drums():
     # gap-analysis I1, song-path regression: "no_perc"/explicit-empty perc_main
     # used to be dropped by a truthy check when forwarding UI overrides into

@@ -3,7 +3,7 @@
 Planning doc. Goal: take a lead sheet PDF and produce a **song.yml** (sections +
 chords) for the arrangement layer.
 
-**Status: v1 shipped (2026-07-04).** The deferral is lifted — Threads A/B/C/D in
+**Status: v1 and v2 shipped (2026-07-04).** The deferral is lifted — Threads A/B/C/D in
 [ui-ux-roadmap.md](ui-ux-roadmap.md) shipped first, per the original plan. The
 **deterministic core** (Stage 3 mapper + the emitter) is real, tested code:
 `leadsheet.py` (`chordsym_to_token`, `ir_to_song_yml`), `tests/test_leadsheet.py`.
@@ -157,8 +157,17 @@ so mistakes are obvious. Optionally render a quick MIDI to sanity-check.
      Not a skill/automation — a documented manual workflow (read the PDF, fill
      the IR, call the emitter, review), matching the plan's "near-zero code to
      start."
-- **v2:** deterministic text-layer extractor (`pdfplumber`) for born-digital
-  PDFs → IR, no LLM in the loop (fast, exact, reproducible). Not started.
+- **v2 — shipped:** deterministic text-layer extractor (`pdfplumber`) for
+  born-digital PDFs → IR, no LLM in the loop (fast, exact, reproducible):
+  `leadsheet_extract.py` (`words_to_chart`, `extract_pdf_chart`),
+  `tests/test_leadsheet_extract.py`. Wired into the webapp end to end —
+  `POST /api/leadsheet/extract` (upload PDF → chart + warnings + song.yml) and
+  `POST /api/leadsheet/emit` (re-emit after edits), a drop-zone + editable
+  review UI in the Library tab (`LeadSheetImport.jsx`), and disk-free inline
+  `song_yaml` support in `generator_api.generate()` so an imported chart plays
+  without ever touching disk. Scanned/image PDFs (no text layer) get a clear
+  warning pointing back at the agent workflow (v1) instead of silently
+  failing.
 - **v3 (stretch):** OMR for melody → `--melody`/fugue subject. Not started.
 
 ## Resolved

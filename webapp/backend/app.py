@@ -15,16 +15,19 @@ or a ``sys.argv`` hack. Endpoints:
     GET  /api/docs/{slug}  one doc's raw markdown (slug = path under docs/)
     GET  /api/recipes   chord-recipe catalog (category, intervals, notes) for
                          the interactive recipe browser
+    POST /api/leadsheet/extract  upload a lead-sheet PDF -> chart + song.yml
+    POST /api/leadsheet/emit     re-emit song.yml from an edited chart
 """
 
 from __future__ import annotations
 
 import base64
+import io
 import json
 import pathlib
 import sys
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -34,6 +37,8 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 import generator_api as api  # noqa: E402
+import leadsheet  # noqa: E402
+import leadsheet_extract  # noqa: E402
 
 app = FastAPI(title="Music Generator", version="0.2.0")
 
@@ -180,6 +185,53 @@ def delete_preset(name: str) -> dict:
     """Delete a user preset (idempotent: deleting a missing preset is not an error)."""
     api.delete_preset(name)
     return {"ok": True}
+
+
+# Lead-sheet import (docs/design-notes/leadsheet-import-plan.md Stage 1,
+# option A — deterministic text-layer extraction, no LLM in the loop). The
+# uploaded PDF is read entirely in memory and discarded; nothing is written
+# to disk (matches generator_api.generate()'s "never writes to output/").
+_MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+class EmitChartRequest(BaseModel):
+    chart: dict
+    transpose: int = 0
+
+
+def _chart_response(chart: dict, warnings: list[str]) -> dict:
+    song_yaml = None
+    if chart.get("sections"):
+        try:
+            song_yaml = leadsheet.ir_to_song_yml(chart)
+        except leadsheet.LeadSheetError as exc:
+            warnings = [*warnings, f"Couldn't generate song.yml yet: {exc}"]
+    return {"chart": chart, "warnings": warnings, "song_yaml": song_yaml}
+
+
+@app.post("/api/leadsheet/extract")
+async def extract_leadsheet(file: UploadFile) -> dict:
+    """Upload a lead-sheet PDF; extract its chords/form via the text layer."""
+    data = await file.read()
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="PDF too large (20 MB limit).")
+    try:
+        result = leadsheet_extract.extract_pdf_chart(io.BytesIO(data))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Couldn't read that as a PDF: {exc}") from exc
+    return _chart_response(result.chart, result.warnings)
+
+
+@app.post("/api/leadsheet/emit")
+def emit_leadsheet(req: EmitChartRequest) -> dict:
+    """Re-emit song.yml from a chart the user has edited in the review UI."""
+    try:
+        song_yaml = leadsheet.ir_to_song_yml(req.chart, transpose=req.transpose)
+    except leadsheet.LeadSheetError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"song_yaml": song_yaml}
 
 
 # The full docs/ tree (Diátaxis: tutorials / how-to / reference / explanation,

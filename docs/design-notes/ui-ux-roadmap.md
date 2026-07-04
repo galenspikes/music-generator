@@ -18,9 +18,11 @@ for the React webapp (`webapp/frontend/`) — the primary surface going forward.
   2026-06-18 instrument-first call (`mode`/`process`/`fugue` removed from the UI
   surface). Nothing in this roadmap touches fugue development; it comes much later,
   after the core instrument is right.
-- **Lead-sheet import — v1 shipped (2026-07-04).** Was deferred until Threads
-  A/B/C/D shipped; they have, so the deterministic core (chord-symbol mapper +
-  IR→song.yml emitter) and the extraction workflow are now real — see
+- **Lead-sheet import — v1 and v2 shipped (2026-07-04).** Was deferred until
+  Threads A/B/C/D shipped; they have, so the deterministic core (chord-symbol
+  mapper + IR→song.yml emitter), the agent extraction workflow, the
+  `pdfplumber` text-layer extractor, and a slick upload/review UI in the
+  webapp's Library tab are now real — see
   [leadsheet-import-plan.md](leadsheet-import-plan.md).
 - **Engine controllability and UI presentation run in parallel**, not sequentially —
   Thread A (below) and Thread C aren't gated on each other; both are "the core" and
@@ -274,7 +276,9 @@ a quick decision pass, but don't block starting.
    growth left open (taste call).
 5. ✅ **Thread D v2** (soundfont picker, preview/master decided) — shipped.
    **Thread D v3** (per-voice soundfonts) — still open, low priority, stretch.
-6. ✅ **Lead-sheet import v1** — shipped now that the threads above have.
+6. ✅ **Lead-sheet import v1 + v2** — shipped now that the threads above have,
+   including the webapp drop-zone/review UI (`LeadSheetImport.jsx`) wired to
+   `/api/leadsheet/extract` + `/api/leadsheet/emit`.
    **Still explicitly not now:** fugue development.
 
 ---
@@ -287,4 +291,4 @@ a quick decision pass, but don't block starting.
 [UI homework 2](ui-homework-2.md) (source of the user's own answers this roadmap
 builds from) · [Roadmap phase 2](roadmap-phase2.md) (engine feature threads, now
 secondary to this doc for UI-facing work) · [Lead-sheet import plan](leadsheet-import-plan.md)
-(deferred) · [Refactor plan](refactor-plan.md)
+· [Refactor plan](refactor-plan.md)

@@ -183,3 +183,80 @@ def test_preset_path_traversal_rejected(presets_dir):
     r = client.get("/api/presets/..%2F..%2F..%2Fetc%2Fpasswd")
     assert r.status_code == 404
     assert not (presets_dir.parent.parent / "etc" / "passwd.json").exists()
+
+
+# --- lead-sheet import ---------------------------------------------------------
+
+def _write_chart_pdf(path):
+    reportlab = pytest.importorskip("reportlab")  # noqa: F841 -- dev-only
+    from reportlab.lib.pagesizes import letter
+    from reportlab.pdfgen import canvas
+
+    c = canvas.Canvas(str(path), pagesize=letter)
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(72, 720, "Test Tune")
+    c.setFont("Helvetica", 10)
+    c.drawString(72, 700, "Tempo: 130")
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(72, 660, "A")
+    c.setFont("Courier", 11)
+    c.drawString(72, 640, "Cm7  F7  |  Bbmaj7  Ebmaj7")
+    c.save()
+
+
+def test_leadsheet_extract_endpoint(tmp_path):
+    pdf_path = tmp_path / "chart.pdf"
+    _write_chart_pdf(pdf_path)
+    with open(pdf_path, "rb") as f:
+        r = client.post("/api/leadsheet/extract",
+                        files={"file": ("chart.pdf", f, "application/pdf")})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["chart"]["title"] == "Test Tune"
+    assert body["chart"]["sections"][0]["name"] == "A"
+    assert "C::min7" in body["song_yaml"]
+    assert body["warnings"] == []
+
+
+def test_leadsheet_extract_rejects_non_pdf():
+    r = client.post("/api/leadsheet/extract",
+                    files={"file": ("not-a-pdf.txt", b"hello world", "text/plain")})
+    assert r.status_code == 422
+
+
+def test_leadsheet_emit_endpoint():
+    chart = {"title": "t", "tempo": 120,
+            "sections": [{"name": "A", "measures": [["Cmaj7"]]}]}
+    r = client.post("/api/leadsheet/emit", json={"chart": chart})
+    assert r.status_code == 200
+    assert "C::maj7" in r.json()["song_yaml"]
+
+
+def test_leadsheet_emit_applies_transpose():
+    chart = {"title": "t", "tempo": 120,
+            "sections": [{"name": "A", "measures": [["Cmaj7"]]}]}
+    r = client.post("/api/leadsheet/emit", json={"chart": chart, "transpose": 2})
+    assert r.status_code == 200
+    assert "D::maj7" in r.json()["song_yaml"]
+
+
+def test_leadsheet_emit_rejects_unknown_chord():
+    chart = {"title": "t", "sections": [{"name": "A", "measures": [["Xwibble9"]]}]}
+    r = client.post("/api/leadsheet/emit", json={"chart": chart})
+    assert r.status_code == 422
+
+
+def test_generate_accepts_extracted_song_yaml(tmp_path):
+    # The full loop: extract -> song_yaml -> /api/generate plays it, with
+    # nothing ever written to disk.
+    pdf_path = tmp_path / "chart.pdf"
+    _write_chart_pdf(pdf_path)
+    with open(pdf_path, "rb") as f:
+        extracted = client.post(
+            "/api/leadsheet/extract",
+            files={"file": ("chart.pdf", f, "application/pdf")}).json()
+
+    r = client.post("/api/generate", json={"spec": {"song_yaml": extracted["song_yaml"]}})
+    assert r.status_code == 200
+    data = base64.b64decode(r.json()["midi"])
+    assert data[:4] == b"MThd"

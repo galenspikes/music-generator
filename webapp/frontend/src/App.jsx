@@ -5,6 +5,7 @@ import { Control, IntField } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
 import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
 import Docs from "./Docs.jsx";
+import LeadSheetImport from "./LeadSheetImport.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
@@ -120,6 +121,7 @@ export default function App() {
     : (SOUND_BANKS.find((b) => b.id === soundBank)?.url || SOUND_BANKS[0].url);
   const [songs, setSongs] = useState([]);
   const [currentSong, setCurrentSong] = useState(null);
+  const [importedTitle, setImportedTitle] = useState(null);
   const [presets, setPresets] = useState([]);
   const [tab, setTab] = useState("listen"); // "listen" | "library" | "editor" | "docs"
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -183,10 +185,15 @@ export default function App() {
       .then((r) => r.json())
       .then((data) => {
         setCurrentSong(name);
-        // Merge song spec with current base params
+        setImportedTitle(null);
+        // Merge song spec with current base params. A stale song_yaml from a
+        // previous lead-sheet import would otherwise win over this song (the
+        // backend prefers inline song_yaml over a song path) — clear it first.
         setSpec((s) => {
           if (!s) return s;
-          return { ...s, ...data.spec };
+          const clean = { ...s };
+          delete clean.song_yaml;
+          return { ...clean, ...data.spec };
         });
         setTab("listen");
       })
@@ -199,7 +206,13 @@ export default function App() {
       .then((r) => r.json())
       .then((data) => {
         setCurrentSong(null);
-        setSpec((s) => ({ ...s, ...data.spec }));
+        setImportedTitle(null);
+        setSpec((s) => {
+          const clean = { ...s };
+          delete clean.song_yaml;
+          delete clean.song;
+          return { ...clean, ...data.spec };
+        });
         setTab("listen");
       })
       .catch((e) => console.log("Preset load failed:", e.message));
@@ -419,7 +432,8 @@ export default function App() {
 
       <div className="songbar">
         <span className="song-current">
-          {currentSong ? (songs.find((s) => s.name === currentSong)?.title || currentSong) : "untitled"}
+          {currentSong ? (songs.find((s) => s.name === currentSong)?.title || currentSong)
+            : (importedTitle || "untitled")}
         </span>
         <div className="song-actions">
           <button className="btn-new" onClick={() => {
@@ -427,6 +441,7 @@ export default function App() {
             for (const p of params) base[p.name] = p.default;
             setSpec({ ...base, ...SEED_OVERRIDES });
             setCurrentSong(null);
+            setImportedTitle(null);
             setTab("editor");
           }}>+ New</button>
           <button className="btn-save" onClick={() => setShowSaveDialog(true)}>Save</button>
@@ -470,6 +485,19 @@ export default function App() {
             value={libraryFilter}
             onChange={(e) => setLibraryFilter(e.target.value)}
           />
+          <div className="lib-section">
+            <div className="lib-section-label">Import lead sheet</div>
+            <LeadSheetImport onLoad={(songYaml, title) => {
+              setCurrentSong(null);
+              setImportedTitle(title || "imported chart");
+              setSpec((s) => {
+                const clean = { ...s };
+                delete clean.song;
+                return { ...clean, song_yaml: songYaml };
+              });
+              setTab("listen");
+            }} />
+          </div>
           <div className="lib-section">
             <div className="lib-section-label">Songs</div>
             <div className="lib-grid">

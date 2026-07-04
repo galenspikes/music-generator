@@ -935,6 +935,50 @@ midi-visualizer {
 .modal-actions button:hover:not(:disabled) { border-color: var(--accent); }
 .modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .modal-actions button:last-child { background: linear-gradient(180deg, #5a7bff, #3f5be0); border-color: #6f8bff; color: #fff; }
+.modal.modal-wide { max-width: 640px; max-height: 85vh; overflow-y: auto; }
+
+/* ---- lead-sheet import ---- */
+.import-dropzone {
+  border: 1px dashed var(--line-hi); border-radius: 10px;
+  padding: 22px; text-align: center; cursor: pointer;
+  font-family: var(--mono); font-size: 12px; color: var(--muted);
+  transition: border-color 0.15s, background 0.15s;
+}
+.import-dropzone:hover, .import-dropzone.drag {
+  border-color: var(--accent); color: var(--text);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.import-error {
+  margin-top: 10px; padding: 8px 10px; border-radius: 6px;
+  background: rgba(255, 90, 90, 0.08); border: 1px solid rgba(255, 90, 90, 0.35);
+  color: #ff8f8f; font-family: var(--mono); font-size: 11px; white-space: pre-wrap;
+}
+.import-warnings {
+  margin: 0 0 14px; padding: 10px 12px 10px 26px; border-radius: 8px;
+  background: rgba(255, 190, 80, 0.08); border: 1px solid rgba(255, 190, 80, 0.35);
+  color: #ffcf8a; font-family: var(--mono); font-size: 11px;
+}
+.import-warnings li { margin: 2px 0; }
+.import-meta { display: flex; flex-wrap: wrap; gap: 14px; }
+.import-meta > div { flex: 1; min-width: 140px; }
+.import-sections { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.import-section {
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+  background: var(--slot);
+}
+.import-section-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.import-section-head .textfield { flex: 1; }
+.import-section-remove {
+  border: 1px solid var(--line-hi); border-radius: 6px; background: var(--panel-hi);
+  color: var(--muted); width: 26px; height: 26px; cursor: pointer; flex-shrink: 0;
+}
+.import-section-remove:hover { color: #ff8f8f; border-color: #ff8f8f; }
+.import-add-section {
+  align-self: flex-start; padding: 6px 12px; border-radius: 6px;
+  border: 1px solid var(--line-hi); background: var(--panel-hi); color: var(--muted);
+  font-family: var(--mono); font-size: 11px; cursor: pointer;
+}
+.import-add-section:hover { color: var(--text); border-color: var(--accent); }
 
 /* =====================================================================
    MOBILE  (≤640px)

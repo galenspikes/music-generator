@@ -206,6 +206,11 @@ def generate(spec: dict) -> GenerationResult:
 
 
 def _generate_locked(spec: dict) -> GenerationResult:
+    # Raw song YAML text (e.g. from the lead-sheet importer) — an alternative
+    # to args.song's file path so the webapp never has to write the imported
+    # song anywhere durable. Not an argparse flag, so pulled from the raw
+    # spec dict directly rather than through _namespace_from_spec.
+    song_yaml_text = spec.get("song_yaml")
     args = _namespace_from_spec(spec)
 
     if getattr(args, "keys_preset", None):
@@ -251,7 +256,7 @@ def _generate_locked(spec: dict) -> GenerationResult:
         return _result(midi, total, f"process:{args.process}")
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
-    if args.song:
+    if args.song or song_yaml_text:
         import tempfile
         import arrangement
 
@@ -281,11 +286,15 @@ def _generate_locked(spec: dict) -> GenerationResult:
             if voices:
                 arr_overrides["voices"] = voices
 
-        song_spec = arrangement.load_spec(
-            args.song, vel_mode_chords=args.velocity_mode_chords,
-            vel_mode_drums=args.velocity_mode_drums,
-            overrides=arr_overrides)
         with tempfile.TemporaryDirectory(prefix="mg_song_") as tmp:
+            song_path = args.song
+            if song_yaml_text:
+                song_path = str(Path(tmp) / "uploaded_song.yml")
+                Path(song_path).write_text(song_yaml_text, encoding="utf-8")
+            song_spec = arrangement.load_spec(
+                song_path, vel_mode_chords=args.velocity_mode_chords,
+                vel_mode_drums=args.velocity_mode_drums,
+                overrides=arr_overrides)
             out = str(Path(tmp) / "song.mid")
             arrangement.render(song_spec, out)
             data = Path(out).read_bytes()
