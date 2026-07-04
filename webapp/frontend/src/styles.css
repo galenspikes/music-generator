@@ -1049,21 +1049,11 @@ midi-visualizer {
     transform: scale(0.92);
   }
 
-  /* ---- sticky bottom transport: seed · live · RUN in the thumb zone ---- */
+  /* ---- transport: flows inline with the topbar, doesn't float ---- */
   .transport {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px));
-    z-index: 149;
     gap: 10px;
-    justify-content: stretch;
-    background: linear-gradient(180deg, rgba(14, 17, 24, 0.96), rgba(14, 17, 24, 0.98));
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    border-top: 1px solid var(--line);
-    padding: 10px 12px;
-    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
   .run {
     flex: 1;
@@ -1080,13 +1070,12 @@ midi-visualizer {
   .preset { flex: 0 0 auto; white-space: nowrap; padding: 11px 14px; }
   midi-visualizer { height: 120px; }
 
-  /* Relocate the MIDI player into the bottom dock as a floating mini-player,
-     pinned just above the new-take action bar. The piano-roll, stems, and
-     MIDI download stay in the deck above. Mobile-only — desktop keeps the
-     player in the deck. The bottom offset clears the .transport row below. */
+  /* Relocate the MIDI player into a floating mini-player pinned near the
+     bottom of the screen. The piano-roll, stems, and MIDI download stay in
+     the deck above. Mobile-only — desktop keeps the player in the deck. */
   .player-wrap midi-player {
     position: fixed; left: 8px; right: 8px;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     width: auto; z-index: 201;
     border-radius: 12px;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
