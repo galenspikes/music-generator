@@ -309,6 +309,19 @@ def render_html(catalog: dict, *, full_document: bool) -> str:
         f"interval-class vector{cite('forte')}, and a consonance rating after "
         f"Huron{cite('huron')}.")
     body = f"""
+  <nav class="chd-nav">
+    <div class="wrap chd-nav-inner">
+      <a class="chd-nav-brand" href="index.html">Music Generator</a>
+      <ul class="chd-nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="chords.html" aria-current="page">Chords</a></li>
+        <li><a href="https://galenspikes.github.io/music-generator/docs/">Docs</a></li>
+        <li><a href="https://github.com/galenspikes/music-generator">GitHub</a></li>
+        <li><a class="chd-nav-cta" href="https://huggingface.co/spaces/gsp87/music-generator">Player &rarr;</a></li>
+      </ul>
+    </div>
+  </nav>
+
   <header class="rack-head">
     <div class="wrap head-inner">
       <div class="brand-plate">
@@ -397,7 +410,7 @@ def render_markdown(catalog: dict) -> str:
            "analysed by `theory.py`; do not hand-edit. See "
            "[token-grammar.md](token-grammar.md) for how recipes combine with "
            "roots, inversions, and slash bass, and "
-           "[/chords.html](../../site/chords.html) for the interactive explorer.*",
+           "[the interactive explorer](https://galenspikes.github.io/music-generator/chords.html).*",
            "",
            "Columns: **recipe**, semitone **offsets**, **notes** on C, **prime "
            "form**, **Forte** number[^forte], and **interval-class vector**[^forte]. "

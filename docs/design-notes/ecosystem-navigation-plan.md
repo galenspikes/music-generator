@@ -183,15 +183,24 @@ Applied:
 Remaining polish (optional): mirror the nav into the webapp *header* (not just
 the footer), and repoint Docs to the styled docs site when Track 2 lands.
 
-### Track 5 — De-duplicate, mark the source of truth
+### Track 5 — De-duplicate, mark the source of truth ✅ done
 
-- **Chord reference:** both `chords.html` and the webapp recipe browser derive
-  from the live catalogue (`make chords` / `/api/recipes`). Declare one
-  canonical (recommend: `chords.html` is the public static mirror, the webapp
-  browser is the in-instrument interactive view) and note the generation path
-  in `docs/reference/`.
+- **Chord reference:** confirmed there's no data duplication — `library/chord_recipes.py`
+  is the single source of truth (analysed by `theory.py`), and all three views
+  derive from it: the generated `docs/reference/chord-recipes.md` table, the
+  generated `site/chords.html` explorer (both from `chord_reference.py` /
+  `make chords`), and the web instrument's in-app browser (live via
+  `/api/recipes`). Documented this "one catalogue, three views" in
+  `docs/reference/index.md`, and cross-linked the webapp's quick picker to the
+  deep `chords.html` analyser.
+- **Fixed a latent regression:** the Track 4 nav bar had been hand-added to the
+  *generated* `site/chords.html`, so `make chords` would have wiped it. Moved
+  the nav into the generator (`chord_reference.py` + the `site/_chords.css`
+  partial) and repointed the generator's grammar/explorer links, so
+  regeneration now emits the correct nav and links.
 - **Docs:** MkDocs output (Track 2) is canonical for reading; the webapp Docs
-  tab is the same content rendered in-app. Say so, so they don't drift.
+  tab renders the same `docs/` tree in-app (`/api/docs`) and deliberately swaps
+  the chord-recipes page for the interactive browser (`app.py` `_DOC_EXCLUDE`).
 
 ---
 

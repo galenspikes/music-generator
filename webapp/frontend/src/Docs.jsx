@@ -106,6 +106,10 @@ export default function Docs({ spec, setField, setTab }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <a className="recipes-deeplink" href="https://galenspikes.github.io/music-generator/chords.html"
+              target="_blank" rel="noreferrer">
+              Full pitch-class analysis — notes, prime form, Forte number, consonance ↗
+            </a>
             {grouped.map(([cat, items]) => (
               <div className="recipes-group" key={cat}>
                 <div className="recipes-group-label">{cat}</div>
