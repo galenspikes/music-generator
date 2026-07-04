@@ -1,42 +1,40 @@
 ---
 title: Music Generator
-emoji: 🎹
-colorFrom: yellow
-colorTo: indigo
-sdk: gradio
-sdk_version: 5.50.0
-python_version: "3.12"
-app_file: app.py
+emoji: 🎵
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
 pinned: false
 license: mit
 ---
 
 # Music Generator — live demo
 
-A Gradio front end for [galenspikes/music-generator](https://github.com/galenspikes/music-generator).
-Describe chords or a melodic process, generate MIDI on the server, and play it
-back in the browser.
+The real [React/FastAPI webapp](https://github.com/galenspikes/music-generator/tree/main/webapp)
+running as a Hugging Face Docker Space: the full instrument (harmony editor,
+percussion editor, instrument/soundfont pickers, presets, lead-sheet PDF
+import, a static docs browser) — not a stripped-down demo.
 
 ## How it works
 
-The server runs the generator's CLI, which is pure Python (`mido` / `numpy`), to
-produce a MIDI file. Playback is handled client-side by the
-[html-midi-player](https://github.com/cifkao/html-midi-player) web component
-using a hosted SoundFont, so the Space needs no FluidSynth, ffmpeg, or SoundFont.
-On startup `app.py` clones the generator repo if it is not already present (set
-`GENERATOR_REPO` to point at a fork).
+The [`Dockerfile`](../Dockerfile) at the repo root builds the Vite frontend,
+then runs the FastAPI backend (`webapp/backend/app.py`) as a single process
+that serves the built frontend, the API, and the static project showcase
+(`/showcase`) all from one origin. Generation happens server-side (pure
+Python — `mido`/`numpy`/`pyyaml`, no native audio deps); playback happens
+client-side via the `html-midi-player` web component against a hosted
+SoundFont, so the Space needs no FluidSynth/ffmpeg.
 
 ## Deploying to Hugging Face Spaces
 
-The Space has its own git repo on Hugging Face; the GitHub repo does not deploy
-to it automatically **unless** you enable the sync workflow below. On startup
-`app.py` clones (and, on later reboots, `git pull`s) the generator repo, so the
-engine, songs, and presets always track the latest `main` — but the Gradio UI
-itself is whatever `app.py` the Space is running, so keep it in sync.
+The Space has its own git repo on Hugging Face; the GitHub repo doesn't push
+to it automatically **unless** you enable the sync workflow below.
 
-**Automatic (recommended).** `.github/workflows/deploy-space.yml` pushes
-`space/app.py`, `requirements.txt`, and `README.md` to the Space on every change
-to `main`. Enable it once:
+**Automatic (recommended).** `.github/workflows/deploy-space.yml` mirrors the
+app source (`Dockerfile`, `requirements.txt`, the engine modules, `library/`,
+`songs/`, `docs/`, `site/`, `webapp/`) plus this file (as the Space's
+`README.md`) to the Space on every relevant change to `main`. Enable it once:
 
 1. Create a write token at <https://huggingface.co/settings/tokens>.
 2. In the GitHub repo, add it as a secret **`HF_TOKEN`** under
@@ -45,18 +43,30 @@ to `main`. Enable it once:
 Without the secret the workflow is a harmless no-op. Adjust the `HF_SPACE`
 env in the workflow if your Space path differs from `gsp87/music-generator`.
 
+After the first sync, a Space normally only rebuilds its own container image
+when its git repo changes — which the sync workflow does. If a running Space
+looks stale, use *Settings → Factory reboot* to force it to rebuild.
+
 **Manual (one-off).**
 ```bash
 git clone https://huggingface.co/spaces/<user>/music-generator hf-space
-cp space/app.py space/requirements.txt space/README.md hf-space/
-cd hf-space && git add . && git commit -m "Update app" && git push
+rsync -a --delete --exclude='.git' \
+  --exclude-from=.dockerignore --exclude='.github' --exclude='tests' \
+  --exclude='requirements-dev.txt' --exclude='requirements-docs.txt' \
+  ./ hf-space/
+cp space/README.md hf-space/README.md
+cd hf-space && git add -A && git commit -m "Update app" && git push
 ```
-The Space builds from `requirements.txt` and launches `app.py`.
 
 ## Running locally
 
 ```bash
-pip install -r space/requirements.txt
-python space/app.py
+docker build -t music-generator .
+docker run -p 7860:7860 music-generator
 ```
-Run from the repo root so the app finds `music_generator.py` next to it.
+Or without Docker, from the repo root:
+```bash
+pip install -r requirements.txt
+(cd webapp/frontend && npm ci && npm run build)
+python -m uvicorn app:app --app-dir webapp/backend --port 7860
+```

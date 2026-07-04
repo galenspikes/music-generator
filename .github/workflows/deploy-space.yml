@@ -1,15 +1,26 @@
 name: Sync app to Hugging Face Space
 
-# Pushes the contents of space/ (app.py, requirements.txt, README.md) to the
-# Space's own git repo whenever they change on main, so the live demo tracks
-# the repo. Requires an HF_TOKEN repo secret with write access to the Space
-# (Settings -> Secrets and variables -> Actions). Without it, the job is a
-# no-op instead of a failure.
+# Mirrors the app (Dockerfile, requirements.txt, the engine modules, library/,
+# songs/, docs/, site/, webapp/) to the Space's own git repo whenever any of it
+# changes on main, using space/README.md as the Space's README (it carries the
+# HF metadata frontmatter the root README doesn't). The Space rebuilds its
+# Docker image from this on every push. Requires an HF_TOKEN repo secret with
+# write access to the Space (Settings -> Secrets and variables -> Actions).
+# Without it, the job is a no-op instead of a failure.
 on:
   push:
     branches: [main]
     paths:
-      - "space/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "requirements.txt"
+      - "*.py"
+      - "library/**"
+      - "songs/**"
+      - "docs/**"
+      - "site/**"
+      - "webapp/**"
+      - "space/README.md"
       - ".github/workflows/deploy-space.yml"
   workflow_dispatch:
 
@@ -22,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Push space/ to the Hugging Face Space
+      - name: Push the app to the Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: gsp87/music-generator
@@ -33,7 +44,17 @@ jobs:
             exit 0
           fi
           git clone "https://gsp87:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" hf-space
-          cp space/app.py space/requirements.txt space/README.md hf-space/
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude-from='.dockerignore' \
+            --exclude='.github' \
+            --exclude='tests' \
+            --exclude='space' \
+            --exclude='requirements-dev.txt' \
+            --exclude='requirements-docs.txt' \
+            --exclude='mkdocs.yml' \
+            ./ hf-space/
+          cp space/README.md hf-space/README.md
           cd hf-space
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"

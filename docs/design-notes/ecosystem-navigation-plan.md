@@ -13,6 +13,11 @@ showcase, the live instrument, the chord reference, and the docs.*
 >   Face Space, and its copy was trimmed to match what the Space actually offers.
 >   When the React `webapp/` gets a public URL, repoint there and restore the
 >   richer "per-voice / shareable settings" copy.
+> - **The Space *is* now the React webapp (2026-07-04).** `space/app.py`'s
+>   Gradio demo is retired; the Space builds and runs `webapp/` (FastAPI +
+>   React) via the root `Dockerfile`, so "Open the player" already gets the
+>   richer copy — no further repointing needed. `webapp/` is no longer
+>   "local only" (see the table below).
 
 ---
 
@@ -68,8 +73,8 @@ to each other** — several of the links that do exist are broken (§1).
 | Surface | What it is | Where it lives | Nav out |
 |---|---|---|---|
 | **`site/`** | Static showcase: marketing homepage (`index.html`) + `chords.html` chord reference | GitHub Pages (`pages.yml`, on push to `main`) → `galenspikes.github.io/music-generator/` | anchors; → `chords.html`; → HF Space ("Try it live"); → GitHub (**broken, private**); → Claude artifact (**broken**) |
-| **`webapp/`** | The React "web instrument": Listen / Library / Editor / **Docs** tabs. The Docs tab renders the *entire* `docs/` tree in-app (`/api/docs`) plus an interactive chord-recipe browser | Local only (FastAPI + Vite). Footer expects the static site mounted at `/showcase/` | → GitHub source/docs (**broken, private**); → `/showcase/` (**may not exist on Pages**, see below) |
-| **`space/`** | Hugging Face Space (Gradio) — the actual public "try it live" instrument | HF Spaces, auto-synced by `deploy-space.yml` | → `site/` showcase; → `site/chords.html`; → grammar on GitHub (**broken**) |
+| **`webapp/`** | The React "web instrument": Listen / Library / Editor / **Docs** tabs. The Docs tab renders the *entire* `docs/` tree in-app (`/api/docs`) plus an interactive chord-recipe browser | Dev: local (FastAPI + Vite). **Prod: the actual public "try it live" instrument**, deployed as the Hugging Face Space via the root `Dockerfile`, auto-synced by `deploy-space.yml`. Footer expects the static site mounted at `/showcase/` | → GitHub source/docs (**broken, private**); → `/showcase/` (served in-container from `site/`) |
+| **`space/`** | *(retired)* — used to be a separate Gradio demo (`space/app.py`); now just holds the Space's `README.md` (HF metadata). The Space itself now runs `webapp/`, see above. | — | — |
 | **`docs/`** | The Diátaxis markdown tree — tutorials, how-to, reference (incl. the crown-jewel token grammar), explanation | **Not published anywhere public.** Only readable via the private repo or the webapp Docs tab (local) | in-tree relative links only |
 
 ### Structural problems
