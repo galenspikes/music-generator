@@ -19,7 +19,7 @@ Borrowed straight from **audio engineering**: a *control surface* is the panel o
 faders and knobs that drives a mixer or DAW — and before that, the aircraft control
 surfaces (aileron, rudder, elevator) that are the pilot's inputs. A synthesizer front
 panel is a control surface. We mean the same thing: the set of controls that maps onto
-the engine, [auto-derived here from the engine's parameters](../../generator_api.py).
+the engine, [auto-derived here from the engine's parameters](https://github.com/galenspikes/music-generator/blob/main/generator_api.py).
 
 ## Completeness ← control theory's *controllability*
 

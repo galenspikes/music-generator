@@ -128,7 +128,7 @@ coordinate system.**
 ## Things to read
 
 Curated, in rough reading order. The companion's [related-work
-map](music-theory-companion.md#tonal-function--expectation) carries the full
+map](music-theory-companion.md#the-field-map-nierhaus) carries the full
 bibliography; these are the ones that speak directly to *stasis, function, and
 deviation*.
 
@@ -169,7 +169,7 @@ deviation*.
   "A 440 / home": a continuous tonic against which every melodic move is heard as
   departure. The Western cousin is the **pedal point**.
 - **Minimalism — La Monte Young, and the project's own Reich & Glass** (see
-  [music-theory companion → process](music-theory-companion.md#process-music--reich--glass),
+  [music-theory companion → process](music-theory-companion.md#process-music-reich-glass),
   and `songs/four_organs.yml`): stasis and *perceptible, gradual* deviation as the
   entire content. The `--process` mode is this principle already in the code.
 

@@ -3,7 +3,7 @@
 *Explanation — how a percussion token becomes a groove that varies without losing
 the pocket. For syntax see [reference/token-grammar.md](../reference/token-grammar.md)
 and the [percussion letter map](../reference/percussion-letters.md); for *why*, see
-the [ADRs](decisions/).*
+the [ADRs](decisions/index.md).*
 
 ## From token to hits
 

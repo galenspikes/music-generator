@@ -131,12 +131,13 @@ Track 2 publish docs straight from the repo.
   (`…github.io/music-generator/docs/`), and the homepage's grammar and CLI
   deep-links point at the styled pages
   (`…/docs/reference/token-grammar/`, `…/docs/reference/cli-reference/`).
-- **Follow-up (pre-existing, not introduced here):** several docs pages link to
-  repo *source files* with `../../voicing.py`-style relative paths (they resolve
-  when browsing on GitHub but 404 on the MkDocs site) and a few use
-  `decisions/` instead of `decisions/index.md`. The build is intentionally
-  **non-strict** so these don't block deploys; converting them to absolute
-  GitHub URLs (now that the repo is public) is a good cleanup pass.
+- **Done (link cleanup):** the docs pages that linked repo *source files* with
+  `../../voicing.py`-style paths (fine on GitHub, 404 on the MkDocs site) now use
+  absolute GitHub URLs — 45 rewrites across the explanation and design-notes
+  pages, plus the interactive chord page repointed at its live URL. Fixed the
+  `decisions/` bare-directory links, a `song-studies/` link with no index page,
+  and two stale heading anchors. The Pages build now runs **`mkdocs build
+  --strict`**, so any future broken link fails CI instead of shipping.
 
 ### Track 3 — One Pages deployment, no collisions ✅ done
 

@@ -9,7 +9,7 @@ home. This is the concrete spec for **Phase 0** of the [gap analysis](gap-analys
 ## How the surface is built
 
 The control panel is **auto-derived from the engine's flags** — `parameter_schema`
-([generator_api.py:476](../../generator_api.py)) walks the argparse actions, each
+([generator_api.py:476](https://github.com/galenspikes/music-generator/blob/main/generator_api.py)) walks the argparse actions, each
 annotated with a group + control type in `PARAM_ANNOTATIONS`. Nothing is hidden — but
 **exposure is not control.** The surface fails controllability three ways at once: its
 rest-state is maximally deviated, several dimensions have no "off," and a few controls
@@ -21,7 +21,7 @@ Verified engine defaults (`build_parser().parse_args([])`):
 
 | Param | Default | Consequence |
 |---|---|---|
-| `mode` | `mixed` (CLI) — **UI overrides to `ostinato`** ([App.jsx:29](../../webapp/frontend/src/App.jsx)) | UI obeys `keys` ✓ |
+| `mode` | `mixed` (CLI) — **UI overrides to `ostinato`** ([App.jsx:29](https://github.com/galenspikes/music-generator/blob/main/webapp/frontend/src/App.jsx)) | UI obeys `keys` ✓ |
 | `chord_len` | `e` | eighth-note pulse ✓ |
 | `perc_main` | `None` → forced `"sh,sh,sh,sh"` | hi-hat groove, unbidden |
 | `perc_interrupters` | `None` → forced `"qk,er,qs,er"` | fill vocabulary, unbidden |
@@ -36,9 +36,9 @@ The instrument boots maximally *deviated*, not at home.
 
 | Control | Problem | Evidence |
 |---|---|---|
-| `perc_main` | empty → forced `"sh,sh,sh,sh"`; drums can't be silenced | [mg:2659](../../music_generator.py) |
-| `perc_interrupters` | empty → forced default fill | [mg:2662](../../music_generator.py) |
-| `bass_style` | no `none`; bass mandatory | [mg:3165](../../music_generator.py) |
+| `perc_main` | empty → forced `"sh,sh,sh,sh"`; drums can't be silenced | [mg:2659](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) |
+| `perc_interrupters` | empty → forced default fill | [mg:2662](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) |
+| `bass_style` | no `none`; bass mandatory | [mg:3165](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) |
 | `satb_style` / `voicing` | no *static* option — `block` still voice-leads | [arch:107](../explanation/architecture.md) |
 
 *Partial existing escape:* `voicing: dense` sounds every tone on one channel — close to

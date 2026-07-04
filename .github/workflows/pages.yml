@@ -49,7 +49,7 @@ jobs:
           rm -rf _public
           mkdir -p _public
           cp -r site/. _public/
-          mkdocs build -d _public/docs
+          mkdocs build --strict -d _public/docs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

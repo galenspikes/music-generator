@@ -34,7 +34,7 @@ Five invariants, drawn from the design conversations:
 
 ## What's solid (explicitly not gaps)
 
-- **Unified duration vocabulary** — `DUR_MAP` ([music_generator.py:1181](../../music_generator.py))
+- **Unified duration vocabulary** — `DUR_MAP` ([music_generator.py:1181](https://github.com/galenspikes/music-generator/blob/main/music_generator.py))
   is shared by chord length, percussion, and melody. The *duration* half of M1 is done.
 - **The token DSL** — literal, composable, well-tested (the crown jewel).
 - **Typed, in-process API** — `generate(spec) -> GenerationResult` returns MIDI bytes
@@ -47,8 +47,8 @@ Five invariants, drawn from the design conversations:
 
 | # | Gap | Intended → Actual | Evidence | Severity |
 |---|---|---|---|---|
-| **A1** | **No home is representable** | M2 → there is no "home" concept anywhere; defaults are scattered across argparse + hard-coded fallbacks | no ground-state object; [music_generator.py:2659](../../music_generator.py) | **Critical** |
-| **A2** | **Batch generator, not a live instrument** | M4 → pure offline render-to-file; the webapp is `POST spec → finished MIDI` | no transport/clock/stream/loop anywhere; [webapp/backend/app.py:111](../../webapp/backend/app.py) | **High** (generate-then-play is acceptable; always-running is a future enhancement, not a prerequisite) |
+| **A1** | **No home is representable** | M2 → there is no "home" concept anywhere; defaults are scattered across argparse + hard-coded fallbacks | no ground-state object; [music_generator.py:2659](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) | **Critical** |
+| **A2** | **Batch generator, not a live instrument** | M4 → pure offline render-to-file; the webapp is `POST spec → finished MIDI` | no transport/clock/stream/loop anywhere; [webapp/backend/app.py:111](https://github.com/galenspikes/music-generator/blob/main/webapp/backend/app.py) | **High** (generate-then-play is acceptable; always-running is a future enhancement, not a prerequisite) |
 | **A3** | **The atom isn't first-class** | M1 → duration vocab *is* unified, but events are not: three siloed builders merged late as string-tagged tuples; **rest is not an object** | `build_chord_timeline:1746` / `build_drum_timeline_*:1802+` / `_apply_melody`; events `("drum",…)`/`("densechord",…)` | **High** |
 | **A4** | **Deviation floats free of a home** | M3 → interrupters exist but anchored to nothing, *generated* not *modulated*, and *stochastic* not *shaped* | `fill_rate` flat probability; ADR-0006's own "non-repetition ≠ development"; no tonal-distance model | **High** |
 | **A5** | **No home/deviation structure in the control surface** | M5 → ~40 flat CLI flags / a YAML schema; compose strings, don't manipulate | `build_parser()`; webapp frontend early | **High** (UX/webapp) |
@@ -68,11 +68,11 @@ spine to read and write.
 
 | # | Gap | Confirmation | Severity |
 |---|---|---|---|
-| **I1** | **Percussion can't be turned off** | `--perc-main ""` is falsy → forced `"sh,sh,sh,sh"`; no `--no-perc`. *This is the exact reason a one-chord scheme renders with an uninvited beat.* [music_generator.py:2562,2659](../../music_generator.py) | **High** |
-| **I2** | **Default fill loaded despite "zero interrupters"** | `if not plan_intr: plan_intr = [...]` [:2662](../../music_generator.py) | Medium |
-| **I3** | **Bass is mandatory** | `BASS_STYLES` has no `none`; default `follow` [:3165](../../music_generator.py) | Medium |
+| **I1** | **Percussion can't be turned off** | `--perc-main ""` is falsy → forced `"sh,sh,sh,sh"`; no `--no-perc`. *This is the exact reason a one-chord scheme renders with an uninvited beat.* [music_generator.py:2562,2659](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) | **High** |
+| **I2** | **Default fill loaded despite "zero interrupters"** | `if not plan_intr: plan_intr = [...]` [:2662](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) | Medium |
+| **I3** | **Bass is mandatory** | `BASS_STYLES` has no `none`; default `follow` [:3165](https://github.com/galenspikes/music-generator/blob/main/music_generator.py) | Medium |
 | **I4** | **Defaults are non-neutral and scattered** | neutral input yields a full groove; no single source of truth for "the neutral start" | **High** (root cause of A1) |
-| **I5** | **Duration is seconds XOR bars** | flat path `--seconds` (default 60, [:3284](../../music_generator.py)); song path `bars`/`repeat` ([arrangement.py](../../arrangement.py)); they never meet | Medium |
+| **I5** | **Duration is seconds XOR bars** | flat path `--seconds` (default 60, [:3284](https://github.com/galenspikes/music-generator/blob/main/music_generator.py)); song path `bars`/`repeat` ([arrangement.py](https://github.com/galenspikes/music-generator/blob/main/arrangement.py)); they never meet | Medium |
 | **I6** | **No static voicing** | `build_harmony_events` always voice-leads ([architecture.md:107](../explanation/architecture.md)); no "freeze this stack" | Medium |
 
 I1–I4 are arguably real defects for *any* user, not just the instrument vision: **you

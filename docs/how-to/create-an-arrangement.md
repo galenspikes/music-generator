@@ -71,7 +71,7 @@ The melody tiles to fill the section, so write one phrase and let `repeat` loop 
 Use `melody_relative: chord` to have a short motif re-fit each chord (degree 1
 lands on the current chord's root) — nice for solos over changes. Sections without
 a `melody` keep their SATB top voice as before. Worked example:
-[`songs/kiss.yml`](../../songs/kiss.yml).
+[`songs/kiss.yml`](https://github.com/galenspikes/music-generator/blob/main/songs/kiss.yml).
 
 ## The pattern
 
