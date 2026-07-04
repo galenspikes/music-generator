@@ -3,9 +3,19 @@
 Planning doc. Goal: take a lead sheet PDF and produce a **song.yml** (sections +
 chords) for the arrangement layer.
 
-**Status: deferred.** Per [ui-ux-roadmap.md](ui-ux-roadmap.md), this waits until the
-webapp instrument's core UI/UX threads ship — a lead-sheet importer is only worth
-building once there's a UX worth feeding it into. No work starts here yet.
+**Status: v1 shipped (2026-07-04).** The deferral is lifted — Threads A/B/C/D in
+[ui-ux-roadmap.md](ui-ux-roadmap.md) shipped first, per the original plan. The
+**deterministic core** (Stage 3 mapper + the emitter) is real, tested code:
+`leadsheet.py` (`chordsym_to_token`, `ir_to_song_yml`), `tests/test_leadsheet.py`.
+Stage 1 (extraction) is documented as the agent workflow this plan always intended
+— see [the how-to guide](../how-to/import-a-lead-sheet.md). The two remaining
+open questions below are **resolved**, not just settled on paper: the
+measure→duration policy (1/2/4 chords-per-measure → whole/half/quarter,
+mismatched density raises rather than guesses) and transpose/capo handling
+(`ir_to_song_yml(ir, transpose=N)`, shifts chord roots and slash basses
+together). Every mapping in the Stage 3 table below is verified to round-trip
+through the real colon-token parser, and a full IR → song.yml → MIDI render was
+verified end to end.
 
 **Decisions (locked):**
 - PDFs are a **mix** of born-digital and scans → **agent-assisted vision
@@ -133,18 +143,30 @@ so mistakes are obvious. Optionally render a quick MIDI to sanity-check.
 ---
 
 ## Phasing (per the locked decisions)
-- **v1 — agent workflow + deterministic core:**
-  1. `chordsym_to_token(symbol) -> token` mapper (real, tested; handles
-     qualities, extensions, slash bass, transpose).
-  2. IR schema + `ir_to_song_yml(ir)` emitter (measures→chord-length, sections→
-     `form`/`blocks`, concert-key transpose).
-  3. A documented extraction workflow/skill: Claude reads the PDF (Read tool) →
-     fills the IR → calls the emitter → user reviews the song.yml.
+- **v1 — shipped:**
+  1. ✅ `chordsym_to_token(symbol) -> token` mapper (`leadsheet.py`, real,
+     tested against every row of the Stage 3 table plus real-world variants;
+     handles qualities, extensions, slash bass). Transpose lives on the
+     emitter (below), not the mapper itself.
+  2. ✅ IR schema + `ir_to_song_yml(ir, transpose=N)` emitter — measures→
+     chord-length (1/2/4 per measure → w/h/q, mismatched density raises),
+     sections→song.yml sections with `repeat`, concert-key/capo transpose
+     (shifts chord roots + slash basses together, respells to flats).
+  3. ✅ The extraction workflow, documented:
+     [docs/how-to/import-a-lead-sheet.md](../how-to/import-a-lead-sheet.md).
+     Not a skill/automation — a documented manual workflow (read the PDF, fill
+     the IR, call the emitter, review), matching the plan's "near-zero code to
+     start."
 - **v2:** deterministic text-layer extractor (`pdfplumber`) for born-digital
-  PDFs → IR, no LLM in the loop (fast, exact, reproducible).
-- **v3 (stretch):** OMR for melody → `--melody`/fugue subject.
+  PDFs → IR, no LLM in the loop (fast, exact, reproducible). Not started.
+- **v3 (stretch):** OMR for melody → `--melody`/fugue subject. Not started.
 
 ## Resolved
 PDFs = mix → vision/agent primary. Output = song.yml. Melody = out of scope.
-Remaining detail to settle when building: measure→duration policy (chords/bar →
+Measure→duration policy and transpose/capo handling: **resolved by building**,
+see the v1 status note at the top — no longer open questions.
+
+Historical note — remaining detail that *was* still open when this doc was first
+written (kept for context; superseded by "Resolved" above): measure→duration
+policy (chords/bar →
 `--chord-length`), and how aggressively to infer `repeat`/`form` vs leave flat.

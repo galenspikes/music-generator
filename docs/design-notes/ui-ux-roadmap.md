@@ -18,9 +18,10 @@ for the React webapp (`webapp/frontend/`) — the primary surface going forward.
   2026-06-18 instrument-first call (`mode`/`process`/`fugue` removed from the UI
   surface). Nothing in this roadmap touches fugue development; it comes much later,
   after the core instrument is right.
-- **Lead-sheet import is deferred.** [leadsheet-import-plan.md](leadsheet-import-plan.md)
-  stays a planning doc only — no work starts until the threads below ship, since the
-  point of a lead-sheet importer is to feed a UX that's worth feeding.
+- **Lead-sheet import — v1 shipped (2026-07-04).** Was deferred until Threads
+  A/B/C/D shipped; they have, so the deterministic core (chord-symbol mapper +
+  IR→song.yml emitter) and the extraction workflow are now real — see
+  [leadsheet-import-plan.md](leadsheet-import-plan.md).
 - **Engine controllability and UI presentation run in parallel**, not sequentially —
   Thread A (below) and Thread C aren't gated on each other; both are "the core" and
   both need to be perfected together.
@@ -266,16 +267,15 @@ Threads A and D-v1 are independent and both cheap — start them together. B and
 depend on some open questions (preset semantics, transport-bar scope) that are worth
 a quick decision pass, but don't block starting.
 
-1. **Thread A** (controllable home) — small, fixes real bugs, makes every later
-   control honest.
-2. **Thread D v1** (instrument picker + per-voice UI) — contained, high delight,
-   no dependency on A.
-3. **Thread B** (nail preset semantics, finish the Library-as-home-preset flow).
-4. **Thread C** (transport bar, sequencer-grid growth, waveform display).
-5. **Thread D v2/v3** (soundfont library, preview/master unification, per-voice
-   soundfonts) once v1 is proven.
-6. **Later, explicitly not now:** lead-sheet import (once this roadmap's threads
-   ship), fugue development.
+1. ✅ **Thread A** (controllable home) — shipped.
+2. ✅ **Thread D v1** (instrument picker + per-voice UI) — shipped.
+3. ✅ **Thread B** (presets, home-preset flow) — shipped.
+4. ✅ **Thread C** (transport bar, waveform display) — v1 shipped; sequencer-grid
+   growth left open (taste call).
+5. ✅ **Thread D v2** (soundfont picker, preview/master decided) — shipped.
+   **Thread D v3** (per-voice soundfonts) — still open, low priority, stretch.
+6. ✅ **Lead-sheet import v1** — shipped now that the threads above have.
+   **Still explicitly not now:** fugue development.
 
 ---
 

@@ -17,7 +17,8 @@ plan here as a record.*
 - **[melody-primitive-plan.md](melody-primitive-plan.md)** — the scale-degree
   melody language design (includes the rationale for choosing degrees).
 - **[leadsheet-import-plan.md](leadsheet-import-plan.md)** — lead-sheet → song.yml
-  import plan.
+  import. v1 (chord-symbol mapper + emitter) shipped — see `leadsheet.py` and
+  [the how-to guide](../how-to/import-a-lead-sheet.md).
 - **[refactor-plan.md](refactor-plan.md)** — the active code-health plan
   (monolith breakup + hardening). **Check this before refactoring.**
 - **[webapp-ui-design.md](webapp-ui-design.md)** — the instrument UI/UX direction.
