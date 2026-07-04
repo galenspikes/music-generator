@@ -111,8 +111,8 @@ export default function HarmonyEditor({ value, onChange }) {
   return (
     <div className="harm">
       <div className="harm-modes">
-        <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")}>code</button>
-        <button className={"hm" + (mode === "build" ? " on" : "")} onClick={() => { commitKeys(); setMode("build"); }}>build</button>
+        <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")} title="Edit chord tokens directly">code</button>
+        <button className={"hm" + (mode === "build" ? " on" : "")} onClick={() => { commitKeys(); setMode("build"); }} title="Visually build chords with dropdowns">build</button>
       </div>
 
       {mode === "code" ? (

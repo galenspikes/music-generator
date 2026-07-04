@@ -144,8 +144,8 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
     <div className="perc">
       {kind === "drums" && (
         <div className="perc-modes">
-          <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")}>code</button>
-          <button className={"hm" + (mode === "grid" ? " on" : "")} onClick={() => { commit(); setMode("grid"); }}>grid</button>
+          <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")} title="Edit drum pattern with tokens">code</button>
+          <button className={"hm" + (mode === "grid" ? " on" : "")} onClick={() => { commit(); setMode("grid"); }} title="Visually edit with step sequencer">grid</button>
         </div>
       )}
 
