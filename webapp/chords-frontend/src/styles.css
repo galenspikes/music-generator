@@ -103,8 +103,8 @@ input {
 .transport-btn.stop { background: var(--metal-lo); color: var(--red); }
 .transport-btn:disabled { opacity: 0.4; cursor: default; }
 
-.arp-toggle { color: var(--ink-dim); }
-.arp-toggle.on { background: var(--blue); color: var(--rack); font-weight: 600; }
+.transport-toggle { color: var(--ink-dim); }
+.transport-toggle.on { background: var(--blue); color: var(--rack); font-weight: 600; }
 
 .instrument-toggle { display: flex; gap: 4px; margin-left: auto; }
 
@@ -128,6 +128,12 @@ input {
   padding: 8px 12px;
   margin-bottom: 12px;
   font-size: 0.9rem;
+}
+
+.builder-note {
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+  margin-bottom: 12px;
 }
 
 .builder-cards {
@@ -216,6 +222,34 @@ input {
   overflow-wrap: anywhere;
 }
 
+.group-card {
+  border-color: var(--metal-hi);
+  border-style: dashed;
+}
+
+.group-card .card-top .card-chord-label {
+  color: var(--blue);
+  flex: 0 0 auto;
+  margin-right: auto;
+}
+
+.group-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--metal-hi);
+}
+
+.add-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-row .add-chord-btn {
+  flex: 1;
+}
+
 .add-chord-btn, .save-btn {
   min-height: 48px;
   border-radius: 10px;
@@ -223,6 +257,11 @@ input {
   background: transparent;
   color: var(--ink-dim);
   font-size: 0.95rem;
+}
+
+.add-chord-btn.small {
+  min-height: 40px;
+  font-size: 0.85rem;
 }
 
 .save-btn {

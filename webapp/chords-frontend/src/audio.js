@@ -97,27 +97,39 @@ export async function playArpeggio(
 }
 
 // chords: [{ notes: number[] }], each held until the next one starts.
+// `loop: true` repeats the whole progression until stopAll() is called —
+// scheduled as a self-rescheduling pass (not setInterval) since a pass's
+// duration depends on chord count/bpm/arpeggiate.
 export async function playProgression(
   chords,
-  { instrumentId = INSTRUMENTS[0].id, bpm = 96, arpeggiate = false } = {}
+  { instrumentId = INSTRUMENTS[0].id, bpm = 96, arpeggiate = false, loop = false } = {}
 ) {
   stopAll();
   if (!chords || chords.length === 0) return;
   await ensureInstrument(instrumentId);
   const beatMs = (60 / bpm) * 1000 * 2; // two beats per chord
-  chords.forEach((chord, i) => {
-    const at = i * beatMs;
-    if (arpeggiate) {
-      chord.notes.forEach((note, j) => {
-        const t = setTimeout(
-          () => strikeNotes([note], instrumentId, 92, Math.min(ARPEGGIO_NOTE_SECONDS, beatMs / 1000)),
-          at + j * ARPEGGIO_GAP_MS
-        );
+  const passMs = chords.length * beatMs;
+
+  const schedulePass = () => {
+    chords.forEach((chord, i) => {
+      const at = i * beatMs;
+      if (arpeggiate) {
+        chord.notes.forEach((note, j) => {
+          const t = setTimeout(
+            () => strikeNotes([note], instrumentId, 92, Math.min(ARPEGGIO_NOTE_SECONDS, beatMs / 1000)),
+            at + j * ARPEGGIO_GAP_MS
+          );
+          stepTimers.push(t);
+        });
+      } else {
+        const t = setTimeout(() => strikeNotes(chord.notes, instrumentId, 92, (beatMs / 1000) * 0.9), at);
         stepTimers.push(t);
-      });
-    } else {
-      const t = setTimeout(() => strikeNotes(chord.notes, instrumentId, 92, (beatMs / 1000) * 0.9), at);
+      }
+    });
+    if (loop) {
+      const t = setTimeout(schedulePass, passMs);
       stepTimers.push(t);
     }
-  });
+  };
+  schedulePass();
 }
