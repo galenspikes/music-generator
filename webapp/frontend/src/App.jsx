@@ -83,18 +83,11 @@ export default function App() {
   const [error, setError] = useState("");
   const [tracks, setTracks] = useState([]);
   const [envelope, setEnvelope] = useState([]);
-  // On phones, open only Harmony by default — the full rack expanded is an
-  // overwhelming scroll. Desktop keeps everything open.
-  const [collapsed, setCollapsed] = useState(() => {
-    const mobile =
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(max-width: 640px)").matches;
-    if (!mobile) return {};
-    return Object.fromEntries(
-      GROUP_ORDER.filter((g) => g !== "Harmony").map((g) => [g, true])
-    );
-  });
+  // Panels start expanded. On phones, the module-picker below already shows
+  // only one group's panel at a time (see the `activeModule` filter), so a
+  // second, independent "start collapsed" flag here would just fight it —
+  // switching modules would render the panel with its body still hidden.
+  const [collapsed, setCollapsed] = useState({});
   const [downloadUrl, setDownloadUrl] = useState("");
 
   const [instruments, setInstruments] = useState([]);
