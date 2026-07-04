@@ -131,16 +131,25 @@ Track 2 publish docs straight from the repo.
 - This is the durable fix for Bug B: the grammar gets a real, styled, public
   page — and so does the CLI reference and everything else.
 
-### Track 3 — One Pages deployment, no collisions
+### Track 3 — One Pages deployment, no collisions ✅ done
 
-- Decide what GitHub Pages serves and make **one** workflow assemble it, so the
-  `pages` concurrency group has a single owner. Proposed layout under the Pages
-  root:
+- **Done:** `deploy-web.yml` was retired. It was a manual workflow that built a
+  Pyodide PWA from branch `claude/ios-app-feasibility-yozsr3` (no `web/` dir
+  exists on `main`) and published it to the **Pages root**, clobbering the
+  `site/` showcase whenever it ran. GitHub Pages serves one deploy, so the two
+  workflows raced on the `pages` concurrency group — last writer won. The PWA
+  work is preserved on its branch.
+- **`pages.yml` is now the single authoritative Pages publisher** (`site/` at
+  the root), and carries a header comment saying so.
+- **To add another surface later** (docs from Track 2, or the PWA): assemble it
+  into `pages.yml`'s artifact under a subpath rather than adding a second
+  `deploy-pages` workflow. Proposed layout under the Pages root:
   - `/` → the `site/` showcase (homepage + `chords.html`)
   - `/docs/` → the MkDocs docs (Track 2)
   - `/app/` → the PWA / React instrument, *if/when* deployed (not the root)
-- Fold or retire `deploy-web.yml` so it no longer overwrites the root. This
-  makes the webapp's `/showcase/` link and the Space's site links reliable.
+- Follow-up: the webapp footer's `/showcase/` link (`App.jsx:409`) assumes the
+  showcase is mounted at that path; point it at the showcase's real URL as part
+  of Track 4 (shared nav).
 
 ### Track 4 — A shared navigation bar across every surface
 

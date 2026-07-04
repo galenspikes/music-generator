@@ -1,5 +1,13 @@
 name: Deploy showcase to GitHub Pages
 
+# This is the SINGLE authoritative publisher of the GitHub Pages site: it serves
+# the static showcase in `site/` at the Pages root. Do not add a second workflow
+# that runs `deploy-pages` — each deployment replaces the whole site, so two
+# publishers race on the `pages` concurrency group and the last one wins. To add
+# another surface (e.g. the PWA on branch claude/ios-app-feasibility-yozsr3),
+# assemble it into this job's artifact under a subpath (e.g. `site/app/`) so a
+# single deploy publishes everything. See docs/design-notes/ecosystem-navigation-plan.md.
+
 on:
   push:
     branches: [main]
