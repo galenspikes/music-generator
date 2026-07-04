@@ -953,6 +953,21 @@ midi-visualizer {
   .seq-name { width: 72px; }
   .seq-cells { gap: 4px; }
   .seq-row { gap: 10px; }
+
+  /* ---- harmony build mode: vertical chord blocks on mobile ---- */
+  .cblock {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cblock select, .cblock input {
+    width: 100%;
+    font-size: 16px;
+    padding: 10px 8px;
+  }
+  .cblock select.rec { flex: none; }
+  .cblock .inv, .cblock .bass, .cblock .rep { width: 100%; }
+  .cblock.raw input { width: 100%; }
   .tab { padding: 13px 8px; font-size: 10.5px; }
 
   /* ---- 16px inputs: stops iOS Safari auto-zoom on focus ---- */
