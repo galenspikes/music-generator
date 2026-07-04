@@ -57,11 +57,19 @@ a faithful static stack, but it isn't the default and drops voice independence.
 ## ✂️ Baggage — not instrument controls (cut from the surface)
 
 **Status: shipped (2026-07-04).** `mode`, the **Process/fugue** group (`process*`,
-`fugue*`), and CLI/render plumbing (`out`, `no_play`, `song`, `sf2`, `poly`,
+`fugue*`), and CLI/render plumbing (`out`, `no_play`, `song`, `sf2`,
 `perc_lib`) are now excluded from `generator_api.parameter_schema()` via
 `HIDDEN_PARAMS` — they no longer render as webapp controls, but remain fully
 functional on the CLI and in song YAML. Cutting these follows the
 [instrument-first decision](gap-analysis.md#decision-instrument-first-2026-06-18).
+
+**A worse case than baggage, found during Thread C:** `gain`, `reverb`,
+`chorus`, and `poly` weren't just baggage to hide — they were **entirely dead**
+(referenced only inside a commented-out, unreachable FluidSynth-launch block
+predating `render.py`). `gain`/`reverb`/`chorus` were still live, turnable
+knobs in the webapp's Render panel with zero effect on anything. Removed the
+flags themselves (not just hidden from the UI) — see
+[ui-ux-roadmap.md](ui-ux-roadmap.md) Thread C.
 
 **Not done in this pass:** the single-source-of-truth `GroundState` config (I4) —
 i.e. actually flipping the *default* rest-state to neutral (no groove, no fill,

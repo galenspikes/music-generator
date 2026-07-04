@@ -34,7 +34,7 @@ def test_schema_endpoint():
     r = client.get("/api/schema")
     assert r.status_code == 200
     params = r.json()["params"]
-    assert len(params) > 40
+    assert len(params) > 30
     assert all({"name", "kind", "control", "group"} <= set(p) for p in params)
 
 

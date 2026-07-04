@@ -121,6 +121,11 @@ Full suite (300+ tests) and repo-wide ruff pass.
 
 ## Thread C — Present the control surface as an instrument
 
+**Status: v1 shipped (2026-07-04).** Transport BPM and the waveform display are
+done; the sequencer-grid question below is intentionally left open rather than
+guessed at (a real product-taste call, not an engineering one). See below for
+what shipped and a dead-code cluster found and removed first.
+
 This is Phase 4 from gap-analysis.md / large-efforts-tradeoffs.md, updated with the
 homework's explicit steer.
 
@@ -136,19 +141,49 @@ in the rack should be hidden behind a "details" gate; depth is the point (homewo
 What's actually worth building, per large-efforts-tradeoffs.md's recommendation ("D
 grown out of B" — evolve the structured editor, add a small always-on performance
 front door) **without hiding anything**:
-- **Finish the transport bar** — webapp-ui-design.md's persistent BPM / master volume
-  / big PLAY was never fully built (today it's a reroll button + status text,
-  `App.jsx:260-267`). Cheap, and matches "instrument, not settings page."
-- **Grow the DM-1-flavored sequencer grid.** The homework calls this out by name as
-  the thing they love (§4b) — `PercEditor`'s drum grid is the closest existing
-  analog. Worth asking: does this grid feel extend to other rhythmic/step controls,
-  or stay perc-only?
-- **Continue the Bazille-flavored tactility** — knob work (drag, scroll, click-to-edit)
-  is solid; keep it as the default control widget, mobile falling back to sliders
-  where dragging fights scroll (already the pattern in `controls.jsx`).
-- **Piano roll stays, add the waveform display** from the original design doc — still
-  missing (`webapp-ui-design.md:90`), cheap, visual feedback the homework's "30-minute
-  session" scenario would actually use to see what's happening.
+
+**A dead-code cluster found and removed before touching the UI.** `--gain`,
+`--reverb`, `--chorus`, `--poly` (and `music_generator.py`'s own `--sf2`) were
+100% vestigial — referenced only inside a commented-out, unreachable
+FluidSynth-launch block from before `render.py` existed as its own wrapper
+(the comment even said so: *"playback is now handled by the wrapper
+script"*). `gain`/`reverb`/`chorus` were still visible, turnable knobs in the
+webapp's Render panel — three controls a user could adjust that changed
+nothing, which is a worse faithfulness violation than anything
+controllability-audit.md catalogued (those were about wrong *defaults*, not
+knobs wired to nothing at all). `poly` was already hidden from the UI in
+Thread A but the flag itself was still dead weight. Removed all four flags,
+the dead comment block, and their schema entries; `--sf2` on
+`music_generator.py` itself turned out to be equally dead (never read outside
+that same block) but was left alone since `render.py`'s own independent
+`--sf2` is real and the `soundfont:` song-YAML field is genuine, intentional
+metadata (present in every `songs/*.yml`) that a future feature could still
+read.
+
+- **Finish the transport bar — done.** Added a persistent BPM stepper next to
+  Thread D's sound-bank picker (`App.jsx`'s `.transport`). "Master volume" and
+  "big PLAY" from the original plan turned out to already exist: the native
+  `<midi-player>` element renders its own play/pause/seek/time-display UI
+  (confirmed by the existing `::part(time)`/`--pl-*` CSS already styling it) —
+  building a second one would have duplicated it, not "finished" it. Couldn't
+  fully re-inspect that native UI live in this sandbox (the CDN script serving
+  `html-midi-player` is blocked by this environment's network policy), so this
+  is based on the CSS evidence already in the codebase, not a fresh screenshot.
+- **Waveform display — done.** Added a genuine one rather than a decorative
+  placeholder: `generator_api.envelope_from_bytes()` computes a coarse,
+  time-bucketed note-density envelope via `mido`'s tempo-aware absolute timing
+  (not a hand-rolled JS MIDI parser — tick/tempo math is easy to get subtly
+  wrong, and this project already trusts `mido` elsewhere), returned from
+  `/api/generate` and rendered as a thin-bar strip above the piano roll.
+  Verified in a real browser session: 60 bars render, and changing BPM in the
+  new transport control triggers a regeneration that updates the waveform.
+- **Grow the DM-1-flavored sequencer grid** — **left open, not built.** This is
+  a real product-taste question (does the step-grid feel extend beyond
+  percussion to other rhythmic controls, e.g. chord interrupters or the
+  melody rhythm cells?), not something to guess an answer to and build around.
+  Revisit when there's a specific rhythmic control in mind for it.
+- **Bazille-flavored tactility** — unchanged; the existing knob/slider work in
+  `controls.jsx` already covers this well, nothing was missing here.
 
 ---
 

@@ -84,6 +84,30 @@ def test_generate_is_disk_free():
     assert before == after
 
 
+def test_generate_returns_a_bucketed_envelope():
+    r = api.generate({"mode": "ostinato", "keys": "C::maj7, A::min7", "seconds": 8,
+                      "seed": 1})
+    assert len(r.envelope) == 60
+    assert all(0.0 <= v <= 1.0 for v in r.envelope)
+    assert max(r.envelope) == 1.0  # normalized to its own peak
+
+
+def test_envelope_from_bytes_empty_when_duration_zero():
+    r = api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 4, "seed": 1})
+    assert api.envelope_from_bytes(r.midi, 0.0) == [0.0] * 60
+
+
+def test_envelope_bucket_count_is_configurable():
+    r = api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 4, "seed": 1})
+    assert len(api.envelope_from_bytes(r.midi, r.duration_seconds, buckets=10)) == 10
+
+
+def test_generate_song_includes_envelope():
+    r = api.generate({"song": "songs/kiss.yml"})
+    assert len(r.envelope) == 60
+    assert max(r.envelope) == 1.0
+
+
 def test_generate_seeded_is_deterministic():
     spec = {"mode": "ostinato", "keys": "C::maj7, G::13", "seconds": 8,
             "seed": 123, "velocity_mode_chords": "human"}
@@ -202,7 +226,16 @@ def test_schema_known_controls():
     assert by["chords"]["kind"] == "multichoice"
     assert by["bpm"]["kind"] == "int"
     assert by["split_stems"]["kind"] == "bool"
-    assert by["gain"]["kind"] == "float"
+    assert by["chord_fill_rate"]["kind"] == "float"
+
+
+def test_schema_has_no_dead_fluidsynth_controls():
+    # gain/reverb/chorus/poly used to be knobs in the webapp's Render panel
+    # that did nothing -- only referenced in a commented-out, unreachable
+    # FluidSynth-launch block. render.py (not music_generator.py) is the real
+    # audio-rendering path and has its own independent --fx/--sf2 handling.
+    names = {p["name"] for p in api.parameter_schema()}
+    assert not ({"gain", "reverb", "chorus", "poly"} & names)
 
 
 def test_schema_names_are_valid_spec_keys():

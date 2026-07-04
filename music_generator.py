@@ -778,16 +778,6 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--out", type=str, default="out")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--sf2", required=False, help="Path to SoundFont (.sf2)")
-    ap.add_argument("--gain",
-                    type=float,
-                    default=0.5,
-                    help="FluidSynth master gain (0.0–1.0)")
-    ap.add_argument("--reverb", type=int, default=1, help="Enable reverb (0/1)")
-    ap.add_argument("--chorus", type=int, default=1, help="Enable chorus (0/1)")
-    ap.add_argument("--poly",
-                    type=int,
-                    default=256,
-                    help="Maximum polyphony voices")
     ap.add_argument("--no-play",
                     action="store_true",
                     help="Generate MIDI only; do not launch FluidSynth.")
@@ -1014,27 +1004,7 @@ def main():
 
     midi.save(out_path)
 
-    # NOTE:
-    # Originally this block auto-launched FluidSynth to play the generated MIDI.
-    # It has been commented out because playback is now handled by the wrapper script (play_music.sh).
-    # Keeping it here (commented) avoids double playback and ensures music_generator.py
-    # is MIDI-only, leaving audio rendering/preview to the wrapper.
-    # if args.sf2 and not args.no_play:
-    #     cmd = [
-    #         "fluidsynth",
-    #         "-i",  # no interactive shell
-    #         "-n",  # no MIDI input
-    #         "-a", "coreaudio",
-    #         "-g", str(args.gain),
-    #         "-R", str(args.reverb),
-    #         "-C", str(args.chorus),
-    #         "-o", f"synth.polyphony={args.poly}",
-    #         args.sf2,
-    #         out_path  # or your audio_path if you route into audio/
-    #     ]
-    #     print(">>> Playing via FluidSynth:", " ".join(shlex.quote(c) for c in cmd))
-    #     subprocess.run(cmd)
-
+    # music_generator.py is MIDI-only; audio rendering/preview lives in render.py.
     print(f"Wrote {out_path}")
 
     # Log completion

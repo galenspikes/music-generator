@@ -1,7 +1,7 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 // https://github.com/galenspikes/music-generator
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Control } from "./controls.jsx";
+import { Control, IntField } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
 import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
 import Docs from "./Docs.jsx";
@@ -81,6 +81,7 @@ export default function App() {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [tracks, setTracks] = useState([]);
+  const [envelope, setEnvelope] = useState([]);
   // On phones, open only Harmony by default — the full rack expanded is an
   // overwhelming scroll. Desktop keeps everything open.
   const [collapsed, setCollapsed] = useState(() => {
@@ -282,6 +283,7 @@ export default function App() {
       if (vizRef.current) vizRef.current.src = url;
       setDownloadUrl((old) => { if (old) URL.revokeObjectURL(old); return url; });
       setTracks(data.tracks || []);
+      setEnvelope(data.envelope || []);
       setStatus("ready");
     } catch (err) {
       if (myId === reqIdRef.current) { setError(String(err.message || err)); setStatus("error"); }
@@ -391,6 +393,10 @@ export default function App() {
           <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">GitHub</a>
         </nav>
         <div className="transport">
+          <div className="transport-bpm" title="Tempo">
+            <span className="transport-bpm-label">BPM</span>
+            <IntField value={spec.bpm} min={40} max={300} onChange={setField("bpm")} />
+          </div>
           <SoundBankPicker bank={soundBank} onBankChange={setSoundBank}
             customUrl={customSoundFont} onCustomUrlChange={setCustomSoundFont} />
           <button className="run" title="reroll the seed for a fresh variation"
@@ -434,6 +440,7 @@ export default function App() {
             sound-font={soundFontUrl}
             visualizer="#viz"
           />
+          <Waveform envelope={envelope} />
           <midi-visualizer ref={vizRef} id="viz" type="piano-roll" />
           {/* Hidden — plays instrument-preview snippets without disturbing the
               main player's song/state. */}
@@ -606,6 +613,21 @@ export default function App() {
           in-process seam · {params.length} parameters · browser-MIDI preview
         </div>
       </footer>
+    </div>
+  );
+}
+
+/* Time-bucketed note-density envelope from /api/generate — a lightweight
+   "waveform" reading (webapp-ui-design.md), not a precise analytical chart:
+   one hue, no legend (single series), no gridlines/tooltip — matches the
+   decorative level-meter convention of a real synth/DAW waveform strip. */
+function Waveform({ envelope }) {
+  if (!envelope || envelope.length === 0) return null;
+  return (
+    <div className="waveform" role="img" aria-label="note-density envelope over time">
+      {envelope.map((v, i) => (
+        <div key={i} className="waveform-bar" style={{ height: `${Math.max(4, v * 100)}%` }} />
+      ))}
     </div>
   );
 }

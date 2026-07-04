@@ -44,9 +44,8 @@ usage: music_generator.py [-h] [--mode {complete,mixed,ostinato}]
                           [--velocity-mode-drums {uniform,random,human}]
                           [--chord-fill-rate CHORD_FILL_RATE]
                           [--seconds SECONDS] [--out OUT] [--seed SEED]
-                          [--sf2 SF2] [--gain GAIN] [--reverb REVERB]
-                          [--chorus CHORUS] [--poly POLY] [--no-play]
-                          [--split-stems] [--no-split-stems] [--swing SWING]
+                          [--sf2 SF2] [--no-play] [--split-stems]
+                          [--no-split-stems] [--swing SWING]
                           [--pan-spread PAN_SPREAD]
 
 Harmony + Percussion generator (independent parts, SATB, interrupters).
@@ -166,10 +165,6 @@ options:
   --out OUT
   --seed SEED
   --sf2 SF2             Path to SoundFont (.sf2)
-  --gain GAIN           FluidSynth master gain (0.0–1.0)
-  --reverb REVERB       Enable reverb (0/1)
-  --chorus CHORUS       Enable chorus (0/1)
-  --poly POLY           Maximum polyphony voices
   --no-play             Generate MIDI only; do not launch FluidSynth.
   --split-stems         Write SATB voices to separate MIDI tracks/channels
                         (default).

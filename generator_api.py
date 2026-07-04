@@ -23,12 +23,14 @@ global state (true concurrency) is a later, separate step.
 from __future__ import annotations
 
 import argparse
+import io
 import random
 import re
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import mido
 import music_generator as mg
 
 _LOCK = threading.Lock()
@@ -60,6 +62,7 @@ class GenerationResult:
     duration_seconds: float
     mode: str
     warnings: list[str] = field(default_factory=list)
+    envelope: list[float] = field(default_factory=list)
 
     def as_dict(self) -> dict:
         return {
@@ -67,6 +70,7 @@ class GenerationResult:
             "duration_seconds": self.duration_seconds,
             "mode": self.mode,
             "warnings": self.warnings,
+            "envelope": self.envelope,
         }
 
 
@@ -159,6 +163,31 @@ def _track_infos(midifile) -> list[TrackInfo]:
     if len(melodic) == 1 and melodic[0].name in getattr(mg, "VOICE_ORDER", []):
         melodic[0].name = "ensemble"
     return infos
+
+
+def envelope_from_bytes(data: bytes, duration: float, buckets: int = 60) -> list[float]:
+    """A coarse, time-bucketed note-density envelope (0..1 per bucket) for a
+    lightweight "waveform" visual in the webapp (webapp-ui-design.md's
+    waveform display, still missing as of ui-ux-roadmap.md Thread C).
+
+    Computed here via ``mido``'s tempo-aware absolute timing (iterating a
+    ``MidiFile`` merges tracks and converts tick deltas to seconds using the
+    tempo map) rather than re-parsed client-side — MIDI tick/tempo math is
+    easy to get subtly wrong in a hand-rolled parser, and this project
+    already trusts mido elsewhere (tests, MidiOut).
+    """
+    if duration <= 0 or buckets <= 0:
+        return [0.0] * max(buckets, 0)
+    mid = mido.MidiFile(file=io.BytesIO(data))
+    counts = [0.0] * buckets
+    t = 0.0
+    for msg in mid:
+        t += msg.time
+        if msg.type == "note_on" and msg.velocity > 0:
+            idx = min(buckets - 1, max(0, int((t / duration) * buckets)))
+            counts[idx] += msg.velocity
+    peak = max(counts) or 1.0
+    return [round(c / peak, 3) for c in counts]
 
 
 # --- the seam ------------------------------------------------------------------
@@ -260,10 +289,10 @@ def _generate_locked(spec: dict) -> GenerationResult:
             out = str(Path(tmp) / "song.mid")
             arrangement.render(song_spec, out)
             data = Path(out).read_bytes()
-        import mido
-        mid = mido.MidiFile(file=__import__("io").BytesIO(data))
-        return GenerationResult(data, _track_infos(mid), float(mid.length),
-                                "song")
+        mid = mido.MidiFile(file=io.BytesIO(data))
+        duration = float(mid.length)
+        return GenerationResult(data, _track_infos(mid), duration, "song",
+                                envelope=envelope_from_bytes(data, duration))
 
     # ----- flat (ostinato / mixed / complete) -----
     midi, _meta = mg.build_flat_midi(args)
@@ -271,11 +300,13 @@ def _generate_locked(spec: dict) -> GenerationResult:
 
 
 def _result(midi, duration: float, mode: str) -> GenerationResult:
+    data = midi.to_bytes()
     return GenerationResult(
-        midi=midi.to_bytes(),
+        midi=data,
         tracks=_track_infos(midi.mid),
         duration_seconds=duration,
         mode=mode,
+        envelope=envelope_from_bytes(data, duration),
     )
 
 
@@ -569,7 +600,7 @@ HIDDEN_PARAMS: set[str] = {
     "mode",
     "process", "process_cell", "process_reps", "process_stages",
     "fugue", "fugue_countersubject",
-    "out", "no_play", "song", "sf2", "poly", "perc_lib",
+    "out", "no_play", "song", "sf2", "perc_lib",
 }
 
 # Presentation metadata: which rack panel a flag lives in, its control, ranges.
@@ -619,10 +650,7 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     "velocity_mode_drums": {"group": "Dynamics", "control": "segmented"},
     "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01},
     "pan_spread": {"group": "Dynamics", "control": "knob", "min": 0, "max": 1, "step": 0.01},
-    # Render / audio (FluidSynth — used by the Phase-2 audio path)
-    "gain": {"group": "Render", "control": "knob", "min": 0, "max": 1, "step": 0.01},
-    "reverb": {"group": "Render", "control": "toggle"},
-    "chorus": {"group": "Render", "control": "toggle"},
+    # Render
     "split_stems": {"group": "Render", "control": "toggle"},
 }
 
