@@ -185,6 +185,47 @@ def test_preset_path_traversal_rejected(presets_dir):
     assert not (presets_dir.parent.parent / "etc" / "passwd.json").exists()
 
 
+# --- chord progressions (standalone Chord Recipes app) --------------------------
+
+@pytest.fixture
+def progressions_dir(tmp_path, monkeypatch):
+    import generator_api as api
+    d = tmp_path / "presets" / "progressions"
+    monkeypatch.setattr(api, "PROGRESSIONS_DIR", d)
+    return d
+
+
+def test_progression_save_load_delete_roundtrip(progressions_dir):
+    r = client.post("/api/progressions/ii-V-I",
+                    json={"keys": "D::min7, G::7, C::maj7", "title": "ii-V-I",
+                          "tags": ["jazz"], "tempo": 96})
+    assert r.status_code == 200
+
+    names = {p["name"] for p in client.get("/api/progressions").json()["progressions"]}
+    assert "ii-v-i" in names
+
+    r = client.get("/api/progressions/ii-V-I")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["keys"] == "D::min7, G::7, C::maj7"
+    assert body["tags"] == ["jazz"]
+
+    r = client.delete("/api/progressions/ii-V-I")
+    assert r.status_code == 200
+    assert client.get("/api/progressions/ii-V-I").status_code == 404
+
+
+def test_progression_delete_missing_is_idempotent(progressions_dir):
+    r = client.delete("/api/progressions/never-existed")
+    assert r.status_code == 200
+
+
+def test_progression_path_traversal_rejected(progressions_dir):
+    r = client.get("/api/progressions/..%2F..%2F..%2Fetc%2Fpasswd")
+    assert r.status_code == 404
+    assert not (progressions_dir.parent.parent / "etc" / "passwd.json").exists()
+
+
 # --- lead-sheet import ---------------------------------------------------------
 
 def _write_chart_pdf(path):

@@ -17,6 +17,8 @@ or a ``sys.argv`` hack. Endpoints:
                          the interactive recipe browser
     POST /api/leadsheet/extract  upload a lead-sheet PDF -> chart + song.yml
     POST /api/leadsheet/emit     re-emit song.yml from an edited chart
+    GET/POST/DELETE /api/progressions[/{name}]  saved chord-progression library
+                         (for the standalone Chord Recipes app, mounted at /chords)
 """
 
 from __future__ import annotations
@@ -24,8 +26,13 @@ from __future__ import annotations
 import base64
 import io
 import json
+import mimetypes
 import pathlib
 import sys
+
+# stdlib doesn't know this extension; without it StaticFiles serves the PWA
+# manifest as application/octet-stream, which trips some installability checks.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -187,6 +194,47 @@ def delete_preset(name: str) -> dict:
     return {"ok": True}
 
 
+@app.get("/api/progressions")
+def list_progressions() -> dict:
+    """List saved chord progressions."""
+    return {"progressions": api.list_progressions()}
+
+
+@app.get("/api/progressions/{name}")
+def load_progression(name: str) -> dict:
+    """Load a saved chord progression."""
+    try:
+        data = api.load_progression(name)
+    except api.GenerationError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return data
+
+
+class SaveProgressionRequest(BaseModel):
+    keys: str
+    title: str = ""
+    tags: list[str] = []
+    tempo: int | None = None
+    voicing: str | None = None
+
+
+@app.post("/api/progressions/{name}")
+def save_progression(name: str, req: SaveProgressionRequest) -> dict:
+    """Save a chord progression."""
+    try:
+        data = api.save_progression(name, req.keys, req.title, req.tags, req.tempo, req.voicing)
+    except api.GenerationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return data
+
+
+@app.delete("/api/progressions/{name}")
+def delete_progression(name: str) -> dict:
+    """Delete a saved chord progression (idempotent)."""
+    api.delete_progression(name)
+    return {"ok": True}
+
+
 # Lead-sheet import (docs/design-notes/leadsheet-import-plan.md Stage 1,
 # option A — deterministic text-layer extraction, no LLM in the loop). The
 # uploaded PDF is read entirely in memory and discarded; nothing is written
@@ -324,6 +372,13 @@ def recipes() -> dict:
 _SITE = REPO_ROOT / "site"
 if _SITE.is_dir():
     app.mount("/showcase", StaticFiles(directory=str(_SITE), html=True), name="showcase")
+
+
+# Serve the built standalone Chord Recipes instrument (webapp/chords-frontend),
+# a separate PWA-installable app sharing this same backend.
+_CHORDS_DIST = pathlib.Path(__file__).resolve().parent.parent / "chords-frontend" / "dist"
+if _CHORDS_DIST.is_dir():
+    app.mount("/chords", StaticFiles(directory=str(_CHORDS_DIST), html=True), name="chords")
 
 
 # Serve the built frontend if present (production single-process mode).

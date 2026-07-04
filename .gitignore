@@ -7,6 +7,7 @@ SoundFonts/
 
 # --- Build output (generated; regenerable from source) ---
 webapp/frontend/dist/
+webapp/chords-frontend/dist/
 node_modules/
 webapp/backend/.deps-installed
 

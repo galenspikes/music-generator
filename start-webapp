@@ -47,6 +47,14 @@ needs_build() {
                  -newer webapp/frontend/dist/index.html 2>/dev/null | head -1)" ]
 }
 
+# Same check for the standalone Chord Recipes instrument (webapp/chords-frontend).
+chords_needs_build() {
+    [ -f webapp/chords-frontend/dist/index.html ] || return 0
+    [ -n "$(find webapp/chords-frontend/src webapp/chords-frontend/index.html \
+                 webapp/chords-frontend/package.json webapp/shared \
+                 -newer webapp/chords-frontend/dist/index.html 2>/dev/null | head -1)" ]
+}
+
 # --- First-run setup (skipped once these exist) ---------------------------
 if [ ! -d venv ]; then
     say "Setting up the Python environment…"
@@ -63,12 +71,21 @@ if [ ! -d webapp/frontend/node_modules ]; then
     say "Installing frontend dependencies…"
     ( cd webapp/frontend && npm install --silent )
 fi
+if [ ! -d webapp/chords-frontend/node_modules ]; then
+    say "Installing Chord Recipes app dependencies…"
+    ( cd webapp/chords-frontend && npm install --silent )
+fi
 
 # --- Build the UI when the source has changed -----------------------------
 if needs_build; then
     say "Building the web UI…"
     ( cd webapp/frontend && npm run build ) \
         || die "frontend build failed — see the output above."
+fi
+if chords_needs_build; then
+    say "Building the Chord Recipes app…"
+    ( cd webapp/chords-frontend && npm run build ) \
+        || die "Chord Recipes app build failed — see the output above."
 fi
 
 # --- (Re)start the single server on the latest code -----------------------
@@ -92,6 +109,7 @@ if wait_until_ready; then
     open_url "$URL"
     say ""
     say "Music Generator is running at $URL"
+    say "  Chord Recipes (standalone instrument): ${URL}chords/"
     say "  stop it with:  ./stop-webapp"
     say "  logs:          $LOG"
 else
