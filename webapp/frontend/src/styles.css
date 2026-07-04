@@ -687,9 +687,29 @@ midi-visualizer {
 
 /* ---- harmony editor (multi-mode token field) ---- */
 .harm { display: flex; flex-direction: column; gap: 8px; }
-.harm-modes { display: inline-flex; align-self: flex-start; background: var(--slot); border: 1px solid var(--line-hi); border-radius: 8px; padding: 2px; gap: 2px; }
-.hm { font-family: var(--mono); font-size: 11px; border: none; background: transparent; color: var(--muted); border-radius: 6px; padding: 4px 12px; cursor: pointer; }
-.hm.on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: #fff; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent) inset; }
+.harm-modes { display: inline-flex; align-self: flex-start; background: var(--slot); border: 1px solid var(--line-hi); border-radius: 8px; padding: 3px; gap: 3px; }
+.hm {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.hm:hover {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.hm.on {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent) inset, 0 0 8px rgba(255, 180, 77, 0.15);
+}
 
 .harm-text {
   width: 100%; background: var(--slot); border: 1px solid var(--line-hi); color: var(--text);
@@ -761,7 +781,16 @@ midi-visualizer {
 .pchip.rest .dur { background: var(--line-hi); color: var(--muted); }
 .pchip.bad { background: rgba(255,107,107,0.1); border-color: rgba(255,107,107,0.4); color: #ff9b9b; }
 
-.perc-modes { display: inline-flex; align-self: flex-start; background: var(--slot); border: 1px solid var(--line-hi); border-radius: 8px; padding: 2px; gap: 2px; margin-bottom: 2px; }
+.perc-modes {
+  display: inline-flex;
+  align-self: flex-start;
+  background: var(--slot);
+  border: 1px solid var(--line-hi);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+  margin-bottom: 2px;
+}
 
 /* ---- step sequencer (perc grid build mode) ---- */
 .seq { display: flex; flex-direction: column; gap: 8px; }
