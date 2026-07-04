@@ -1,7 +1,7 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 // https://github.com/galenspikes/music-generator
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Control, IntField } from "./controls.jsx";
+import { Control, Slider } from "./controls.jsx";
 import HarmonyEditor from "./HarmonyEditor.jsx";
 import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
 import Docs from "./Docs.jsx";
@@ -291,6 +291,14 @@ export default function App() {
       setTracks(data.tracks || []);
       setEnvelope(data.envelope || []);
       setStatus("ready");
+      // Song mode has its own per-section durations — args.seconds plays no
+      // part in it (generator_api ignores it for songs). Sync the Engine
+      // panel's "seconds" to the song's real length so it doesn't keep
+      // showing whatever unrelated value was left over from ostinato mode.
+      if (data.mode === "song" && typeof data.duration_seconds === "number") {
+        const rounded = Math.round(data.duration_seconds);
+        setSpec((s) => (s.seconds === rounded ? s : { ...s, seconds: rounded }));
+      }
     } catch (err) {
       if (myId === reqIdRef.current) { setError(String(err.message || err)); setStatus("error"); }
     }
@@ -401,7 +409,7 @@ export default function App() {
         <div className="transport">
           <div className="transport-bpm" title="Tempo">
             <span className="transport-bpm-label">BPM</span>
-            <IntField value={spec.bpm} min={40} max={300} onChange={setField("bpm")} />
+            <Slider value={spec.bpm} min={40} max={300} step={1} onChange={setField("bpm")} />
           </div>
           <SoundBankPicker bank={soundBank} onBankChange={setSoundBank}
             customUrl={customSoundFont} onCustomUrlChange={setCustomSoundFont} />
