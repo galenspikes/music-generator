@@ -3,7 +3,7 @@
 *Explanation — where this project's ideas sit in the wider field, and what to read.
 This is the honest "related work" map: for each area, the prior art, and what the
 engine takes from it. Nothing here is claimed as novel; the value is in the
-synthesis. See the [ADRs](decisions/) for per-decision prior-art notes.*
+synthesis. See the [ADRs](decisions/index.md) for per-decision prior-art notes.*
 
 ## Chord notation — Harte
 
@@ -94,5 +94,5 @@ weekend** (the rhythm/variation lineage from experience). The rest is reference 
 when you write the work up.
 
 ## See also
-[The token system](token-system-report.md) · [Design decisions](decisions/) ·
+[The token system](token-system-report.md) · [Design decisions](decisions/index.md) ·
 [How harmony works](how-harmony-works.md)

@@ -52,14 +52,14 @@ Key entry points:
 
 | Concern | Function | Location |
 |---|---|---|
-| chord token → `ChordDef` | `parse_colon_key_token` | [tokens.py:20](../../tokens.py) |
-| operator expansion (`*N`) | `parse_repetition_token` / `parse_chain_repetition` | [tokens.py:92](../../tokens.py) |
-| percussion token → hits | `parse_single_token` | [percussion.py:162](../../percussion.py) |
-| interrupter substitution | `choose_perc_pattern` | [percussion.py:152](../../percussion.py) |
-| SATB voicing | `realize_SATB` | [voicing.py:449](../../voicing.py) |
-| soprano voice-leading | `pick_soprano` | [voicing.py:397](../../voicing.py) |
-| chord event timeline | `build_chord_timeline` | [composition.py:334](../../composition.py) |
-| MIDI serialization | `MidiOut` | [midiout.py](../../midiout.py) |
+| chord token → `ChordDef` | `parse_colon_key_token` | [tokens.py:20](https://github.com/galenspikes/music-generator/blob/main/tokens.py) |
+| operator expansion (`*N`) | `parse_repetition_token` / `parse_chain_repetition` | [tokens.py:92](https://github.com/galenspikes/music-generator/blob/main/tokens.py) |
+| percussion token → hits | `parse_single_token` | [percussion.py:162](https://github.com/galenspikes/music-generator/blob/main/percussion.py) |
+| interrupter substitution | `choose_perc_pattern` | [percussion.py:152](https://github.com/galenspikes/music-generator/blob/main/percussion.py) |
+| SATB voicing | `realize_SATB` | [voicing.py:449](https://github.com/galenspikes/music-generator/blob/main/voicing.py) |
+| soprano voice-leading | `pick_soprano` | [voicing.py:397](https://github.com/galenspikes/music-generator/blob/main/voicing.py) |
+| chord event timeline | `build_chord_timeline` | [composition.py:334](https://github.com/galenspikes/music-generator/blob/main/composition.py) |
+| MIDI serialization | `MidiOut` | [midiout.py](https://github.com/galenspikes/music-generator/blob/main/midiout.py) |
 
 ### Satellites (each depends on the core)
 - **`melody.py`** → core. The scale-degree melody mini-language, its model, and the
@@ -155,6 +155,6 @@ material is chosen*:
 
 - [The token system](token-system-report.md) — what the notation is and where it
   came from.
-- [Design decisions (ADRs)](decisions/) — *why* the notation is shaped this way.
+- [Design decisions (ADRs)](decisions/index.md) — *why* the notation is shaped this way.
 - [Refactor plan](../design-notes/refactor-plan.md) — the code-health plan; the
   monolith break-up (Tier 3) that produced the layered modules above is complete.

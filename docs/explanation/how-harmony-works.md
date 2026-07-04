@@ -2,7 +2,7 @@
 
 *Explanation — how a chord token becomes four voiced, voice-led notes. For the
 syntax, see [reference/token-grammar.md](../reference/token-grammar.md); for *why*
-the design is shaped this way, see the [ADRs](decisions/).*
+the design is shaped this way, see the [ADRs](decisions/index.md).*
 
 ## From token to chord
 

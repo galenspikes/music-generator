@@ -2,7 +2,7 @@
 
 This is the star of the demo library — the song the "press demo" button plays
 (`make demo`). It lives as a finished multi-section arrangement in
-[`songs/kiss.yml`](../../../songs/kiss.yml) and renders to ~2.5 minutes at its
+[`songs/kiss.yml`](https://github.com/galenspikes/music-generator/blob/main/songs/kiss.yml) and renders to ~2.5 minutes at its
 authored per-section tempo map.
 
 Goal: a great-sounding, finished pop song that shows off the arrangement layer —

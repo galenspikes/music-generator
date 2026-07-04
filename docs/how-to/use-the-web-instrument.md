@@ -33,5 +33,5 @@ The app also ships a Pyodide-based PWA path that runs the engine **in the browse
 future stretch goal.
 
 ## See also
-[webapp/README.md](../../webapp/README.md) · [webapp UI design note](../design-notes/webapp-ui-design.md) ·
+[webapp/README.md](https://github.com/galenspikes/music-generator/blob/main/webapp/README.md) · [webapp UI design note](../design-notes/webapp-ui-design.md) ·
 [architecture — web instrument](../explanation/architecture.md)

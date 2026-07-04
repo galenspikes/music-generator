@@ -5,7 +5,7 @@ claim** (what the notation is, as a whole) and the **provenance** (where it came
 from). For other angles, go to the right place:*
 
 - *Syntax* → [reference/token-grammar.md](../reference/token-grammar.md)
-- *Why each choice was made* → [design decisions (ADRs)](decisions/)
+- *Why each choice was made* → [design decisions (ADRs)](decisions/index.md)
 - *How it sits in the field + reading* → [music-theory-companion.md](music-theory-companion.md)
 
 ---
@@ -21,7 +21,7 @@ artifact is both a **score** (readable, editable, diffable) and a set of
 
 That dual character — score *and* generative instruction, in one hand-writable
 language — is the system-level idea. Every individual primitive is conventional
-(see the [ADRs](decisions/) for honest prior art on each); the **synthesis** is the
+(see the [ADRs](decisions/index.md) for honest prior art on each); the **synthesis** is the
 contribution.
 
 ## What it is, at a glance
@@ -87,4 +87,4 @@ was authored directly.
 
 ## See also
 [Architecture](architecture.md) · [Music-theory companion](music-theory-companion.md) ·
-[Design decisions](decisions/)
+[Design decisions](decisions/index.md)

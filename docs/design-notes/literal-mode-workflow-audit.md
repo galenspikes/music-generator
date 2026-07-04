@@ -39,8 +39,8 @@ The natural first attempt:
 ```
 
 What you get is **not** a held Cmaj7. `build_flat_midi`
-([music_generator.py:2960](../../music_generator.py)) calls `build_progression`
-([:1674](../../music_generator.py)) over the chosen chord *family*, producing a
+([music_generator.py:2960](https://github.com/galenspikes/music-generator/blob/main/music_generator.py)) calls `build_progression`
+([:1674](https://github.com/galenspikes/music-generator/blob/main/music_generator.py)) over the chosen chord *family*, producing a
 *sequence of different seventh chords* across roots, with shifting voice-leading.
 Observed first hits: Bb, G, B, E… — a generated progression, not one chord.
 
@@ -52,9 +52,9 @@ literal case.
 ### Path B — song YAML: gets close
 
 The `keys:` field of a section accepts **explicit chord tokens** in colon notation,
-and `maj7` is a real recipe ([library/chord_recipes.py:24](../../library/chord_recipes.py)).
+and `maj7` is a real recipe ([library/chord_recipes.py:24](https://github.com/galenspikes/music-generator/blob/main/library/chord_recipes.py)).
 So `C::maj7` pins a literal Cmaj7. Combined with the **`bars:`** length control
-([arrangement.py `_section_beats`](../../arrangement.py)), a *single* token tiles to
+([arrangement.py `_section_beats`](https://github.com/galenspikes/music-generator/blob/main/arrangement.py)), a *single* token tiles to
 fill the section:
 
 ```yaml
@@ -102,7 +102,7 @@ means "sound this exact stack, identically, on every hit."
   SATB path. The single-timbre "sound every chord tone on one channel" mode
   (`--voicing dense`) is **CLI-only** and unreachable from a song file.
 - **Bass is mandatory.** `BASE_DEFAULTS["bass"] = {"style": "follow"}`
-  ([arrangement.py:30](../../arrangement.py)) and there is no `style: none`, so a
+  ([arrangement.py:30](https://github.com/galenspikes/music-generator/blob/main/arrangement.py)) and there is no `style: none`, so a
   moving bass voice is always added. The verified output had a bass line (pcs
   {0,2}) nobody asked for.
 

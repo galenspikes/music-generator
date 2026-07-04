@@ -8,23 +8,24 @@ kept deliberately separate so each page does exactly one job:
 
 | If you want to… | Go to | What it is |
 |---|---|---|
-| **Learn by doing**, start to finish | **[Tutorials](tutorials/)** | Guided lessons: from zero to a playing groove to a finished piece. |
-| **Accomplish a specific task** | **[How-to guides](how-to/)** | Recipes: write a progression, build a beat, render audio. |
-| **Look something up** | **[Reference](reference/)** | Dry, complete facts: the [token grammar](reference/token-grammar.md), every CLI flag, the chord-recipe catalog. |
-| **Understand *why*** | **[Explanation](explanation/)** | The reasoning: [architecture](explanation/architecture.md), how harmony and percussion work, and the [design decisions](explanation/decisions/) behind the notation. |
+| **Learn by doing**, start to finish | **[Tutorials](tutorials/index.md)** | Guided lessons: from zero to a playing groove to a finished piece. |
+| **Accomplish a specific task** | **[How-to guides](how-to/index.md)** | Recipes: write a progression, build a beat, render audio. |
+| **Look something up** | **[Reference](reference/index.md)** | Dry, complete facts: the [token grammar](reference/token-grammar.md), every CLI flag, the chord-recipe catalog. |
+| **Understand *why*** | **[Explanation](explanation/index.md)** | The reasoning: [architecture](explanation/architecture.md), how harmony and percussion work, and the [design decisions](explanation/decisions/index.md) behind the notation. |
 
 ## Two more sections
 
-- **[Design notes](design-notes/)** — forward-looking *plans* (roadmap, arrangement,
+- **[Design notes](design-notes/index.md)** — forward-looking *plans* (roadmap, arrangement,
   melody, lead-sheet import, refactor). These describe what is *intended*, not
   necessarily what exists today. Kept separate from the truth docs above on purpose.
-- **[About](about/)** — provenance, contributing, and project history.
+- **[About](about/index.md)** — provenance, contributing, and project history.
 
 ## Start here
 
 - **Just want to hear it?** → run `make demo` (plays the flagship, *Kiss On My
-  List*) or open the browser [demo gallery](../site/index.html). The whole demo
-  library — songs and capability presets — is `python cook_song.py list`.
+  List*) or open the browser [demo gallery](https://galenspikes.github.io/music-generator/).
+  The whole demo library — songs and capability presets — is
+  `python cook_song.py list`.
 - **New here?** → [Tutorial 1: Your first groove](tutorials/01-first-groove.md) *(planned)*
 - **Want the big picture?** → [Architecture](explanation/architecture.md)
 - **Writing tokens?** → [Token grammar reference](reference/token-grammar.md)

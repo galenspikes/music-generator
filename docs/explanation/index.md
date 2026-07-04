@@ -17,8 +17,8 @@ and the *why* of design choices. Read these to understand, not to do a task.*
   provenance narrative.
 - **[Music-theory companion](music-theory-companion.md)** — where the ideas sit in
   the field, with the reading list.
-- **[Design decisions (ADRs)](decisions/)** — one record per major choice (the *why*).
-- **[Song studies](song-studies/)** — literate walkthroughs of real pieces
+- **[Design decisions (ADRs)](decisions/index.md)** — one record per major choice (the *why*).
+- **[Song studies](song-studies/kiss-on-my-list.md)** — literate walkthroughs of real pieces
   (e.g. [Kiss On My List](song-studies/kiss-on-my-list.md)).
 
 *(See [the docs plan](../index.md).)*

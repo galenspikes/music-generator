@@ -1,0 +1,3 @@
+# Docs site (published to GitHub Pages under /docs/ by .github/workflows/pages.yml).
+# Kept separate from runtime/dev deps so the engine install stays lean.
+mkdocs-material>=9.5,<10

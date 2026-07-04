@@ -12,9 +12,9 @@ recommendation. Recommendations are **proposals**, not decisions.*
 Four facts about today's system bound every choice below:
 
 1. **Synthesis is already client-side.** The backend returns **MIDI bytes**, not
-   audio ([webapp/backend/app.py:13](../../webapp/backend/app.py)); the browser plays
+   audio ([webapp/backend/app.py:13](https://github.com/galenspikes/music-generator/blob/main/webapp/backend/app.py)); the browser plays
    them with `html-midi-player` + Tone.js + `@magenta/music` and a hosted soundfont
-   ([webapp/frontend/src/App.jsx:283](../../webapp/frontend/src/App.jsx)).
+   ([webapp/frontend/src/App.jsx:283](https://github.com/galenspikes/music-generator/blob/main/webapp/frontend/src/App.jsx)).
 2. **The current loop is already "fast re-render."** Tweak a param → `POST
    /api/generate` → sub-second in-process render → reload the player. Changes land on
    the *next* load, not live.
@@ -93,7 +93,7 @@ live-querying the deviation logic in JS proves intractable.
 
 **Goal:** present the home already running and expose deviations as visible, gestural
 controls. Today's frontend is already a structured React editor
-([controls.jsx](../../webapp/frontend/src/controls.jsx), `HarmonyEditor`,
+([controls.jsx](https://github.com/galenspikes/music-generator/blob/main/webapp/frontend/src/controls.jsx), `HarmonyEditor`,
 `PercEditor`) + a client MIDI player — i.e. a polished version of option B below.
 
 **Hard dependency:** the gestural controls only *feel* live if **Phase 3A** exists.
