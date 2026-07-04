@@ -24,15 +24,18 @@ const fmt = (v, step) => {
   return typeof v === "number" ? v.toFixed(decimals) : v;
 };
 
-/* Rotary knob — vertical drag to turn. ~270° sweep. */
+/* Rotary knob — vertical drag to turn. ~270° sweep. Click value to edit. */
 export function Knob({ value, min = 0, max = 1, step = 0.01, onChange }) {
   const ref = useRef(null);
   const drag = useRef(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
   const v = typeof value === "number" ? value : Number(value) || min;
   const frac = (clamp(v, min, max) - min) / (max - min || 1);
   const angle = -135 + frac * 270;
 
   const onDown = (e) => {
+    if (editing) return;
     e.preventDefault();
     drag.current = { y: e.clientY ?? e.touches?.[0]?.clientY, v };
     window.addEventListener("pointermove", onMove);
@@ -50,8 +53,23 @@ export function Knob({ value, min = 0, max = 1, step = 0.01, onChange }) {
     window.removeEventListener("pointerup", onUp);
   };
   const onWheel = (e) => {
+    if (editing) return;
     e.preventDefault();
     onChange(snap(clamp(v + (e.deltaY < 0 ? step : -step), min, max), step, min));
+  };
+
+  const startEdit = (e) => {
+    e.stopPropagation();
+    setEditing(true);
+    setDraft(String(v));
+  };
+
+  const commitEdit = () => {
+    const parsed = Number(draft);
+    if (!isNaN(parsed)) {
+      onChange(snap(clamp(parsed, min, max), step, min));
+    }
+    setEditing(false);
   };
 
   const R = 22;
@@ -73,7 +91,27 @@ export function Knob({ value, min = 0, max = 1, step = 0.01, onChange }) {
           className="knob-needle"
         />
       </svg>
-      <span className="knob-val">{fmt(v, step)}</span>
+      {editing ? (
+        <input
+          className="knob-edit"
+          type="number"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitEdit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          autoFocus
+          min={min}
+          max={max}
+          step={step}
+        />
+      ) : (
+        <span className="knob-val" onClick={startEdit} style={{ cursor: "pointer" }}>
+          {fmt(v, step)}
+        </span>
+      )}
     </div>
   );
 }
