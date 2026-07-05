@@ -2,12 +2,16 @@
 // Standalone Chord Recipes instrument: a tap-driven progression builder plus
 // a saved-progression library, sharing the FastAPI backend used by the main
 // song-generator webapp but otherwise independent of it.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Builder from "./Builder.jsx";
 import Library from "./Library.jsx";
 import SaveDialog from "./SaveDialog.jsx";
-import { fetchRecipes, saveProgression } from "@shared/api.js";
+import { fetchRecipes, saveProgression, deleteProgression } from "@shared/api.js";
 import { INSTRUMENTS } from "./audio.js";
+
+const DRAFT_KEY = "chords_draft_v1";
+const INSTRUMENT_KEY = "chords_instrument_v1";
+const DEFAULT_BPM = 96;
 
 function slugify(name) {
   return (
@@ -19,36 +23,133 @@ function slugify(name) {
   );
 }
 
+// The current in-progress progression persists to localStorage (separate
+// from the explicit Save-to-Library flow) so a reload or PWA relaunch
+// resumes where you left off instead of silently losing unsaved work.
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    return typeof d.keys === "string" ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadInstrument() {
+  try {
+    const v = localStorage.getItem(INSTRUMENT_KEY);
+    return INSTRUMENTS.some((i) => i.id === v) ? v : INSTRUMENTS[0].id;
+  } catch {
+    return INSTRUMENTS[0].id;
+  }
+}
+
 export default function App() {
   const [tab, setTab] = useState("build");
   const [recipes, setRecipes] = useState([]);
-  const [instrumentId, setInstrumentId] = useState(INSTRUMENTS[0].id);
+  const [instrumentId, setInstrumentId] = useState(loadInstrument);
+
+  const draft = useRef(loadDraft()).current;
 
   // `loaded` holds what the Builder should initialize from; bumping loadNonce
   // remounts the Builder (via a React `key`) so it re-reads these on load
-  // instead of fighting in-progress edits.
-  const [loaded, setLoaded] = useState({ keys: "", title: "", tags: [] });
+  // instead of fighting in-progress edits. `currentName` is the library slug
+  // this progression came from (null if it's a fresh, never-saved draft) —
+  // it's what lets Save tell an update from a brand-new entry.
+  const [loaded, setLoaded] = useState(() => ({
+    keys: draft?.keys || "",
+    title: draft?.title || "",
+    tags: draft?.tags || [],
+  }));
+  const [bpm, setBpm] = useState(draft?.bpm || DEFAULT_BPM);
+  const [currentName, setCurrentName] = useState(draft?.currentName || null);
+  const [savedSnapshot, setSavedSnapshot] = useState(draft?.savedSnapshot || null);
   const [loadNonce, setLoadNonce] = useState(0);
-  const [currentKeys, setCurrentKeys] = useState("");
+  const [currentKeys, setCurrentKeys] = useState(loaded.keys);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [suggestedTitle, setSuggestedTitle] = useState("");
+  const [confirmNew, setConfirmNew] = useState(false);
+  const draftTimer = useRef(null);
 
   useEffect(() => {
     fetchRecipes().then(setRecipes).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem(INSTRUMENT_KEY, instrumentId);
+  }, [instrumentId]);
+
+  useEffect(() => {
+    clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          keys: currentKeys,
+          title: loaded.title,
+          tags: loaded.tags,
+          bpm,
+          currentName,
+          savedSnapshot,
+        })
+      );
+    }, 500);
+    return () => clearTimeout(draftTimer.current);
+  }, [currentKeys, loaded.title, loaded.tags, bpm, currentName, savedSnapshot]);
+
+  // Only meaningful once something's actually been saved (currentName set) —
+  // a brand-new never-saved draft is always just labeled "new progression",
+  // not flagged dirty against nothing.
+  const dirty =
+    !!currentName &&
+    !!savedSnapshot &&
+    (currentKeys !== savedSnapshot.keys ||
+      loaded.title !== savedSnapshot.title ||
+      bpm !== savedSnapshot.bpm ||
+      JSON.stringify(loaded.tags) !== JSON.stringify(savedSnapshot.tags));
+
   const handleLoad = (progression) => {
-    setLoaded({ keys: progression.keys, title: progression.title, tags: progression.tags || [] });
+    const nextBpm = progression.tempo || DEFAULT_BPM;
+    const tags = progression.tags || [];
+    setLoaded({ keys: progression.keys, title: progression.title, tags });
+    setBpm(nextBpm);
+    setCurrentName(progression.name);
+    setSavedSnapshot({ keys: progression.keys, title: progression.title, tags, bpm: nextBpm });
     setLoadNonce((n) => n + 1);
     setTab("build");
   };
 
-  const handleSave = ({ title, tags }) => {
+  // Saving is an update-in-place when the title still slugifies to the
+  // progression's current name; if the title changed, that's a rename (save
+  // under the new slug, delete the old one) unless the user explicitly asked
+  // to keep both via "save as a new copy".
+  const handleSave = ({ title, tags, asNew }) => {
     const name = slugify(title);
-    saveProgression(name, { keys: currentKeys, title, tags }).then(() => {
-      setSaveOpen(false);
-      setLoaded((l) => ({ ...l, title, tags }));
+    saveProgression(name, { keys: currentKeys, title, tags, tempo: bpm }).then(() => {
+      const renaming = !asNew && currentName && name !== currentName;
+      const cleanup = renaming ? deleteProgression(currentName) : Promise.resolve();
+      cleanup.finally(() => {
+        setSaveOpen(false);
+        setLoaded((l) => ({ ...l, title, tags }));
+        setCurrentName(name);
+        setSavedSnapshot({ keys: currentKeys, title, tags, bpm });
+      });
     });
   };
+
+  const startNew = () => {
+    setLoaded({ keys: "", title: "", tags: [] });
+    setBpm(DEFAULT_BPM);
+    setCurrentName(null);
+    setSavedSnapshot(null);
+    setLoadNonce((n) => n + 1);
+    setConfirmNew(false);
+    setTab("build");
+  };
+
+  const handleNewClick = () => (dirty ? setConfirmNew(true) : startNew());
 
   return (
     <div className="app">
@@ -64,6 +165,35 @@ export default function App() {
         </nav>
       </header>
 
+      {tab === "build" && (
+        <div className="build-status">
+          <span className="build-status-name">
+            {currentName ? loaded.title : "new progression"}
+            {dirty && (
+              <span className="dirty-dot" title="unsaved changes">
+                {" "}
+                •
+              </span>
+            )}
+          </span>
+          {confirmNew ? (
+            <span className="new-confirm">
+              discard unsaved changes?
+              <button className="mini-btn danger" onClick={startNew}>
+                yes
+              </button>
+              <button className="mini-btn" onClick={() => setConfirmNew(false)}>
+                cancel
+              </button>
+            </span>
+          ) : (
+            <button className="new-btn" onClick={handleNewClick}>
+              + new
+            </button>
+          )}
+        </div>
+      )}
+
       <main className="app-main">
         {tab === "build" ? (
           <Builder
@@ -72,11 +202,16 @@ export default function App() {
             recipes={recipes}
             instrumentId={instrumentId}
             setInstrumentId={setInstrumentId}
+            bpm={bpm}
+            setBpm={setBpm}
             onKeysChange={setCurrentKeys}
-            onSaveRequest={() => setSaveOpen(true)}
+            onSaveRequest={(suggestion) => {
+              setSuggestedTitle(suggestion);
+              setSaveOpen(true);
+            }}
           />
         ) : (
-          <Library onLoad={handleLoad} />
+          <Library onLoad={handleLoad} currentName={currentName} />
         )}
       </main>
 
@@ -84,8 +219,9 @@ export default function App() {
         open={saveOpen}
         onClose={() => setSaveOpen(false)}
         onSave={handleSave}
-        defaultTitle={loaded.title}
+        defaultTitle={loaded.title || suggestedTitle}
         defaultTags={loaded.tags}
+        isExisting={!!currentName}
       />
 
       <footer className="app-footer">

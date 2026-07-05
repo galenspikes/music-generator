@@ -70,6 +70,45 @@ input {
   padding: 12px 12px 32px;
 }
 
+.build-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--rack2);
+  border-bottom: 1px solid var(--edge);
+  font-size: 0.85rem;
+}
+
+.build-status-name {
+  color: var(--ink-dim);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dirty-dot { color: var(--amber); font-weight: 700; }
+
+.new-btn {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+}
+
+.new-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--red);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .app-footer {
   padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
   text-align: center;
@@ -467,6 +506,15 @@ input {
 
 .save-confirm-btn:disabled { opacity: 0.4; }
 
+.asnew-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+
 /* --- Library --- */
 
 .library-empty { color: var(--ink-dim); padding: 24px 4px; text-align: center; }
@@ -484,8 +532,23 @@ input {
   padding: 12px;
 }
 
+.library-card.current { border-color: var(--amber); }
+
 .library-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .library-card-title { font-weight: 600; color: var(--engrave); }
+
+.current-badge {
+  margin-left: 8px;
+  font-size: 0.65rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--amber);
+  border: 1px solid var(--amber-dim);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
 .library-card-tempo { font-size: 0.75rem; color: var(--ink-dim); }
 
 .library-card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }

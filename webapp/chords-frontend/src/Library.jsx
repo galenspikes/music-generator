@@ -5,14 +5,9 @@
 // then delete the old one from here.
 import React, { useEffect, useState } from "react";
 import { listProgressions, deleteProgression, parseKeys } from "@shared/api.js";
+import { segmentLabels } from "./segmentLabels.js";
 
-function segmentLabels(segments) {
-  return (segments || []).map((s) =>
-    s.type === "group" ? `[${s.chords.map((c) => c.label).join(" ")}]×${s.reps}` : s.label
-  );
-}
-
-export default function Library({ onLoad }) {
+export default function Library({ onLoad, currentName }) {
   const [items, setItems] = useState([]);
   const [labelsByName, setLabelsByName] = useState({});
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -44,9 +39,12 @@ export default function Library({ onLoad }) {
       )}
       <div className="library-grid">
         {items.map((p) => (
-          <div className="library-card" key={p.name}>
+          <div className={"library-card" + (p.name === currentName ? " current" : "")} key={p.name}>
             <div className="library-card-head">
-              <span className="library-card-title">{p.title}</span>
+              <span className="library-card-title">
+                {p.title}
+                {p.name === currentName && <span className="current-badge">editing</span>}
+              </span>
               {p.tempo != null && <span className="library-card-tempo">{p.tempo} bpm</span>}
             </div>
             <div className="library-card-chips">

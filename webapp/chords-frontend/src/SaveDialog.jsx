@@ -2,8 +2,10 @@
 // Save-to-library popup. Title is free text (naming a patch is inherently
 // textual — the "tap, don't type" rule is about chord *data* entry, not
 // human-readable labels); tags are a toggleable chip set plus an optional
-// one-off custom tag.
-import React, { useState } from "react";
+// one-off custom tag. When editing an already-saved progression, saving
+// updates that entry in place (or renames it, if the title changed) unless
+// "save as a new copy" is checked.
+import React, { useEffect, useState } from "react";
 import Sheet from "./Sheet.jsx";
 
 const CURATED_TAGS = [
@@ -11,11 +13,23 @@ const CURATED_TAGS = [
   "ambient", "turnaround", "vamp", "ballad",
 ];
 
-export default function SaveDialog({ open, onClose, onSave, defaultTitle, defaultTags }) {
+export default function SaveDialog({ open, onClose, onSave, defaultTitle, defaultTags, isExisting }) {
   const [title, setTitle] = useState(defaultTitle || "");
   const [tags, setTags] = useState(defaultTags || []);
   const [addingTag, setAddingTag] = useState(false);
   const [customTag, setCustomTag] = useState("");
+  const [asNew, setAsNew] = useState(false);
+
+  // Re-sync from the current progression each time the dialog opens — it
+  // doesn't remount, so stale state from a previous open would otherwise stick.
+  useEffect(() => {
+    if (open) {
+      setTitle(defaultTitle || "");
+      setTags(defaultTags || []);
+      setAsNew(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const toggleTag = (t) => setTags((ts) => (ts.includes(t) ? ts.filter((x) => x !== t) : [...ts, t]));
 
@@ -27,9 +41,10 @@ export default function SaveDialog({ open, onClose, onSave, defaultTitle, defaul
   };
 
   const allTags = Array.from(new Set([...CURATED_TAGS, ...tags]));
+  const willUpdate = isExisting && !asNew;
 
   return (
-    <Sheet open={open} onClose={onClose} title="Save to library">
+    <Sheet open={open} onClose={onClose} title={willUpdate ? "Update library entry" : "Save to library"}>
       <label className="save-title-label">
         Title
         <input
@@ -63,12 +78,18 @@ export default function SaveDialog({ open, onClose, onSave, defaultTitle, defaul
           </button>
         )}
       </div>
+      {isExisting && (
+        <label className="asnew-toggle">
+          <input type="checkbox" checked={asNew} onChange={(e) => setAsNew(e.target.checked)} />
+          Save as a new copy (keep the original too)
+        </label>
+      )}
       <button
         className="save-confirm-btn"
         disabled={!title.trim()}
-        onClick={() => onSave({ title: title.trim(), tags })}
+        onClick={() => onSave({ title: title.trim(), tags, asNew })}
       >
-        Save
+        {willUpdate ? "Update" : "Save"}
       </button>
     </Sheet>
   );
