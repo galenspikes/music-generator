@@ -1,0 +1,45 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      .accent {
+        fill: #6366F1;
+        stroke: #6366F1;
+      }
+      @media (prefers-color-scheme: dark) {
+        .accent {
+          fill: #818CF8;
+          stroke: #818CF8;
+        }
+      }
+    </style>
+  </defs>
+
+  <!-- Outer staves (abstract, faded) -->
+  <g opacity="0.4">
+    <line x1="50" y1="60" x2="150" y2="60" class="accent" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="50" y1="70" x2="150" y2="70" class="accent" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="50" y1="80" x2="150" y2="80" class="accent" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Center staff (primary) -->
+  <g>
+    <line x1="60" y1="90" x2="140" y2="90" class="accent" stroke-width="2" stroke-linecap="round"/>
+    <line x1="60" y1="100" x2="140" y2="100" class="accent" stroke-width="2" stroke-linecap="round"/>
+    <line x1="60" y1="110" x2="140" y2="110" class="accent" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Notes on the staff -->
+    <circle cx="75" cy="100" r="5" class="accent"/>
+    <circle cx="100" cy="90" r="5" class="accent"/>
+    <circle cx="125" cy="105" r="5" class="accent"/>
+  </g>
+
+  <!-- Bottom staves (abstract, faded) -->
+  <g opacity="0.4">
+    <line x1="50" y1="130" x2="150" y2="130" class="accent" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="50" y1="140" x2="150" y2="140" class="accent" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="50" y1="150" x2="150" y2="150" class="accent" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>
