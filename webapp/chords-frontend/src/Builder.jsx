@@ -11,6 +11,7 @@ import { splitTopLevel, parseToken, blocksToKeys, defaultChordBlock, defaultGrou
 import { realizeChord } from "./chordNotes.js";
 import { playChord, playSustain, playArpeggio, playProgression, stopAll, INSTRUMENTS } from "./audio.js";
 import Stepper from "./Stepper.jsx";
+import { summarizeSegments } from "./segmentLabels.js";
 
 const MIN_BPM = 40;
 const MAX_BPM = 220;
@@ -20,12 +21,20 @@ const MAX_BPM = 220;
 // than usefully "preview" anything.
 const MAX_PLAYBACK_CHORDS = 300;
 
-export default function Builder({ initialKeys, recipes, instrumentId, setInstrumentId, onKeysChange, onSaveRequest }) {
+export default function Builder({
+  initialKeys,
+  recipes,
+  instrumentId,
+  setInstrumentId,
+  bpm,
+  setBpm,
+  onKeysChange,
+  onSaveRequest,
+}) {
   const [blocks, setBlocks] = useState(() => splitTopLevel(initialKeys || "").map(parseToken));
   const [parsed, setParsed] = useState({ ok: true, chords: [], segments: [] });
   const [modeById, setModeById] = useState({});
   const [activeId, setActiveId] = useState(null);
-  const [bpm, setBpm] = useState(96);
   const [arpeggiate, setArpeggiate] = useState(false);
   const [loopProgression, setLoopProgression] = useState(false);
   const debounce = useRef(null);
@@ -224,7 +233,11 @@ export default function Builder({ initialKeys, recipes, instrumentId, setInstrum
         </div>
       </div>
 
-      <button className="save-btn" onClick={onSaveRequest} disabled={!blocks.length}>
+      <button
+        className="save-btn"
+        onClick={() => onSaveRequest(summarizeSegments(segments))}
+        disabled={!blocks.length}
+      >
         Save to Library
       </button>
     </div>
