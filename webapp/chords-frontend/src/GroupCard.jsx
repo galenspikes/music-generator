@@ -6,7 +6,6 @@
 import React from "react";
 import ChordCard from "./ChordCard.jsx";
 import Stepper from "./Stepper.jsx";
-import { defaultChordBlock } from "./tokenFormat.js";
 
 export default function GroupCard({
   block,
@@ -16,6 +15,7 @@ export default function GroupCard({
   onModeChange,
   activeId,
   onStrikeChord,
+  onCreateChord,
   onPreview,
   onChangeGroup,
   onRemoveGroup,
@@ -29,7 +29,7 @@ export default function GroupCard({
 
   const setChord = (i, patch) =>
     onChangeGroup({ chords: chords.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
-  const addChord = () => onChangeGroup({ chords: [...chords, defaultChordBlock()] });
+  const addChord = () => onChangeGroup({ chords: [...chords, onCreateChord()] });
   const removeChord = (i) => onChangeGroup({ chords: chords.filter((_, j) => j !== i) });
   const moveChord = (i, dir) => {
     const next = [...chords];

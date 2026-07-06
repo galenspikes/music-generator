@@ -12,6 +12,8 @@ import { Soundfont } from "smplr";
 export const INSTRUMENTS = [
   { id: "acoustic_grand_piano", label: "Grand Piano" },
   { id: "electric_piano_1", label: "Electric Piano" },
+  { id: "string_ensemble_1", label: "Strings" },
+  { id: "choir_aahs", label: "Choir" },
 ];
 
 const STRIKE_SECONDS = 1.4; // auto-release length for a short "strike"
@@ -96,33 +98,42 @@ export async function playArpeggio(
   loopInterval = setInterval(step, ARPEGGIO_GAP_MS);
 }
 
-// chords: [{ notes: number[] }], each held until the next one starts.
+// steps: [{ notes: number[], mode? }], each played according to its own
+// mode — "strike" (default) plays the chord as a short block hit, "sustain"
+// rings it through to the next onset with no early release, "arpeggio" and
+// "loop" both spread its notes across the step's beat (a step is a fixed
+// time slot either way; true indefinite looping only makes sense for a
+// single isolated chord, not one slot in a sequence). This is how a chord's
+// own Strike/Sustain/Arpeggio/Loop mode (set in the builder) carries through
+// into full-progression playback, not just its standalone preview.
+//
 // `loop: true` repeats the whole progression until stopAll() is called —
 // scheduled as a self-rescheduling pass (not setInterval) since a pass's
-// duration depends on chord count/bpm/arpeggiate.
-export async function playProgression(
-  chords,
-  { instrumentId = INSTRUMENTS[0].id, bpm = 96, arpeggiate = false, loop = false } = {}
-) {
+// duration depends on step count/bpm.
+export async function playProgression(steps, { instrumentId = INSTRUMENTS[0].id, bpm = 96, loop = false } = {}) {
   stopAll();
-  if (!chords || chords.length === 0) return;
+  if (!steps || steps.length === 0) return;
   await ensureInstrument(instrumentId);
-  const beatMs = (60 / bpm) * 1000 * 2; // two beats per chord
-  const passMs = chords.length * beatMs;
+  const beatMs = (60 / bpm) * 1000 * 2; // two beats per step
+  const passMs = steps.length * beatMs;
 
   const schedulePass = () => {
-    chords.forEach((chord, i) => {
+    steps.forEach((step, i) => {
       const at = i * beatMs;
-      if (arpeggiate) {
-        chord.notes.forEach((note, j) => {
+      const mode = step.mode || "strike";
+      if (mode === "arpeggio" || mode === "loop") {
+        step.notes.forEach((note, j) => {
           const t = setTimeout(
             () => strikeNotes([note], instrumentId, 92, Math.min(ARPEGGIO_NOTE_SECONDS, beatMs / 1000)),
             at + j * ARPEGGIO_GAP_MS
           );
           stepTimers.push(t);
         });
+      } else if (mode === "sustain") {
+        const t = setTimeout(() => strikeNotes(step.notes, instrumentId, 92, null), at);
+        stepTimers.push(t);
       } else {
-        const t = setTimeout(() => strikeNotes(chord.notes, instrumentId, 92, (beatMs / 1000) * 0.9), at);
+        const t = setTimeout(() => strikeNotes(step.notes, instrumentId, 92, (beatMs / 1000) * 0.9), at);
         stepTimers.push(t);
       }
     });

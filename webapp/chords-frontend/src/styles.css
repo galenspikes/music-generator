@@ -41,6 +41,12 @@ input {
   border-bottom: 1px solid var(--edge);
 }
 
+.app-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .app-title {
   font-family: var(--mono);
   color: var(--amber);
@@ -48,7 +54,14 @@ input {
   font-size: 1.05rem;
 }
 
+.app-subtitle {
+  font-size: 0.65rem;
+  color: var(--ink-dim);
+}
+
 .app-tabs { display: flex; gap: 6px; }
+
+.tab-hidden { display: none; }
 
 .app-tab {
   background: var(--metal);
@@ -145,19 +158,16 @@ input {
 .transport-toggle { color: var(--ink-dim); }
 .transport-toggle.on { background: var(--blue); color: var(--rack); font-weight: 600; }
 
-.instrument-toggle { display: flex; gap: 4px; margin-left: auto; }
-
-.instrument-btn {
+.instrument-select {
   min-height: 44px;
-  padding: 8px 12px;
+  margin-left: auto;
+  padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--edge);
   background: var(--metal-lo);
-  color: var(--ink-dim);
-  font-size: 0.85rem;
+  color: var(--ink);
+  font-size: 0.9rem;
 }
-
-.instrument-btn.on { background: var(--blue); color: var(--rack); }
 
 .builder-err {
   background: rgba(255, 106, 77, 0.12);
@@ -517,6 +527,18 @@ input {
 
 /* --- Library --- */
 
+.library-search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--metal-lo);
+  color: var(--ink);
+  font-size: 16px; /* keep iOS from zooming on focus */
+}
+
 .library-empty { color: var(--ink-dim); padding: 24px 4px; text-align: center; }
 
 .library-grid {
@@ -550,6 +572,7 @@ input {
 }
 
 .library-card-tempo { font-size: 0.75rem; color: var(--ink-dim); }
+.library-card-saved { font-size: 0.7rem; color: var(--ink-dim); margin-bottom: 8px; }
 
 .library-card-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 
