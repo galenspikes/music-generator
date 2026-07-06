@@ -7,6 +7,7 @@ import RootPicker from "./RootPicker.jsx";
 import RecipePicker from "./RecipePicker.jsx";
 import InversionPicker from "./InversionPicker.jsx";
 import Stepper from "./Stepper.jsx";
+import RandomizeControl from "./RandomizeControl.jsx";
 
 // How this chord sounds when the progression reaches it. Kept to three clear,
 // distinct behaviors — the old "Loop" was redundant (in a sequence it played
@@ -41,10 +42,8 @@ export default function ChordCard({
 
   const reorderControls = (
     <div className="card-reorder">
-      {onRandomize && (
-        <button className="mini-btn" onClick={onRandomize} aria-label="Randomize this chord" title="Randomize this chord">
-          🎲
-        </button>
+      {onRandomize && block.kind === "chord" && (
+        <RandomizeControl onRandomize={onRandomize} label="chord" />
       )}
       <button className="mini-btn" onClick={onMoveUp} disabled={!canMoveUp} aria-label="Move earlier">
         ↑

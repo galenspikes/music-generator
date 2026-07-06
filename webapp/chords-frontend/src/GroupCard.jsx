@@ -6,6 +6,7 @@
 import React from "react";
 import ChordCard from "./ChordCard.jsx";
 import Stepper from "./Stepper.jsx";
+import RandomizeControl from "./RandomizeControl.jsx";
 
 export default function GroupCard({
   anchorId,
@@ -55,9 +56,7 @@ export default function GroupCard({
         <span className="card-chord-label">group</span>
         <Stepper value={block.rep} min={1} onChange={(rep) => onChangeGroup({ rep })} />
         <div className="card-reorder">
-          <button className="mini-btn" onClick={onRandomizeGroup} aria-label="Randomize this group" title="Randomize this group">
-            🎲
-          </button>
+          <RandomizeControl onRandomize={onRandomizeGroup} label="group" />
           <button className="mini-btn" onClick={onMoveUp} disabled={!canMoveUp} aria-label="Move earlier">
             ↑
           </button>

@@ -11,6 +11,7 @@ import { ROOTS, splitTopLevel, parseToken, blocksToKeys, defaultChordBlock, make
 import { realizeChord } from "./chordNotes.js";
 import { playChord, playSustain, playArpeggio, playProgression, stopAll, INSTRUMENTS } from "./audio.js";
 import Stepper from "./Stepper.jsx";
+import RandomizeControl from "./RandomizeControl.jsx";
 import { summarizeSegments, labelForSegment } from "./segmentLabels.js";
 
 const MIN_BPM = 40;
@@ -441,15 +442,13 @@ export default function Builder({
         <button className="action-btn" onClick={addGroup}>
           + Group
         </button>
-        <button
-          className="action-btn dice"
-          onClick={randomizeAll}
+        <RandomizeControl
+          onRandomize={randomizeAll}
+          label="every chord"
+          lockClass="action-btn lock"
+          diceClass="action-btn dice"
           disabled={!blocks.length}
-          title="Randomize every chord"
-          aria-label="Randomize every chord"
-        >
-          🎲
-        </button>
+        />
       </div>
     </div>
   );

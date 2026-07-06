@@ -272,6 +272,20 @@ input {
   font-weight: 400;
 }
 
+.action-btn.lock {
+  flex: 0 0 auto;
+  min-width: 50px;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+
+.action-btn.lock.unlocked {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(255, 180, 77, 0.12);
+}
+
 .action-btn:disabled { opacity: 0.4; cursor: default; }
 
 .new-confirm {
@@ -384,12 +398,16 @@ input {
   color: var(--engrave);
   font-size: 1.05rem;
   flex: 1;
+  min-width: 0; /* let it truncate instead of pushing the button row wider */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.card-reorder { display: flex; gap: 4px; margin-left: auto; }
+.card-reorder { display: flex; gap: 3px; margin-left: auto; }
 
 .mini-btn {
-  min-width: 36px;
+  min-width: 34px;
   min-height: 36px;
   border-radius: 8px;
   border: 1px solid var(--edge);
@@ -399,6 +417,14 @@ input {
 
 .mini-btn:disabled { opacity: 0.3; }
 .mini-btn.danger { color: var(--red); }
+
+/* macOS-style randomize lock: dimmed when locked, amber when open. */
+.lock-btn.locked { color: var(--ink-dim); }
+.lock-btn.unlocked {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(255, 180, 77, 0.12);
+}
 
 .card-fields {
   display: flex;
