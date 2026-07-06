@@ -7,15 +7,19 @@ import RootPicker from "./RootPicker.jsx";
 import RecipePicker from "./RecipePicker.jsx";
 import InversionPicker from "./InversionPicker.jsx";
 import Stepper from "./Stepper.jsx";
+import RandomizeControl from "./RandomizeControl.jsx";
 
+// How this chord sounds when the progression reaches it. Kept to three clear,
+// distinct behaviors — the old "Loop" was redundant (in a sequence it played
+// identically to Arp, and whole-progression looping is the transport's ● Live).
 export const MODES = [
-  { id: "strike", label: "Strike" },
-  { id: "sustain", label: "Sustain" },
-  { id: "arpeggio", label: "Arp" },
-  { id: "loop", label: "Loop" },
+  { id: "strike", label: "Strike", hint: "short block hit" },
+  { id: "sustain", label: "Sustain", hint: "hold until the next chord" },
+  { id: "arpeggio", label: "Arp", hint: "roll the notes one at a time" },
 ];
 
 export default function ChordCard({
+  anchorId,
   block,
   recipes,
   parsed,
@@ -24,6 +28,7 @@ export default function ChordCard({
   active,
   onStrike,
   onChange,
+  onRandomize,
   onRemove,
   onMoveUp,
   onMoveDown,
@@ -32,10 +37,14 @@ export default function ChordCard({
 }) {
   const recipeInfo = recipes.find((r) => r.name === block.recipe);
   const maxInversion = recipeInfo ? recipeInfo.intervals.length - 1 : 3;
-  const isToggle = mode === "sustain" || mode === "loop";
+  // Only Sustain rings until tapped again; Strike/Arp are one-shot taps.
+  const isToggle = mode === "sustain";
 
   const reorderControls = (
     <div className="card-reorder">
+      {onRandomize && block.kind === "chord" && (
+        <RandomizeControl onRandomize={onRandomize} label="chord" />
+      )}
       <button className="mini-btn" onClick={onMoveUp} disabled={!canMoveUp} aria-label="Move earlier">
         ↑
       </button>
@@ -50,7 +59,7 @@ export default function ChordCard({
 
   if (block.kind === "raw") {
     return (
-      <div className="chord-card raw-card">
+      <div className="chord-card raw-card" id={anchorId}>
         <button className="strike-btn" onClick={onStrike} disabled={!parsed} aria-label="Play">
           ▸
         </button>
@@ -61,7 +70,7 @@ export default function ChordCard({
   }
 
   return (
-    <div className="chord-card">
+    <div className="chord-card" id={anchorId}>
       <div className="card-top">
         <button
           className={"strike-btn" + (isToggle && active ? " playing" : "")}
@@ -87,6 +96,7 @@ export default function ChordCard({
             key={m.id}
             className={"pill mode-pill" + (mode === m.id ? " on" : "")}
             onClick={() => onModeChange(m.id)}
+            title={m.hint}
           >
             {m.label}
           </button>

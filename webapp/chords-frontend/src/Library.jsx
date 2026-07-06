@@ -4,7 +4,8 @@
 // doesn't have one either) — save under a new title to create a new entry,
 // then delete the old one from here.
 import React, { useEffect, useMemo, useState } from "react";
-import { listProgressions, deleteProgression, parseKeys } from "@shared/api.js";
+import { parseKeys } from "@shared/api.js";
+import { listProgressions, deleteProgression } from "./progressionStore.js";
 import { segmentLabels } from "./segmentLabels.js";
 
 function formatSaved(iso) {

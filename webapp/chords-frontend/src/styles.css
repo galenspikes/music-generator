@@ -201,6 +201,93 @@ input {
   .monitor-lamp.on { animation: none; }
 }
 
+/* --- Chart strip (progression overview / navigation) --- */
+.chart-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 16px;
+  background: var(--rack2);
+  border-bottom: 1px solid var(--edge);
+  -webkit-overflow-scrolling: touch;
+}
+
+.chart-chip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.chart-chip-num {
+  color: var(--rack);
+  background: var(--engrave-dim);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  flex: none;
+}
+
+.chart-chip-label { color: var(--engrave); }
+
+/* --- Pinned add/randomize action bar --- */
+.builder-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--rack) 72%, transparent);
+}
+
+.action-btn {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--edge);
+  background: var(--metal);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.action-btn.dice {
+  flex: 0 0 auto;
+  min-width: 56px;
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.action-btn.lock {
+  flex: 0 0 auto;
+  min-width: 50px;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--ink-dim);
+}
+
+.action-btn.lock.unlocked {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(255, 180, 77, 0.12);
+}
+
+.action-btn:disabled { opacity: 0.4; cursor: default; }
+
 .new-confirm {
   display: flex;
   align-items: center;
@@ -311,12 +398,16 @@ input {
   color: var(--engrave);
   font-size: 1.05rem;
   flex: 1;
+  min-width: 0; /* let it truncate instead of pushing the button row wider */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.card-reorder { display: flex; gap: 4px; margin-left: auto; }
+.card-reorder { display: flex; gap: 3px; margin-left: auto; }
 
 .mini-btn {
-  min-width: 36px;
+  min-width: 34px;
   min-height: 36px;
   border-radius: 8px;
   border: 1px solid var(--edge);
@@ -326,6 +417,14 @@ input {
 
 .mini-btn:disabled { opacity: 0.3; }
 .mini-btn.danger { color: var(--red); }
+
+/* macOS-style randomize lock: dimmed when locked, amber when open. */
+.lock-btn.locked { color: var(--ink-dim); }
+.lock-btn.unlocked {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(255, 180, 77, 0.12);
+}
 
 .card-fields {
   display: flex;

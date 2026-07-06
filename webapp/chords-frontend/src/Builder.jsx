@@ -1,8 +1,8 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 // The progression-building screen: a tap-driven list of chord cards (and
-// [a,b,c]*N groups), a transport to preview the whole progression, and a
-// save entry point into the library. No text/number entry for chord data
-// anywhere in this tree.
+// [a,b,c]*N groups), a transport to play/preview, and a pinned add/randomize
+// action bar. No text/number entry for chord data anywhere in this tree.
+// (Save lives in App's sticky top deck; navigation and the playback HUD too.)
 import React, { useEffect, useRef, useState } from "react";
 import ChordCard from "./ChordCard.jsx";
 import GroupCard from "./GroupCard.jsx";
@@ -11,7 +11,8 @@ import { ROOTS, splitTopLevel, parseToken, blocksToKeys, defaultChordBlock, make
 import { realizeChord } from "./chordNotes.js";
 import { playChord, playSustain, playArpeggio, playProgression, stopAll, INSTRUMENTS } from "./audio.js";
 import Stepper from "./Stepper.jsx";
-import { summarizeSegments } from "./segmentLabels.js";
+import RandomizeControl from "./RandomizeControl.jsx";
+import { summarizeSegments, labelForSegment } from "./segmentLabels.js";
 
 const MIN_BPM = 40;
 const MAX_BPM = 220;
@@ -20,7 +21,7 @@ const MAX_BPM = 220;
 // (e.g. a *1000 repeat), which would hang the browser's timer queue rather
 // than usefully "preview" anything.
 const MAX_PLAYBACK_CHORDS = 300;
-const MODE_CHOICES = ["strike", "sustain", "arpeggio", "loop"];
+const MODE_CHOICES = ["strike", "sustain", "arpeggio"];
 // Roughly how long a one-shot solo tap sounds, so the HUD clears itself after
 // the note fades rather than lingering as if still playing.
 const STRIKE_HUD_MS = 1400;
@@ -28,17 +29,20 @@ const ARP_STEP_MS = 150;
 
 const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-// A freshly added chord gets a random root/quality (and sometimes an
-// inversion) instead of always defaulting to C maj7 — a nudge toward
-// exploring the catalog rather than typing the same starting point every
-// time.
-function randomChordBlock(recipes) {
+// A random root/quality (and sometimes a real inversion — 1..maxInv, never 0,
+// which is just root position) for a chord. Shared by "+ chord" and the
+// randomize (🎲) buttons.
+function randomChordFields(recipes) {
   const chosen = recipes && recipes.length ? randomChoice(recipes) : null;
   const root = randomChoice(ROOTS);
   const recipe = chosen ? chosen.name : "maj7";
   const maxInv = chosen ? Math.max(0, chosen.intervals.length - 1) : 0;
-  const inv = maxInv > 0 && Math.random() < 0.4 ? String(Math.floor(Math.random() * (maxInv + 1))) : "";
-  return { ...defaultChordBlock(), root, recipe, inv };
+  const inv = maxInv >= 1 && Math.random() < 0.4 ? String(1 + Math.floor(Math.random() * maxInv)) : "";
+  return { root, recipe, inv, bass: "" };
+}
+
+function randomChordBlock(recipes) {
+  return { ...defaultChordBlock(), ...randomChordFields(recipes) };
 }
 
 export default function Builder({
@@ -49,7 +53,6 @@ export default function Builder({
   bpm,
   setBpm,
   onKeysChange,
-  onSaveRequest,
   onStatus,
 }) {
   const [blocks, setBlocks] = useState(() => splitTopLevel(initialKeys || "").map(parseToken));
@@ -111,6 +114,43 @@ export default function Builder({
       return next;
     });
 
+  const randomMode = () => randomChoice(MODE_CHOICES);
+
+  // Reroll one chord's root/quality/inversion and its playback mode. Works for
+  // a top-level chord or (via GroupCard) a chord inside a group.
+  const randomizeChordFields = () => randomChordFields(recipes);
+
+  // Reroll every chord in the progression at once (the master 🎲).
+  const randomizeAll = () => {
+    setBlocks((bs) =>
+      bs.map((b) => {
+        if (b.kind === "chord") return { ...b, ...randomChordFields(recipes) };
+        if (b.kind === "group")
+          return { ...b, chords: b.chords.map((c) => ({ ...c, ...randomChordFields(recipes) })) };
+        return b;
+      })
+    );
+    setModeById((mm) => {
+      const next = { ...mm };
+      blocks.forEach((b) => {
+        if (b.kind === "chord") next[b.id] = randomMode();
+        else if (b.kind === "group") b.chords.forEach((c) => (next[c.id] = randomMode()));
+      });
+      return next;
+    });
+  };
+
+  const randomizeBlock = (i) => {
+    const b = blocks[i];
+    if (b.kind === "chord") {
+      setBlock(i, randomChordFields(recipes));
+      setMode(b.id, randomMode());
+    } else if (b.kind === "group") {
+      setBlock(i, { chords: b.chords.map((c) => ({ ...c, ...randomChordFields(recipes) })) });
+      b.chords.forEach((c) => setMode(c.id, randomMode()));
+    }
+  };
+
   const segments = parsed.ok ? parsed.segments : [];
 
   // --- HUD helpers ---------------------------------------------------------
@@ -154,12 +194,11 @@ export default function Builder({
       setActiveId(null);
       flashHud(parsedChord.label, mode, notes.length * ARP_STEP_MS + STRIKE_HUD_MS);
     } else {
-      // sustain / loop: tapping again stops it.
+      // sustain: tapping again stops it.
       if (activeId === block.id) {
         stopEverything();
       } else {
-        if (mode === "sustain") playSustain(notes, { instrumentId });
-        else playArpeggio(notes, { instrumentId, loop: true });
+        playSustain(notes, { instrumentId });
         setActiveId(block.id);
         holdHud(parsedChord.label, mode);
       }
@@ -299,9 +338,12 @@ export default function Builder({
       mode: step ? step.mode : "",
       stepCount: programmedSteps.length,
       summary: summarizeSegments(segments),
+      // Compact per-block labels for the navigation chip strip (App renders it
+      // and scrolls to `chord-card-<id>` on tap).
+      blocks: blocks.map((b, i) => ({ id: b.id, label: segments[i] ? labelForSegment(segments[i]) : "…" })),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playPos, playSteps, programmedSteps.length, segments]);
+  }, [playPos, playSteps, programmedSteps.length, segments, blocks]);
 
   const truncated = programmedSteps.length > MAX_PLAYBACK_CHORDS;
 
@@ -348,6 +390,7 @@ export default function Builder({
           b.kind === "group" ? (
             <GroupCard
               key={b.id}
+              anchorId={"chord-card-" + b.id}
               block={b}
               recipes={recipes}
               parsed={segments[i]}
@@ -356,6 +399,9 @@ export default function Builder({
               activeId={activeId}
               onStrikeChord={triggerChord}
               onCreateChord={createChordForGroup}
+              makeRandomFields={randomizeChordFields}
+              randomMode={randomMode}
+              onRandomizeGroup={() => randomizeBlock(i)}
               onPreview={() => previewGroup(b, segments[i])}
               onChangeGroup={(patch) => setBlock(i, patch)}
               onRemoveGroup={() => removeBlock(i)}
@@ -367,6 +413,7 @@ export default function Builder({
           ) : (
             <ChordCard
               key={b.id}
+              anchorId={"chord-card-" + b.id}
               block={b}
               recipes={recipes}
               parsed={segments[i]}
@@ -375,6 +422,7 @@ export default function Builder({
               active={activeId === b.id}
               onStrike={() => (b.kind === "raw" ? triggerRaw(segments[i]) : triggerChord(b, segments[i]))}
               onChange={(patch) => setBlock(i, patch)}
+              onRandomize={() => randomizeBlock(i)}
               onRemove={() => removeBlock(i)}
               onMoveUp={() => moveBlock(i, -1)}
               onMoveDown={() => moveBlock(i, 1)}
@@ -383,23 +431,25 @@ export default function Builder({
             />
           )
         )}
-        <div className="add-row">
-          <button className="add-chord-btn" onClick={addChord}>
-            + chord
-          </button>
-          <button className="add-chord-btn" onClick={addGroup}>
-            + group
-          </button>
-        </div>
       </div>
 
-      <button
-        className="save-btn"
-        onClick={() => onSaveRequest(summarizeSegments(segments))}
-        disabled={!blocks.length}
-      >
-        Save to Library
-      </button>
+      {/* Primary add/randomize actions, pinned to the bottom of the viewport so
+          growing the progression never means scrolling to find the buttons. */}
+      <div className="builder-actions">
+        <button className="action-btn" onClick={addChord}>
+          + Chord
+        </button>
+        <button className="action-btn" onClick={addGroup}>
+          + Group
+        </button>
+        <RandomizeControl
+          onRandomize={randomizeAll}
+          label="every chord"
+          lockClass="action-btn lock"
+          diceClass="action-btn dice"
+          disabled={!blocks.length}
+        />
+      </div>
     </div>
   );
 }
