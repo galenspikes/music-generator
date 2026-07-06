@@ -7,8 +7,11 @@ import React, { useEffect, useRef, useState } from "react";
 import Builder from "./Builder.jsx";
 import Library from "./Library.jsx";
 import SaveDialog from "./SaveDialog.jsx";
+import Monitor from "./Monitor.jsx";
 import { fetchRecipes, saveProgression, deleteProgression, listProgressions } from "@shared/api.js";
 import { INSTRUMENTS } from "./audio.js";
+
+const EMPTY_STATUS = { playing: false, label: "", pos: -1, total: 0, mode: "", stepCount: 0, summary: "" };
 
 const DRAFT_KEY = "chords_draft_v1";
 const INSTRUMENT_KEY = "chords_instrument_v1";
@@ -88,7 +91,10 @@ export default function App() {
   const [suggestedTitle, setSuggestedTitle] = useState("");
   const [titleHint, setTitleHint] = useState("");
   const [confirmNew, setConfirmNew] = useState(false);
+  const [status, setStatus] = useState(EMPTY_STATUS);
   const draftTimer = useRef(null);
+
+  const instrumentLabel = (INSTRUMENTS.find((i) => i.id === instrumentId) || INSTRUMENTS[0]).label;
 
   useEffect(() => {
     fetchRecipes().then(setRecipes).catch(() => {});
@@ -158,9 +164,11 @@ export default function App() {
 
   // Fetches the current library's titles to pick the next "yyyy-mm-dd new #n"
   // before opening the dialog, so the default is already correct when it
-  // appears (rather than patching it in after the dialog is already open).
+  // appears (rather than patching it in after the dialog is already open). The
+  // hint (placeholder) defaults to the current progression's chord summary,
+  // which the sticky Save button relies on since it has no local `segments`.
   const handleSaveRequest = async (hint) => {
-    setTitleHint(hint || "");
+    setTitleHint(hint != null ? hint : status.summary || "");
     try {
       const items = await listProgressions();
       setSuggestedTitle(suggestDefaultTitle(items.map((p) => p.title || "")));
@@ -184,49 +192,60 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="app-brand">
-          <span className="app-title">ChordBuilder</span>
-          <span className="app-subtitle">powered by Music Generator</span>
-        </div>
-        <nav className="app-tabs">
-          <button className={"app-tab" + (tab === "build" ? " on" : "")} onClick={() => setTab("build")}>
-            Build
-          </button>
-          <button className={"app-tab" + (tab === "library" ? " on" : "")} onClick={() => setTab("library")}>
-            Library
-          </button>
-        </nav>
-      </header>
-
-      {tab === "build" && (
-        <div className="build-status">
-          <span className="build-status-name">
-            {currentName ? loaded.title : "new progression"}
-            {dirty && (
-              <span className="dirty-dot" title="unsaved changes">
-                {" "}
-                •
-              </span>
-            )}
-          </span>
-          {confirmNew ? (
-            <span className="new-confirm">
-              discard unsaved changes?
-              <button className="mini-btn danger" onClick={startNew}>
-                yes
-              </button>
-              <button className="mini-btn" onClick={() => setConfirmNew(false)}>
-                cancel
-              </button>
-            </span>
-          ) : (
-            <button className="new-btn" onClick={handleNewClick}>
-              + new
+      <div className="app-top">
+        <header className="app-header">
+          <div className="app-brand">
+            <span className="app-title">ChordBuilder</span>
+            <span className="app-subtitle">powered by Music Generator</span>
+          </div>
+          <nav className="app-tabs">
+            <button className={"app-tab" + (tab === "build" ? " on" : "")} onClick={() => setTab("build")}>
+              Build
             </button>
-          )}
-        </div>
-      )}
+            <button className={"app-tab" + (tab === "library" ? " on" : "")} onClick={() => setTab("library")}>
+              Library
+            </button>
+          </nav>
+        </header>
+
+        {tab === "build" && (
+          <div className="build-status">
+            <span className="build-status-name">
+              {currentName ? loaded.title : "new progression"}
+              {dirty && (
+                <span className="dirty-dot" title="unsaved changes">
+                  {" "}
+                  •
+                </span>
+              )}
+            </span>
+            {confirmNew ? (
+              <span className="new-confirm">
+                discard unsaved changes?
+                <button className="mini-btn danger" onClick={startNew}>
+                  yes
+                </button>
+                <button className="mini-btn" onClick={() => setConfirmNew(false)}>
+                  cancel
+                </button>
+              </span>
+            ) : (
+              <div className="build-status-actions">
+                <button className="new-btn" onClick={handleNewClick}>
+                  + new
+                </button>
+                <button className="save-btn-top" onClick={() => handleSaveRequest()} disabled={!currentKeys}>
+                  ⤓ Save
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "build" && (
+          <Monitor {...status} instrumentLabel={instrumentLabel} bpm={bpm} />
+        )}
+      </div>
 
       <main className="app-main">
         <div className={tab === "build" ? "" : "tab-hidden"}>
@@ -240,6 +259,7 @@ export default function App() {
             setBpm={setBpm}
             onKeysChange={setCurrentKeys}
             onSaveRequest={handleSaveRequest}
+            onStatus={setStatus}
           />
         </div>
         <div className={tab === "library" ? "" : "tab-hidden"}>

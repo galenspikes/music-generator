@@ -109,8 +109,12 @@ export async function playArpeggio(
 //
 // `loop: true` repeats the whole progression until stopAll() is called —
 // scheduled as a self-rescheduling pass (not setInterval) since a pass's
-// duration depends on step count/bpm.
-export async function playProgression(steps, { instrumentId = INSTRUMENTS[0].id, bpm = 96, loop = false } = {}) {
+// duration depends on step count/bpm. `onStep(i)` fires at each step's onset
+// (drives the HUD monitor); `onEnd()` fires once a non-looping pass finishes.
+export async function playProgression(
+  steps,
+  { instrumentId = INSTRUMENTS[0].id, bpm = 96, loop = false, onStep, onEnd } = {}
+) {
   stopAll();
   if (!steps || steps.length === 0) return;
   await ensureInstrument(instrumentId);
@@ -120,6 +124,10 @@ export async function playProgression(steps, { instrumentId = INSTRUMENTS[0].id,
   const schedulePass = () => {
     steps.forEach((step, i) => {
       const at = i * beatMs;
+      if (onStep) {
+        const mt = setTimeout(() => onStep(i), at);
+        stepTimers.push(mt);
+      }
       const mode = step.mode || "strike";
       if (mode === "arpeggio" || mode === "loop") {
         step.notes.forEach((note, j) => {
@@ -139,6 +147,9 @@ export async function playProgression(steps, { instrumentId = INSTRUMENTS[0].id,
     });
     if (loop) {
       const t = setTimeout(schedulePass, passMs);
+      stepTimers.push(t);
+    } else if (onEnd) {
+      const t = setTimeout(() => onEnd(), passMs);
       stepTimers.push(t);
     }
   };

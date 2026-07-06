@@ -29,10 +29,16 @@ input {
   margin: 0 auto;
 }
 
-.app-header {
+/* The whole control deck — brand/tabs, the name+Save status row, and the
+   playback HUD — pins to the top together so Save and "what's playing" stay
+   reachable no matter how far down the chord list you've scrolled. */
+.app-top {
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+.app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -103,6 +109,8 @@ input {
 
 .dirty-dot { color: var(--amber); font-weight: 700; }
 
+.build-status-actions { display: flex; gap: 6px; }
+
 .new-btn {
   min-height: 36px;
   padding: 6px 12px;
@@ -111,6 +119,86 @@ input {
   background: var(--metal);
   color: var(--ink-dim);
   font-size: 0.8rem;
+}
+
+.save-btn-top {
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--edge);
+  background: var(--amber);
+  color: var(--rack);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.save-btn-top:disabled { opacity: 0.4; cursor: default; }
+
+/* --- Monitor (playback HUD) --- */
+.monitor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: var(--screen);
+  border-bottom: 1px solid var(--edge);
+  font-family: var(--mono);
+  min-height: 40px;
+}
+
+.monitor-lamp {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--metal-hi);
+  flex: none;
+}
+
+.monitor-lamp.on {
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: monitor-pulse 1s ease-in-out infinite;
+}
+
+@keyframes monitor-pulse {
+  50% { opacity: 0.45; }
+}
+
+.monitor-main {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.monitor-chord {
+  color: var(--green);
+  font-size: 1.05rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.monitor-mode {
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.monitor-pos { font-size: 0.75rem; color: var(--ink-dim); margin-left: auto; }
+
+.monitor-idle { color: var(--ink-dim); font-size: 0.8rem; }
+
+.monitor-meta {
+  font-size: 0.72rem;
+  color: var(--engrave-dim);
+  white-space: nowrap;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monitor-lamp.on { animation: none; }
 }
 
 .new-confirm {
