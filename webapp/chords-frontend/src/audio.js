@@ -100,12 +100,10 @@ export async function playArpeggio(
 
 // steps: [{ notes: number[], mode? }], each played according to its own
 // mode — "strike" (default) plays the chord as a short block hit, "sustain"
-// rings it through to the next onset with no early release, "arpeggio" and
-// "loop" both spread its notes across the step's beat (a step is a fixed
-// time slot either way; true indefinite looping only makes sense for a
-// single isolated chord, not one slot in a sequence). This is how a chord's
-// own Strike/Sustain/Arpeggio/Loop mode (set in the builder) carries through
-// into full-progression playback, not just its standalone preview.
+// rings it through to the next onset with no early release, and "arpeggio"
+// spreads its notes across the step's beat. This is how a chord's own
+// Strike/Sustain/Arp mode (set in the builder) carries through into
+// full-progression playback, not just its standalone preview.
 //
 // `loop: true` repeats the whole progression until stopAll() is called —
 // scheduled as a self-rescheduling pass (not setInterval) since a pass's
@@ -129,7 +127,7 @@ export async function playProgression(
         stepTimers.push(mt);
       }
       const mode = step.mode || "strike";
-      if (mode === "arpeggio" || mode === "loop") {
+      if (mode === "arpeggio") {
         step.notes.forEach((note, j) => {
           const t = setTimeout(
             () => strikeNotes([note], instrumentId, 92, Math.min(ARPEGGIO_NOTE_SECONDS, beatMs / 1000)),

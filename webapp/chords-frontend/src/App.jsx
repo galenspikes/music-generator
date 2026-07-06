@@ -8,10 +8,21 @@ import Builder from "./Builder.jsx";
 import Library from "./Library.jsx";
 import SaveDialog from "./SaveDialog.jsx";
 import Monitor from "./Monitor.jsx";
-import { fetchRecipes, saveProgression, deleteProgression, listProgressions } from "@shared/api.js";
+import ChartStrip from "./ChartStrip.jsx";
+import { fetchRecipes } from "@shared/api.js";
+import { saveProgression, deleteProgression, listProgressions, nameExists } from "./progressionStore.js";
 import { INSTRUMENTS } from "./audio.js";
 
-const EMPTY_STATUS = { playing: false, label: "", pos: -1, total: 0, mode: "", stepCount: 0, summary: "" };
+const EMPTY_STATUS = {
+  playing: false,
+  label: "",
+  pos: -1,
+  total: 0,
+  mode: "",
+  stepCount: 0,
+  summary: "",
+  blocks: [],
+};
 
 const DRAFT_KEY = "chords_draft_v1";
 const INSTRUMENT_KEY = "chords_instrument_v1";
@@ -25,6 +36,16 @@ function slugify(name) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "untitled"
   );
+}
+
+// "Save as a new copy" needs a slug that doesn't collide with an existing
+// entry — otherwise saving a copy under the same title just overwrote the
+// original (it resolved to the same storage key). Append -2, -3, … until free.
+function uniqueSlug(base) {
+  if (!nameExists(base)) return base;
+  let n = 2;
+  while (nameExists(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
 }
 
 // "2026-07-05 new #3" — scoped to today's date, counting up from whatever's
@@ -149,7 +170,10 @@ export default function App() {
   // under the new slug, delete the old one) unless the user explicitly asked
   // to keep both via "save as a new copy".
   const handleSave = ({ title, tags, asNew }) => {
-    const name = slugify(title);
+    // A new copy always gets a fresh, non-colliding slug so it can't clobber
+    // the original (even when the title — and therefore the base slug — is
+    // unchanged). A normal save keeps the base slug and updates in place.
+    const name = asNew ? uniqueSlug(slugify(title)) : slugify(title);
     saveProgression(name, { keys: currentKeys, title, tags, tempo: bpm }).then(() => {
       const renaming = !asNew && currentName && name !== currentName;
       const cleanup = renaming ? deleteProgression(currentName) : Promise.resolve();
@@ -245,6 +269,7 @@ export default function App() {
         {tab === "build" && (
           <Monitor {...status} instrumentLabel={instrumentLabel} bpm={bpm} />
         )}
+        {tab === "build" && <ChartStrip blocks={status.blocks} />}
       </div>
 
       <main className="app-main">
@@ -258,7 +283,6 @@ export default function App() {
             bpm={bpm}
             setBpm={setBpm}
             onKeysChange={setCurrentKeys}
-            onSaveRequest={handleSaveRequest}
             onStatus={setStatus}
           />
         </div>

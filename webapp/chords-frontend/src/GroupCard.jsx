@@ -8,6 +8,7 @@ import ChordCard from "./ChordCard.jsx";
 import Stepper from "./Stepper.jsx";
 
 export default function GroupCard({
+  anchorId,
   block,
   recipes,
   parsed,
@@ -16,6 +17,9 @@ export default function GroupCard({
   activeId,
   onStrikeChord,
   onCreateChord,
+  makeRandomFields,
+  randomMode,
+  onRandomizeGroup,
   onPreview,
   onChangeGroup,
   onRemoveGroup,
@@ -31,6 +35,10 @@ export default function GroupCard({
     onChangeGroup({ chords: chords.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
   const addChord = () => onChangeGroup({ chords: [...chords, onCreateChord()] });
   const removeChord = (i) => onChangeGroup({ chords: chords.filter((_, j) => j !== i) });
+  const randomizeMember = (i, id) => {
+    setChord(i, makeRandomFields());
+    onModeChange(id, randomMode());
+  };
   const moveChord = (i, dir) => {
     const next = [...chords];
     const [item] = next.splice(i, 1);
@@ -39,7 +47,7 @@ export default function GroupCard({
   };
 
   return (
-    <div className="chord-card group-card">
+    <div className="chord-card group-card" id={anchorId}>
       <div className="card-top">
         <button className="strike-btn" onClick={onPreview} disabled={!parsedChords.length} aria-label="Preview group">
           ▸
@@ -47,6 +55,9 @@ export default function GroupCard({
         <span className="card-chord-label">group</span>
         <Stepper value={block.rep} min={1} onChange={(rep) => onChangeGroup({ rep })} />
         <div className="card-reorder">
+          <button className="mini-btn" onClick={onRandomizeGroup} aria-label="Randomize this group" title="Randomize this group">
+            🎲
+          </button>
           <button className="mini-btn" onClick={onMoveUp} disabled={!canMoveUp} aria-label="Move earlier">
             ↑
           </button>
@@ -70,6 +81,7 @@ export default function GroupCard({
             active={activeId === c.id}
             onStrike={() => onStrikeChord(c, parsedChords[i])}
             onChange={(patch) => setChord(i, patch)}
+            onRandomize={() => randomizeMember(i, c.id)}
             onRemove={() => removeChord(i)}
             onMoveUp={() => moveChord(i, -1)}
             onMoveDown={() => moveChord(i, 1)}
