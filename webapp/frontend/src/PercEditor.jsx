@@ -146,12 +146,15 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
         <div className="perc-modes">
           <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")} title="Edit drum pattern with tokens">code</button>
           <button className={"hm" + (mode === "grid" ? " on" : "")} onClick={() => { commit(); setMode("grid"); }} title="Visually edit with step sequencer">grid</button>
+          <a className="tok-help" href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md#percussion"
+            target="_blank" rel="noreferrer" title="Percussion token syntax reference">syntax ↗</a>
         </div>
       )}
 
       {mode === "grid" && kind === "drums" ? (
         <PercSequencer value={value} onChange={onChange} />
       ) : (
+        <>
         <input
           className={"perc-text" + (parsed.ok ? "" : " err")}
           spellCheck={false}
@@ -161,6 +164,16 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           placeholder={placeholder || (kind === "chord" ? "ec, er, sc, qr" : "qb, eg, qc, eg")}
         />
+        <div className="tok-hint">
+          {kind === "chord"
+            ? <>Tokens like <code>ec, er, sc</code> (duration + c/r).</>
+            : <>Tokens like <code>qb, eg, qc</code> (duration + drum letter) — or use <b>grid</b>.</>}
+          {kind === "chord" && (
+            <> <a className="tok-help" href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md#percussion"
+              target="_blank" rel="noreferrer">syntax ↗</a></>
+          )}
+        </div>
+        </>
       )}
 
       {!parsed.ok && parsed.error && <div className="perc-err">⚠ {parsed.error}</div>}

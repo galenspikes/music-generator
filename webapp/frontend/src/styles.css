@@ -229,8 +229,8 @@ body {
   flex: 1; font-family: var(--mono); font-size: 12px; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.song-actions { display: flex; gap: 8px; margin-left: auto; }
-.btn-new, .btn-save {
+.song-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.btn-new, .btn-save, .btn-ghost {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--edge);
@@ -244,10 +244,13 @@ body {
   text-transform: uppercase;
   transition: all 0.12s;
 }
-.btn-new:hover, .btn-save:hover {
+.btn-new:hover, .btn-save:hover, .btn-ghost:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+/* Reset / Export / Import — quieter than New/Save (they're occasional). */
+.btn-ghost { background: transparent; opacity: 0.85; }
+.btn-ghost:hover { opacity: 1; }
 .btn-save {
   background: var(--metal-hi);
   border-color: var(--accent);
@@ -983,6 +986,44 @@ midi-visualizer {
 .modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .modal-actions button:last-child { background: linear-gradient(180deg, #5a7bff, #3f5be0); border-color: #6f8bff; color: #fff; }
 .modal.modal-wide { max-width: 640px; max-height: 85vh; overflow-y: auto; }
+
+/* ---- help button + keyboard-shortcut / welcome overlays ---- */
+.help-btn {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  border: 1px solid var(--line-hi); background: var(--panel-hi);
+  color: var(--muted); font-family: var(--mono); font-size: 12px; font-weight: 700;
+  cursor: pointer; line-height: 1;
+}
+.help-btn:hover { border-color: var(--accent); color: var(--accent); }
+kbd {
+  display: inline-block; padding: 1px 6px; border-radius: 4px;
+  border: 1px solid var(--line-hi); border-bottom-width: 2px;
+  background: var(--slot); color: var(--ink);
+  font-family: var(--mono); font-size: 11px; line-height: 1.5;
+}
+.shortcut-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.shortcut-list li { display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.shortcut-list li span { flex: none; min-width: 150px; }
+.shortcut-note { margin: 14px 0 0; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.welcome { text-align: center; max-width: 380px; }
+.welcome-teaser { margin: 0 0 18px; color: var(--ink-dim); font-size: 13px; line-height: 1.5; }
+.welcome .modal-actions { justify-content: center; }
+.welcome .modal-actions button:last-child { background: var(--panel-hi); border-color: var(--line-hi); color: var(--text); }
+.welcome-primary { background: linear-gradient(180deg, #5a7bff, #3f5be0) !important; border-color: #6f8bff !important; color: #fff !important; }
+.welcome-hint { margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+/* ---- token-field syntax help (harmony / percussion editors) ---- */
+.tok-help {
+  margin-left: auto; font-family: var(--mono); font-size: 10px;
+  color: var(--muted); text-decoration: none; letter-spacing: 0.03em;
+  border-bottom: 1px dotted var(--line-hi); align-self: center;
+}
+.tok-help:hover { color: var(--accent); border-color: var(--accent); }
+.tok-hint {
+  margin-top: 6px; font-family: var(--mono); font-size: 10.5px;
+  color: var(--muted); line-height: 1.5;
+}
+.tok-hint code { background: var(--slot); padding: 0 4px; border-radius: 3px; color: var(--ink-dim); }
 
 /* ---- lead-sheet import ---- */
 .import-dropzone {
