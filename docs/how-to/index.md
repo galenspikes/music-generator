@@ -15,6 +15,7 @@ knows the basics. Recipes, not lessons.*
   song.yml (chords + form; an agent workflow + a tested chord-symbol mapper).
 - **[Render audio](render-audio.md)** — FluidSynth + ffmpeg via `render.py` /
   `play_music`.
-- **[Use the web instrument](use-the-web-instrument.md)** — run the React + FastAPI UI.
+- **[Use the web instrument](use-the-web-instrument.md)** — make music in the browser:
+  the tabs, what each knob does, saving & exporting, troubleshooting (plus how to run it locally).
 - **[Set up for development](set-up-for-development.md)** — venv, `make` targets,
   testing, and linting.
