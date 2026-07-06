@@ -404,7 +404,7 @@ export default function App() {
         <nav className="topnav">
           <a href="https://galenspikes.github.io/music-generator/" target="_blank" rel="noreferrer">Home</a>
           <a href="https://galenspikes.github.io/music-generator/chords.html" target="_blank" rel="noreferrer">Chords</a>
-          <a href="https://gsp87-music-generator.hf.space/chords/" target="_blank" rel="noreferrer">Chord Builder</a>
+          <a href="https://gsp87-music-generator.hf.space/chords/" target="_blank" rel="noreferrer">ChordBuilder</a>
           <a href="https://github.com/galenspikes/music-generator" target="_blank" rel="noreferrer">GitHub</a>
         </nav>
         <div className="transport">

@@ -1,12 +1,13 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
-// Standalone Chord Recipes instrument: a tap-driven progression builder plus
-// a saved-progression library, sharing the FastAPI backend used by the main
-// song-generator webapp but otherwise independent of it.
+// Standalone ChordBuilder instrument (powered by Music Generator): a
+// tap-driven progression builder plus a saved-progression library, sharing
+// the FastAPI backend used by the main song-generator webapp but otherwise
+// independent of it.
 import React, { useEffect, useRef, useState } from "react";
 import Builder from "./Builder.jsx";
 import Library from "./Library.jsx";
 import SaveDialog from "./SaveDialog.jsx";
-import { fetchRecipes, saveProgression, deleteProgression } from "@shared/api.js";
+import { fetchRecipes, saveProgression, deleteProgression, listProgressions } from "@shared/api.js";
 import { INSTRUMENTS } from "./audio.js";
 
 const DRAFT_KEY = "chords_draft_v1";
@@ -21,6 +22,19 @@ function slugify(name) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "untitled"
   );
+}
+
+// "2026-07-05 new #3" — scoped to today's date, counting up from whatever's
+// already saved under today so re-opening Save repeatedly doesn't collide.
+function suggestDefaultTitle(existingTitles) {
+  const today = new Date().toISOString().slice(0, 10);
+  const prefix = `${today} new #`;
+  const used = existingTitles
+    .filter((t) => t.startsWith(prefix))
+    .map((t) => parseInt(t.slice(prefix.length), 10))
+    .filter((n) => !isNaN(n));
+  const next = used.length ? Math.max(...used) + 1 : 1;
+  return `${prefix}${next}`;
 }
 
 // The current in-progress progression persists to localStorage (separate
@@ -54,10 +68,12 @@ export default function App() {
   const draft = useRef(loadDraft()).current;
 
   // `loaded` holds what the Builder should initialize from; bumping loadNonce
-  // remounts the Builder (via a React `key`) so it re-reads these on load
-  // instead of fighting in-progress edits. `currentName` is the library slug
-  // this progression came from (null if it's a fresh, never-saved draft) —
-  // it's what lets Save tell an update from a brand-new entry.
+  // remounts the Builder (via a React `key`) so it re-reads these on an
+  // explicit Load/New — NOT on every render, which is what previously made
+  // switching to the Library tab and back silently drop in-progress edits
+  // (Builder/Library used to be conditionally rendered, so switching tabs
+  // unmounted Builder entirely; now both stay mounted and are just hidden
+  // via CSS, so Builder's internal state survives the trip).
   const [loaded, setLoaded] = useState(() => ({
     keys: draft?.keys || "",
     title: draft?.title || "",
@@ -70,6 +86,7 @@ export default function App() {
   const [currentKeys, setCurrentKeys] = useState(loaded.keys);
   const [saveOpen, setSaveOpen] = useState(false);
   const [suggestedTitle, setSuggestedTitle] = useState("");
+  const [titleHint, setTitleHint] = useState("");
   const [confirmNew, setConfirmNew] = useState(false);
   const draftTimer = useRef(null);
 
@@ -139,6 +156,20 @@ export default function App() {
     });
   };
 
+  // Fetches the current library's titles to pick the next "yyyy-mm-dd new #n"
+  // before opening the dialog, so the default is already correct when it
+  // appears (rather than patching it in after the dialog is already open).
+  const handleSaveRequest = async (hint) => {
+    setTitleHint(hint || "");
+    try {
+      const items = await listProgressions();
+      setSuggestedTitle(suggestDefaultTitle(items.map((p) => p.title || "")));
+    } catch {
+      setSuggestedTitle(suggestDefaultTitle([]));
+    }
+    setSaveOpen(true);
+  };
+
   const startNew = () => {
     setLoaded({ keys: "", title: "", tags: [] });
     setBpm(DEFAULT_BPM);
@@ -154,7 +185,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-title">Chord Recipes</span>
+        <div className="app-brand">
+          <span className="app-title">ChordBuilder</span>
+          <span className="app-subtitle">powered by Music Generator</span>
+        </div>
         <nav className="app-tabs">
           <button className={"app-tab" + (tab === "build" ? " on" : "")} onClick={() => setTab("build")}>
             Build
@@ -195,7 +229,7 @@ export default function App() {
       )}
 
       <main className="app-main">
-        {tab === "build" ? (
+        <div className={tab === "build" ? "" : "tab-hidden"}>
           <Builder
             key={loadNonce}
             initialKeys={loaded.keys}
@@ -205,14 +239,12 @@ export default function App() {
             bpm={bpm}
             setBpm={setBpm}
             onKeysChange={setCurrentKeys}
-            onSaveRequest={(suggestion) => {
-              setSuggestedTitle(suggestion);
-              setSaveOpen(true);
-            }}
+            onSaveRequest={handleSaveRequest}
           />
-        ) : (
-          <Library onLoad={handleLoad} currentName={currentName} />
-        )}
+        </div>
+        <div className={tab === "library" ? "" : "tab-hidden"}>
+          <Library onLoad={handleLoad} currentName={currentName} active={tab === "library"} />
+        </div>
       </main>
 
       <SaveDialog
@@ -220,6 +252,7 @@ export default function App() {
         onClose={() => setSaveOpen(false)}
         onSave={handleSave}
         defaultTitle={loaded.title || suggestedTitle}
+        titleHint={titleHint}
         defaultTags={loaded.tags}
         isExisting={!!currentName}
       />

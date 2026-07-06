@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 import ChordCard from "./ChordCard.jsx";
 import GroupCard from "./GroupCard.jsx";
 import { parseKeys } from "@shared/api.js";
-import { splitTopLevel, parseToken, blocksToKeys, defaultChordBlock, defaultGroupBlock } from "./tokenFormat.js";
+import { ROOTS, splitTopLevel, parseToken, blocksToKeys, defaultChordBlock, makeId } from "./tokenFormat.js";
 import { realizeChord } from "./chordNotes.js";
 import { playChord, playSustain, playArpeggio, playProgression, stopAll, INSTRUMENTS } from "./audio.js";
 import Stepper from "./Stepper.jsx";
@@ -20,6 +20,22 @@ const MAX_BPM = 220;
 // (e.g. a *1000 repeat), which would hang the browser's timer queue rather
 // than usefully "preview" anything.
 const MAX_PLAYBACK_CHORDS = 300;
+const MODE_CHOICES = ["strike", "sustain", "arpeggio", "loop"];
+
+const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+// A freshly added chord gets a random root/quality (and sometimes an
+// inversion) instead of always defaulting to C maj7 — a nudge toward
+// exploring the catalog rather than typing the same starting point every
+// time.
+function randomChordBlock(recipes) {
+  const chosen = recipes && recipes.length ? randomChoice(recipes) : null;
+  const root = randomChoice(ROOTS);
+  const recipe = chosen ? chosen.name : "maj7";
+  const maxInv = chosen ? Math.max(0, chosen.intervals.length - 1) : 0;
+  const inv = maxInv > 0 && Math.random() < 0.4 ? String(Math.floor(Math.random() * (maxInv + 1))) : "";
+  return { ...defaultChordBlock(), root, recipe, inv };
+}
 
 export default function Builder({
   initialKeys,
@@ -35,8 +51,8 @@ export default function Builder({
   const [parsed, setParsed] = useState({ ok: true, chords: [], segments: [] });
   const [modeById, setModeById] = useState({});
   const [activeId, setActiveId] = useState(null);
-  const [arpeggiate, setArpeggiate] = useState(false);
   const [loopProgression, setLoopProgression] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
   const debounce = useRef(null);
 
   const keys = blocksToKeys(blocks);
@@ -52,8 +68,30 @@ export default function Builder({
   }, [keys]);
 
   const setBlock = (i, patch) => setBlocks((bs) => bs.map((b, j) => (j === i ? { ...b, ...patch } : b)));
-  const addChord = () => setBlocks((bs) => [...bs, defaultChordBlock()]);
-  const addGroup = () => setBlocks((bs) => [...bs, defaultGroupBlock()]);
+  const setMode = (id, mode) => setModeById((mm) => ({ ...mm, [id]: mode }));
+
+  const addChord = () => {
+    const block = randomChordBlock(recipes);
+    setBlocks((bs) => [...bs, block]);
+    setMode(block.id, randomChoice(MODE_CHOICES));
+  };
+
+  // Shared by GroupCard's own "+ chord to group" button, so a chord added
+  // inside a group gets the same randomized treatment as a top-level one.
+  const createChordForGroup = () => {
+    const block = randomChordBlock(recipes);
+    setMode(block.id, randomChoice(MODE_CHOICES));
+    return block;
+  };
+
+  const addGroup = () => {
+    const a = randomChordBlock(recipes);
+    const b = randomChordBlock(recipes);
+    setMode(a.id, randomChoice(MODE_CHOICES));
+    setMode(b.id, randomChoice(MODE_CHOICES));
+    setBlocks((bs) => [...bs, { kind: "group", id: makeId(), rep: 2, chords: [a, b] }]);
+  };
+
   const removeBlock = (i) => setBlocks((bs) => bs.filter((_, j) => j !== i));
   const moveBlock = (i, dir) =>
     setBlocks((bs) => {
@@ -68,9 +106,14 @@ export default function Builder({
   const stopEverything = () => {
     stopAll();
     setActiveId(null);
+    setIsLooping(false);
   };
 
-  const setMode = (id, mode) => setModeById((mm) => ({ ...mm, [id]: mode }));
+  const toggleLoopProgression = () => {
+    const next = !loopProgression;
+    setLoopProgression(next);
+    if (!next && isLooping) stopEverything();
+  };
 
   // Strikes a single chord (top-level or nested inside a group) according to
   // its own Strike/Sustain/Arpeggio/Loop mode.
@@ -96,7 +139,9 @@ export default function Builder({
     }
   };
 
-  // A raw (unparseable) top-level token — best-effort preview only.
+  // A raw (unparseable-by-the-client) top-level token — best-effort preview
+  // only, using whatever the server made of it; no per-chord mode to honor
+  // since there's no card UI for it.
   const triggerRaw = (parsedChord) => {
     if (!parsedChord) return;
     if (parsedChord.type === "group" && parsedChord.chords) {
@@ -111,36 +156,95 @@ export default function Builder({
   };
 
   // Previews one pass through a group's own chords (ignores the group's own
-  // repeat count — that's what "Play progression" is for).
-  const previewGroup = (parsedGroup) => {
+  // repeat count — that's what "Play progression" is for), honoring each
+  // member chord's own programmed mode.
+  const previewGroup = (block, parsedGroup) => {
     if (!parsedGroup || !parsedGroup.chords) return;
     setActiveId(null);
-    playProgression(
-      parsedGroup.chords.map((c) => ({ notes: realizeChord(c) })),
-      { instrumentId, bpm: 160 }
-    );
+    const steps = block.chords
+      .map((c, j) => {
+        const pc = parsedGroup.chords[j];
+        return pc ? { notes: realizeChord(pc), mode: modeById[c.id] || "strike" } : null;
+      })
+      .filter(Boolean);
+    playProgression(steps, { instrumentId, bpm: 160 });
   };
 
-  // The whole progression, exactly as the real engine would expand it —
-  // `parsed.chords` already honors every *N and [group]*N repeat (it's the
-  // same expansion `music_generator` uses), so setting a repeat count here
-  // actually changes what plays.
+  // Walks `blocks` (which already fully captures every repeat count — a top
+  // -level chord's own *N, a group's own *N, and each member chord's own *N
+  // inside a group) paired with the matching `segments` entry for pitch
+  // data, expanding it into a flat step list where each step carries the
+  // originating chord's own programmed Strike/Sustain/Arpeggio/Loop mode.
+  // This is what makes "add a chord that arpeggiates, then one that
+  // sustains" actually shape full-progression playback, not just each
+  // chord's standalone preview tap.
+  const buildProgrammedSteps = () => {
+    const steps = [];
+    blocks.forEach((block, i) => {
+      const seg = segments[i];
+      if (!seg) return;
+      if (block.kind === "group") {
+        const groupChords = (seg.type === "group" && seg.chords) || [];
+        const groupReps = block.rep || 1;
+        for (let r = 0; r < groupReps; r++) {
+          block.chords.forEach((c, j) => {
+            const parsedChord = groupChords[j];
+            if (!parsedChord || c.kind !== "chord") return;
+            const mode = modeById[c.id] || "strike";
+            const innerReps = c.rep || 1;
+            for (let k = 0; k < innerReps; k++) steps.push({ notes: realizeChord(parsedChord), mode });
+          });
+        }
+      } else if (block.kind === "chord") {
+        const reps = block.rep || 1;
+        const mode = modeById[block.id] || "strike";
+        for (let r = 0; r < reps; r++) steps.push({ notes: realizeChord(seg), mode });
+      } else if (block.kind === "raw") {
+        // No client-side structure for an unparsed token's internals — fall
+        // back to the server's own reps/shape, strike mode only.
+        const reps = seg.reps || 1;
+        const parts = seg.type === "group" && seg.chords ? seg.chords : seg.type === "chord" ? [seg] : [];
+        for (let r = 0; r < reps; r++) {
+          parts.forEach((pc) => steps.push({ notes: realizeChord(pc), mode: "strike" }));
+        }
+      }
+    });
+    return steps;
+  };
+
+  // The whole progression, with each chord played per its own programmed
+  // mode. Setting a chord's or group's repeat count actually changes what
+  // plays, since buildProgrammedSteps expands every repeat exactly like the
+  // real engine would. Driven by `blocks`/`segments` (via
+  // buildProgrammedSteps), not `parsed.chords` directly — an empty `keys`
+  // string is a quirky special case server-side (mg.key_roots("") returns a
+  // default 12-chord demo circle rather than []), which would otherwise make
+  // an empty builder look like it has something to play.
+  const programmedSteps = buildProgrammedSteps();
+
   const playAll = () => {
-    const chords = (parsed.chords || []).slice(0, MAX_PLAYBACK_CHORDS);
-    if (!chords.length) return;
+    const steps = programmedSteps.slice(0, MAX_PLAYBACK_CHORDS);
+    if (!steps.length) return;
     setActiveId(null);
-    playProgression(
-      chords.map((c) => ({ notes: realizeChord(c) })),
-      { instrumentId, bpm, arpeggiate, loop: loopProgression }
-    );
+    setIsLooping(loopProgression);
+    playProgression(steps, { instrumentId, bpm, loop: loopProgression });
   };
 
-  const truncated = (parsed.chords || []).length > MAX_PLAYBACK_CHORDS;
+  // Live-reactivity: while the master Loop is running, any edit to the
+  // progression, tempo, instrument, or a chord's playback mode restarts the
+  // loop immediately with the new settings, instead of requiring a manual
+  // Stop + Play to hear a change take effect.
+  useEffect(() => {
+    if (isLooping) playAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed, bpm, instrumentId, modeById]);
+
+  const truncated = programmedSteps.length > MAX_PLAYBACK_CHORDS;
 
   return (
     <div className="builder">
       <div className="builder-transport">
-        <button className="transport-btn play" onClick={playAll} disabled={!(parsed.chords || []).length}>
+        <button className="transport-btn play" onClick={playAll} disabled={!programmedSteps.length}>
           ▸ Play progression
         </button>
         <button className="transport-btn stop" onClick={stopEverything}>
@@ -148,39 +252,34 @@ export default function Builder({
         </button>
         <button
           className={"transport-btn transport-toggle" + (loopProgression ? " on" : "")}
-          onClick={() => setLoopProgression((v) => !v)}
+          onClick={toggleLoopProgression}
         >
           ⟳ Loop
         </button>
-        <button
-          className={"transport-btn transport-toggle" + (arpeggiate ? " on" : "")}
-          onClick={() => setArpeggiate((a) => !a)}
-        >
-          Arpeggiate
-        </button>
         <Stepper value={bpm} min={MIN_BPM} max={MAX_BPM} step={4} label="bpm" onChange={setBpm} />
-        <div className="instrument-toggle">
+        <select
+          className="instrument-select"
+          value={instrumentId}
+          onChange={(e) => setInstrumentId(e.target.value)}
+        >
           {INSTRUMENTS.map((inst) => (
-            <button
-              key={inst.id}
-              className={"instrument-btn" + (instrumentId === inst.id ? " on" : "")}
-              onClick={() => setInstrumentId(inst.id)}
-            >
+            <option key={inst.id} value={inst.id}>
               {inst.label}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       {!parsed.ok && parsed.error && <div className="builder-err">⚠ {parsed.error}</div>}
-      {parsed.ok && parsed.chords && parsed.chords.length > 0 && (
+      {parsed.ok && programmedSteps.length > 0 && (
         <div className="builder-note">
-          plays {parsed.chords.length} chord{parsed.chords.length === 1 ? "" : "s"}
+          plays {programmedSteps.length} chord{programmedSteps.length === 1 ? "" : "s"}
         </div>
       )}
       {truncated && (
         <div className="builder-note">
-          Progression expands to {parsed.chords.length} chords — playback previews the first {MAX_PLAYBACK_CHORDS}.
+          Progression expands to {programmedSteps.length} chords — playback previews the first{" "}
+          {MAX_PLAYBACK_CHORDS}.
         </div>
       )}
 
@@ -196,7 +295,8 @@ export default function Builder({
               onModeChange={setMode}
               activeId={activeId}
               onStrikeChord={triggerChord}
-              onPreview={() => previewGroup(segments[i])}
+              onCreateChord={createChordForGroup}
+              onPreview={() => previewGroup(b, segments[i])}
               onChangeGroup={(patch) => setBlock(i, patch)}
               onRemoveGroup={() => removeBlock(i)}
               onMoveUp={() => moveBlock(i, -1)}

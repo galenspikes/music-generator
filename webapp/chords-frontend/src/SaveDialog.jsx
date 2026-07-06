@@ -13,7 +13,7 @@ const CURATED_TAGS = [
   "ambient", "turnaround", "vamp", "ballad",
 ];
 
-export default function SaveDialog({ open, onClose, onSave, defaultTitle, defaultTags, isExisting }) {
+export default function SaveDialog({ open, onClose, onSave, defaultTitle, titleHint, defaultTags, isExisting }) {
   const [title, setTitle] = useState(defaultTitle || "");
   const [tags, setTags] = useState(defaultTags || []);
   const [addingTag, setAddingTag] = useState(false);
@@ -51,7 +51,7 @@ export default function SaveDialog({ open, onClose, onSave, defaultTitle, defaul
           className="save-title-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="ii-V-I turnaround"
+          placeholder={titleHint || "ii-V-I turnaround"}
           autoFocus
         />
       </label>

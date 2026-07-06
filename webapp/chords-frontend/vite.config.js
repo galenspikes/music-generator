@@ -6,11 +6,11 @@ import { VitePWA } from "vite-plugin-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Standalone Chord Recipes instrument — its own Vite project (separate PWA
-// scope from webapp/frontend) sharing only the backend API and a few trivial
-// fetch wrappers in webapp/shared/. During dev it runs on :5174 and proxies
-// /api (and /showcase) to the FastAPI backend on :8753, same pattern as the
-// main webapp's vite.config.js.
+// Standalone ChordBuilder instrument (powered by Music Generator) — its own
+// Vite project (separate PWA scope from webapp/frontend) sharing only the
+// backend API and a few trivial fetch wrappers in webapp/shared/. During dev
+// it runs on :5174 and proxies /api (and /showcase) to the FastAPI backend on
+// :8753, same pattern as the main webapp's vite.config.js.
 export default defineConfig({
   base: "/chords/",
   plugins: [
@@ -19,9 +19,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icons/icon-192.png", "icons/icon-512.png"],
       manifest: {
-        name: "Chord Recipes",
-        short_name: "Chords",
-        description: "A tap-driven chord-progression instrument and library.",
+        name: "ChordBuilder",
+        short_name: "ChordBuilder",
+        description: "A tap-driven chord-progression instrument and library, powered by Music Generator.",
         start_url: "/chords/",
         scope: "/chords/",
         display: "standalone",
