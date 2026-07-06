@@ -84,4 +84,21 @@ Highest value / genuinely missing, smallest surface:
 Skip as redundant: the `/api/presets/list` endpoint and a top-bar demo dropdown (the
 Library tab covers both). Treat Phase 5 as done bar tooltip tweaks.
 
-*Items 1–3 are implemented in the same change that adds this note.*
+## Status (implemented)
+
+All the actionable items above were subsequently built:
+
+- **Toast primitive, friendly errors, elapsed timer** (1.2 load confirmations, 2.1,
+  2.2) — `webapp/frontend/src/Toast.jsx` + `App.jsx`.
+- **Enriched tooltips** (1.3) — UI `help` overrides in `generator_api.py`'s
+  `PARAM_ANNOTATIONS`.
+- **Web instrument user guide + ChordBuilder quick start** (3.1, 3.2) — rewritten /
+  added under `docs/how-to/`.
+- **Welcome overlay** (1.1), **keyboard shortcuts + help overlay** (4.2), **reset to
+  defaults** (4.1), **settings export/import** (4.4), **token-field syntax help**
+  (4.3) — `App.jsx`, `HarmonyEditor.jsx`, `PercEditor.jsx`.
+- **Phase 5** (ChordBuilder cross-linking) was already in place; left as-is.
+
+Deliberately skipped as redundant or out of scope: the `/api/presets/list` endpoint,
+a top-bar demo dropdown (Library tab covers it), and hijacking Cmd/Ctrl+R for reset
+(fights the browser; Reset is a button).
