@@ -21,6 +21,10 @@ const MAX_BPM = 220;
 // than usefully "preview" anything.
 const MAX_PLAYBACK_CHORDS = 300;
 const MODE_CHOICES = ["strike", "sustain", "arpeggio", "loop"];
+// Roughly how long a one-shot solo tap sounds, so the HUD clears itself after
+// the note fades rather than lingering as if still playing.
+const STRIKE_HUD_MS = 1400;
+const ARP_STEP_MS = 150;
 
 const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
@@ -46,14 +50,20 @@ export default function Builder({
   setBpm,
   onKeysChange,
   onSaveRequest,
+  onStatus,
 }) {
   const [blocks, setBlocks] = useState(() => splitTopLevel(initialKeys || "").map(parseToken));
   const [parsed, setParsed] = useState({ ok: true, chords: [], segments: [] });
   const [modeById, setModeById] = useState({});
   const [activeId, setActiveId] = useState(null);
-  const [loopProgression, setLoopProgression] = useState(false);
-  const [isLooping, setIsLooping] = useState(false);
+  const [live, setLive] = useState(false);
+  // The step list currently feeding the HUD, plus the index within it that is
+  // sounding right now (-1 = nothing playing). `playSteps` carries labels so
+  // the monitor can name each chord as it goes by.
+  const [playSteps, setPlaySteps] = useState([]);
+  const [playPos, setPlayPos] = useState(-1);
   const debounce = useRef(null);
+  const hudTimer = useRef(null);
 
   const keys = blocksToKeys(blocks);
 
@@ -103,16 +113,30 @@ export default function Builder({
 
   const segments = parsed.ok ? parsed.segments : [];
 
+  // --- HUD helpers ---------------------------------------------------------
+  const clearHud = () => {
+    clearTimeout(hudTimer.current);
+    setPlayPos(-1);
+  };
+  // One-shot solo tap: name the chord, then clear after it fades.
+  const flashHud = (label, mode, ms) => {
+    clearTimeout(hudTimer.current);
+    setPlaySteps([{ label, mode }]);
+    setPlayPos(0);
+    hudTimer.current = setTimeout(() => setPlayPos(-1), ms);
+  };
+  // Held solo (sustain/loop): name the chord and leave it until stopped.
+  const holdHud = (label, mode) => {
+    clearTimeout(hudTimer.current);
+    setPlaySteps([{ label, mode }]);
+    setPlayPos(0);
+  };
+
   const stopEverything = () => {
     stopAll();
     setActiveId(null);
-    setIsLooping(false);
-  };
-
-  const toggleLoopProgression = () => {
-    const next = !loopProgression;
-    setLoopProgression(next);
-    if (!next && isLooping) stopEverything();
+    setLive(false);
+    clearHud();
   };
 
   // Strikes a single chord (top-level or nested inside a group) according to
@@ -124,9 +148,11 @@ export default function Builder({
     if (mode === "strike") {
       playChord(notes, { instrumentId });
       setActiveId(null);
+      flashHud(parsedChord.label, mode, STRIKE_HUD_MS);
     } else if (mode === "arpeggio") {
       playArpeggio(notes, { instrumentId, loop: false });
       setActiveId(null);
+      flashHud(parsedChord.label, mode, notes.length * ARP_STEP_MS + STRIKE_HUD_MS);
     } else {
       // sustain / loop: tapping again stops it.
       if (activeId === block.id) {
@@ -135,6 +161,7 @@ export default function Builder({
         if (mode === "sustain") playSustain(notes, { instrumentId });
         else playArpeggio(notes, { instrumentId, loop: true });
         setActiveId(block.id);
+        holdHud(parsedChord.label, mode);
       }
     }
   };
@@ -144,15 +171,16 @@ export default function Builder({
   // since there's no card UI for it.
   const triggerRaw = (parsedChord) => {
     if (!parsedChord) return;
+    setActiveId(null);
     if (parsedChord.type === "group" && parsedChord.chords) {
-      playProgression(
-        parsedChord.chords.map((c) => ({ notes: realizeChord(c) })),
-        { instrumentId, bpm: 160 }
-      );
+      const steps = parsedChord.chords.map((c) => ({ notes: realizeChord(c), label: c.label, mode: "strike" }));
+      setPlaySteps(steps);
+      setPlayPos(0);
+      playProgression(steps, { instrumentId, bpm: 160, onStep: setPlayPos, onEnd: clearHud });
     } else {
       playChord(realizeChord(parsedChord), { instrumentId });
+      flashHud(parsedChord.label, "strike", STRIKE_HUD_MS);
     }
-    setActiveId(null);
   };
 
   // Previews one pass through a group's own chords (ignores the group's own
@@ -164,20 +192,22 @@ export default function Builder({
     const steps = block.chords
       .map((c, j) => {
         const pc = parsedGroup.chords[j];
-        return pc ? { notes: realizeChord(pc), mode: modeById[c.id] || "strike" } : null;
+        return pc ? { notes: realizeChord(pc), label: pc.label, mode: modeById[c.id] || "strike" } : null;
       })
       .filter(Boolean);
-    playProgression(steps, { instrumentId, bpm: 160 });
+    setPlaySteps(steps);
+    setPlayPos(0);
+    playProgression(steps, { instrumentId, bpm: 160, onStep: setPlayPos, onEnd: clearHud });
   };
 
   // Walks `blocks` (which already fully captures every repeat count — a top
   // -level chord's own *N, a group's own *N, and each member chord's own *N
   // inside a group) paired with the matching `segments` entry for pitch
   // data, expanding it into a flat step list where each step carries the
-  // originating chord's own programmed Strike/Sustain/Arpeggio/Loop mode.
-  // This is what makes "add a chord that arpeggiates, then one that
-  // sustains" actually shape full-progression playback, not just each
-  // chord's standalone preview tap.
+  // originating chord's own programmed Strike/Sustain/Arpeggio/Loop mode and
+  // its label (for the HUD). This is what makes "add a chord that arpeggiates,
+  // then one that sustains" actually shape full-progression playback, not just
+  // each chord's standalone preview tap.
   const buildProgrammedSteps = () => {
     const steps = [];
     blocks.forEach((block, i) => {
@@ -192,69 +222,104 @@ export default function Builder({
             if (!parsedChord || c.kind !== "chord") return;
             const mode = modeById[c.id] || "strike";
             const innerReps = c.rep || 1;
-            for (let k = 0; k < innerReps; k++) steps.push({ notes: realizeChord(parsedChord), mode });
+            for (let k = 0; k < innerReps; k++)
+              steps.push({ notes: realizeChord(parsedChord), mode, label: parsedChord.label });
           });
         }
       } else if (block.kind === "chord") {
         const reps = block.rep || 1;
         const mode = modeById[block.id] || "strike";
-        for (let r = 0; r < reps; r++) steps.push({ notes: realizeChord(seg), mode });
+        for (let r = 0; r < reps; r++) steps.push({ notes: realizeChord(seg), mode, label: seg.label });
       } else if (block.kind === "raw") {
         // No client-side structure for an unparsed token's internals — fall
         // back to the server's own reps/shape, strike mode only.
         const reps = seg.reps || 1;
         const parts = seg.type === "group" && seg.chords ? seg.chords : seg.type === "chord" ? [seg] : [];
         for (let r = 0; r < reps; r++) {
-          parts.forEach((pc) => steps.push({ notes: realizeChord(pc), mode: "strike" }));
+          parts.forEach((pc) => steps.push({ notes: realizeChord(pc), mode: "strike", label: pc.label }));
         }
       }
     });
     return steps;
   };
 
-  // The whole progression, with each chord played per its own programmed
-  // mode. Setting a chord's or group's repeat count actually changes what
-  // plays, since buildProgrammedSteps expands every repeat exactly like the
-  // real engine would. Driven by `blocks`/`segments` (via
-  // buildProgrammedSteps), not `parsed.chords` directly — an empty `keys`
-  // string is a quirky special case server-side (mg.key_roots("") returns a
-  // default 12-chord demo circle rather than []), which would otherwise make
-  // an empty builder look like it has something to play.
+  // Driven by `blocks`/`segments` (via buildProgrammedSteps), not
+  // `parsed.chords` directly — an empty `keys` string is a quirky special case
+  // server-side (mg.key_roots("") returns a default 12-chord demo circle
+  // rather than []), which would otherwise make an empty builder look like it
+  // has something to play.
   const programmedSteps = buildProgrammedSteps();
 
-  const playAll = () => {
+  // Play (or restart) the whole progression. `loopFlag` decides whether it
+  // repeats — passed explicitly so Live can start a loop before the `live`
+  // state has committed.
+  const play = (loopFlag) => {
     const steps = programmedSteps.slice(0, MAX_PLAYBACK_CHORDS);
     if (!steps.length) return;
     setActiveId(null);
-    setIsLooping(loopProgression);
-    playProgression(steps, { instrumentId, bpm, loop: loopProgression });
+    setPlaySteps(steps);
+    setPlayPos(0);
+    playProgression(steps, {
+      instrumentId,
+      bpm,
+      loop: loopFlag,
+      onStep: setPlayPos,
+      onEnd: loopFlag ? undefined : clearHud,
+    });
   };
 
-  // Live-reactivity: while the master Loop is running, any edit to the
-  // progression, tempo, instrument, or a chord's playback mode restarts the
-  // loop immediately with the new settings, instead of requiring a manual
-  // Stop + Play to hear a change take effect.
+  // Live mode: toggling it on immediately starts a continuous loop that
+  // re-renders on every edit (see the reactivity effect below); toggling off
+  // stops everything. This is the "play as I change and add things" flow.
+  const toggleLive = () => {
+    const next = !live;
+    setLive(next);
+    if (next) play(true);
+    else stopEverything();
+  };
+
+  // While Live is on, any change to the progression, tempo, instrument, or a
+  // chord's playback mode restarts the loop with the new settings — so adding
+  // a chord or flipping a mode is heard right away, no manual Stop + Play.
   useEffect(() => {
-    if (isLooping) playAll();
+    if (live) play(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parsed, bpm, instrumentId, modeById]);
+
+  // Report playback + save state up so App can render the sticky HUD and keep
+  // the sticky Save button's suggested title current.
+  useEffect(() => {
+    const playing = playPos >= 0;
+    const step = playing ? playSteps[playPos] : null;
+    onStatus({
+      playing,
+      label: step ? step.label : "",
+      pos: playPos,
+      total: playSteps.length,
+      mode: step ? step.mode : "",
+      stepCount: programmedSteps.length,
+      summary: summarizeSegments(segments),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playPos, playSteps, programmedSteps.length, segments]);
 
   const truncated = programmedSteps.length > MAX_PLAYBACK_CHORDS;
 
   return (
     <div className="builder">
       <div className="builder-transport">
-        <button className="transport-btn play" onClick={playAll} disabled={!programmedSteps.length}>
-          ▸ Play progression
+        <button className="transport-btn play" onClick={() => play(live)} disabled={!programmedSteps.length}>
+          ▸ Play
         </button>
         <button className="transport-btn stop" onClick={stopEverything}>
           ■ Stop
         </button>
         <button
-          className={"transport-btn transport-toggle" + (loopProgression ? " on" : "")}
-          onClick={toggleLoopProgression}
+          className={"transport-btn transport-toggle" + (live ? " on" : "")}
+          onClick={toggleLive}
+          disabled={!programmedSteps.length && !live}
         >
-          ⟳ Loop
+          ● Live
         </button>
         <Stepper value={bpm} min={MIN_BPM} max={MAX_BPM} step={4} label="bpm" onChange={setBpm} />
         <select
@@ -271,11 +336,6 @@ export default function Builder({
       </div>
 
       {!parsed.ok && parsed.error && <div className="builder-err">⚠ {parsed.error}</div>}
-      {parsed.ok && programmedSteps.length > 0 && (
-        <div className="builder-note">
-          plays {programmedSteps.length} chord{programmedSteps.length === 1 ? "" : "s"}
-        </div>
-      )}
       {truncated && (
         <div className="builder-note">
           Progression expands to {programmedSteps.length} chords — playback previews the first{" "}
