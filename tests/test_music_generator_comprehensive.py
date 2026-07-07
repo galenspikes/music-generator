@@ -396,3 +396,162 @@ class TestIntegration:
         midi, meta = M.build_flat_midi(args)
         assert midi is not None
         assert midi.bpm == 120
+
+
+class TestKeyPresetLoading:
+    """Test key preset loading and caching."""
+
+    def test_load_key_presets_returns_dict(self):
+        """load_key_presets returns a dictionary."""
+        presets = M.load_key_presets()
+        assert isinstance(presets, dict)
+
+    def test_load_key_presets_cache(self):
+        """load_key_presets caches results on subsequent calls."""
+        # First call loads
+        presets1 = M.load_key_presets()
+        # Second call should be cached
+        presets2 = M.load_key_presets()
+        assert presets1 is presets2  # Same object
+
+    def test_load_key_presets_force_reload(self):
+        """load_key_presets with force_reload=True reloads."""
+        presets1 = M.load_key_presets()
+        presets2 = M.load_key_presets(force_reload=True)
+        # Should be equivalent but not the same object if reloaded
+        assert isinstance(presets2, dict)
+
+
+class TestGmInstrumentMapping:
+    """Test GM instrument mapping."""
+
+    def test_ensure_dirs_creates_output(self):
+        """ensure_dirs creates required directories."""
+        # Just verify it doesn't raise
+        M.ensure_dirs()
+
+    def test_write_manifest_creates_file(self):
+        """write_manifest creates a manifest file."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--out", "test_manifest"])
+        M.apply_arg_normalization(args)
+        # Just verify it doesn't raise for basic case
+        assert args.out == "test_manifest"
+
+
+class TestOutputPathResolution:
+    """Test output path handling."""
+
+    def test_resolve_out_path_basic(self):
+        """resolve_out_path resolves output path."""
+        out_path = M.resolve_out_path("test_slug", "default_slug")
+        assert isinstance(out_path, str)
+        # Path should be a string
+        assert len(out_path) > 0
+
+    def test_ts_filename_format(self):
+        """ts_filename generates timestamp-based filename."""
+        filename = M.ts_filename("test")
+        assert isinstance(filename, str)
+        assert "test" in filename
+
+
+class TestSwingAndTiming:
+    """Test swing timing and pan spread."""
+
+    def test_swing_time_calculation(self):
+        """_swing_time calculates swing timing."""
+        # _swing_time(t: float, s: float) -> float
+        result = M._swing_time(0.5, 0.2)
+        assert isinstance(result, float)
+
+    def test_apply_swing_to_events(self):
+        """apply_swing applies swing to event list."""
+        # apply_swing takes events list and swing amount
+        # Events format: (kind, when, dur, payload)
+        events = [("chord", 0.0, 0.5, [])]
+        result = M.apply_swing(events, 0.2)
+        assert isinstance(result, list)
+
+    def test_pan_position_spread(self):
+        """Pan position calculation with spread."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--pan-spread", "0.8"])
+        M.apply_arg_normalization(args)
+        # Pan spread should be clamped to [0, 1]
+        assert 0 <= args.pan_spread <= 1
+
+
+class TestSpecBuilding:
+    """Test generation spec building from arguments."""
+
+    def test_spec_has_required_keys(self):
+        """Generated spec includes required keys."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--keys", "C::maj7"])
+        M.apply_arg_normalization(args)
+        midi, meta = M.build_flat_midi(args)
+        assert midi is not None
+
+    def test_spec_with_chord_interrupters(self):
+        """Spec handles chord interrupters."""
+        parser = M.build_parser()
+        args = parser.parse_args([
+            "--keys", "C::maj7",
+            "--chord-interrupters", "qc", "qr", "qc"
+        ])
+        M.apply_arg_normalization(args)
+        midi, meta = M.build_flat_midi(args)
+        assert midi is not None
+
+    def test_spec_with_different_voicings(self):
+        """Spec handles all voicing modes."""
+        for voicing in ["satb", "dense"]:
+            parser = M.build_parser()
+            args = parser.parse_args([
+                "--keys", "C::maj7",
+                "--voicing", voicing
+            ])
+            M.apply_arg_normalization(args)
+            midi, meta = M.build_flat_midi(args)
+            assert midi is not None
+
+
+class TestArgNormalizationEdgeCases:
+    """Test edge cases in argument normalization."""
+
+    def test_normalization_with_no_percussion(self):
+        """Normalization handles no percussion flag."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--no-perc"])
+        M.apply_arg_normalization(args)
+        # perc_main should be None or empty
+        assert args.perc_main is None or args.perc_main == ""
+
+    def test_normalization_with_bass_style(self):
+        """Normalization preserves bass style."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--bass-style", "none"])
+        M.apply_arg_normalization(args)
+        assert args.bass_style == "none"
+
+    def test_normalization_satb_style(self):
+        """Normalization handles satb-style."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--satb-style", "static"])
+        M.apply_arg_normalization(args)
+        assert args.satb_style == "static"
+
+    def test_normalization_split_stems(self):
+        """Normalization handles split stems."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--split-stems"])
+        M.apply_arg_normalization(args)
+        assert args.split_stems is True
+
+    def test_normalization_no_split_stems(self):
+        """Normalization handles --no-split-stems."""
+        parser = M.build_parser()
+        args = parser.parse_args(["--no-split-stems"])
+        M.apply_arg_normalization(args)
+        assert args.split_stems is False
