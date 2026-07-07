@@ -17,7 +17,7 @@ You also need a SoundFont (`.sf2`). `SoundFonts/` is gitignored — supply your 
 
 ```bash
 ./play_music --save-wav --sf2 SoundFonts/arachno.sf2 \
-  --mode ostinato --keys "C::maj9, A::min11" --seconds 60 --out my_take
+  --keys "C::maj9, A::min11" --seconds 60 --out my_take
 ```
 
 `./play_music` is a thin shim over `render.py`; the two are interchangeable.

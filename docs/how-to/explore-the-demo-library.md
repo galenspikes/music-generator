@@ -1,40 +1,46 @@
-# How to explore the demo library and song catalog
+# How to explore the demo library
 
-*Goal: play the curated demos, browse what's rendered, and find your own past
-renders.*
+*Goal: play the curated demos and browse what's rendered.*
 
 ## Demo library
 
-`cook_song.py` is one catalog over two kinds of demo:
+Two kinds of demo live in the repo:
 
 - **Songs** — full multi-section arrangements in `songs/*.yml` (the "press
   demo" tunes). The flagship is **Kiss On My List**.
 - **Presets** — capability showcases in `library/song_cookbook.py` that demo
-  the things a song file can't: fugue, process music, dense/exotic voicing,
-  melody transforms, and evolving percussion.
+  the things a song file can't: dense/exotic voicing, counterpoint, and
+  evolving percussion.
 
 ```bash
 make demo                          # play the flagship (Kiss On My List)
 make gallery                       # render the highlight set to site/assets/midi
 
-python cook_song.py list           # every demo (songs + presets)
-python cook_song.py show kiss      # details for one demo
-python cook_song.py make kiss      # render + play a song
-python cook_song.py make fugue     # render + play a preset
-python cook_song.py make fugue -- --sf2 SoundFonts/arachno.sf2   # forward args
+venv/bin/python music_generator.py --song songs/kiss.yml --out kiss --no-play
+./play_music --sf2 SoundFonts/arachno.sf2 --song songs/isnt_she_lovely.yml
+```
+
+A preset's args live in `library/song_cookbook.py`; run one directly:
+
+```bash
+venv/bin/python -c "
+from library.song_cookbook import resolve_recipe, format_command
+_, payload = resolve_recipe('dense_colors')
+print(format_command(payload['args']))
+"
+# then paste the printed args after music_generator.py or play_music
 ```
 
 Songs: `kiss`, `autumn_leaves`, `girl_from_ipanema`, `isnt_she_lovely`,
 `riders_on_the_storm`, `whiter_shade_of_pale`, `yesterday`. Several carry a
 real melody line (scale-degree grammar) on top of the arrangement.
 
-Presets: `dense_colors`, `counterpoint`, `fugue`, `process_additive`,
-`process_additive_long` (~8 min), `process_phase`, `process_phase_5min`,
-`process_phase_20min`, `melody_transforms`, `perc_evolution`, `salsa`,
-`rock`, `rnb`, `bach_prelude`, `bach_counterpoint`.
+Presets: `dense_colors`, `counterpoint`, `bach_prelude`, `bach_counterpoint`,
+`perc_evolution`, `salsa`, `rock`, `rnb`.
 
 A browser-playable gallery (rendered MIDI, no SoundFont needed) lives in
-[`site/`](../../site/index.html) — regenerate it with `make gallery`.
+[`site/`](../../site/index.html) — regenerate it with `make gallery`
+(runs `render_gallery.py`).
 
 Add your own preset to `library/song_cookbook.py`:
 
@@ -45,21 +51,6 @@ Add your own preset to `library/song_cookbook.py`:
     "args": ["--chords", "extended-chords", "--satb-style", "counterpoint"],
 }
 ```
-
-## Song catalog
-
-Every render appends an entry to `output/master_catalog.json` (generation
-args, timestamps, and output paths). Query it with `query_catalog.py`:
-
-```bash
-venv/bin/python query_catalog.py list [limit]   # recent songs (default 10)
-venv/bin/python query_catalog.py search <query> # match keys/name/instrument/out
-venv/bin/python query_catalog.py show <name>    # full details for one song
-venv/bin/python query_catalog.py stats          # totals, instruments, BPM range
-```
-
-The catalog lives under the gitignored `output/`, so it's local to your
-machine.
 
 ## See also
 

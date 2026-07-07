@@ -10,25 +10,14 @@ See [reference/token-grammar.md](token-grammar.md) for the full grammar.
 ## `music_generator.py` — generate MIDI
 
 ```text
-usage: music_generator.py [-h] [--mode {complete,mixed,ostinato}]
-                          [--song SONG] [--fugue [FUGUE]]
-                          [--fugue-countersubject FUGUE_COUNTERSUBJECT]
-                          [--process {phase,additive,augment}]
-                          [--process-cell PROCESS_CELL]
-                          [--process-reps PROCESS_REPS]
-                          [--process-stages PROCESS_STAGES] [--keys KEYS]
-                          [--keys-preset KEYS_PRESET]
+usage: music_generator.py [-h] [--song SONG] [--keys KEYS] [--random-roots]
+                          [--full-progression] [--keys-preset KEYS_PRESET]
                           [--chords {chromatic-mediants,extended-chords,triads,sevenths,ninths,quartal,sus,add6,lyd-dom} [{chromatic-mediants,extended-chords,triads,sevenths,ninths,quartal,sus,add6,lyd-dom} ...]]
                           [--chords-order {random,roundrobin}]
                           [--instrument INSTRUMENT]
                           [--voice-instrument VOICE=NAME]
                           [--bass-style {follow,none,root,octaves,fifths,walking,arp}]
-                          [--bass-step BASS_STEP] [--melody MELODY]
-                          [--melody-relative {key,chord}]
-                          [--melody-octave MELODY_OCTAVE]
-                          [--melody-transform {none,invert,retrograde,augment}]
-                          [--melody-key MELODY_KEY]
-                          [--melody-mode MELODY_MODE] [--bpm BPM]
+                          [--bass-step BASS_STEP] [--bpm BPM]
                           [--chord-length {w,h,q,e,s,t}]
                           [--chord-interrupters [CHORD_INTERRUPTERS ...]]
                           [--satb-style {block,static,counterpoint,arpeggio}]
@@ -56,29 +45,18 @@ Harmony + Percussion generator (independent parts, SATB, interrupters).
 
 options:
   -h, --help            show this help message and exit
-  --mode {complete,mixed,ostinato}
   --song SONG           Path to a YAML song file (arrangement of sections).
                         When set, section-based rendering is used and most
                         other flags are ignored.
-  --fugue [FUGUE]       Generate a fugal exposition from a melody subject
-                        (scale-degree syntax). Bare --fugue uses a built-in
-                        subject. Key via --melody-key/--melody-mode (default C
-                        major); voice timbre via --instrument.
-  --fugue-countersubject FUGUE_COUNTERSUBJECT
-                        Optional countersubject (defaults to the inverted
-                        subject).
-  --process {phase,additive,augment}
-                        Generate a process-music piece from a melodic cell:
-                        phase (Reich), additive (Glass), or augment (Four
-                        Organs). Cell via --process-cell; key via --melody-
-                        key/--melody-mode.
-  --process-cell PROCESS_CELL
-                        Melodic cell (scale-degree syntax) for --process.
-  --process-reps PROCESS_REPS
-                        Repetitions held at each stage of the process.
-  --process-stages PROCESS_STAGES
-                        Number of stages (for --process augment).
-  --keys KEYS           Comma list of keys (Eb,Bb,...) for ostinato
+  --keys KEYS           Comma list of keys/chords (e.g.
+                        'C::maj7,F::maj7,G::13'). Honored by default and
+                        cycled to fill the piece. Ignored if --random-roots is
+                        set.
+  --random-roots        Shuffle a circle-of-fifths for the chord roots each
+                        run, ignoring --keys. Loops to fill the piece.
+  --full-progression    Play the roots through once with no looping/repeats,
+                        instead of cycling — either your --keys chart or,
+                        without --keys, a full circle-of-fifths walk.
   --keys-preset KEYS_PRESET
                         Name of preset from library/keys_presets.json
   --chords {chromatic-mediants,extended-chords,triads,sevenths,ninths,quartal,sus,add6,lyd-dom} [{chromatic-mediants,extended-chords,triads,sevenths,ninths,quartal,sus,add6,lyd-dom} ...]
@@ -101,22 +79,6 @@ options:
   --bass-step BASS_STEP
                         Subdivision (in beats) for the bass line when --bass-
                         style is not 'follow' (0.5 = eighths, 1.0 = quarters).
-  --melody MELODY       Scale-degree melody on the soprano voice, e.g. "q1 q3
-                        q5 h1". Loops to fill the piece; key/mode inferred
-                        from the chords. See docs/reference/token-grammar.md /
-                        docs/design-notes/melody-primitive-plan.md.
-  --melody-relative {key,chord}
-                        Degrees resolve against the section key, or anchor to
-                        the current chord's root (motif fits each chord).
-  --melody-octave MELODY_OCTAVE
-                        Register anchor for the melody.
-  --melody-transform {none,invert,retrograde,augment}
-                        Apply a transform to the melody (demo the fugal
-                        operations).
-  --melody-key MELODY_KEY
-                        Override inferred key root (e.g. C, Eb, F#).
-  --melody-mode MELODY_MODE
-                        Override inferred mode (e.g. major, minor, dorian).
   --bpm BPM
   --chord-length {w,h,q,e,s,t}
   --chord-interrupters [CHORD_INTERRUPTERS ...]

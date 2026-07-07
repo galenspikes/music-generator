@@ -21,10 +21,10 @@ def _midi_notes(data: bytes):
 # --- generate ------------------------------------------------------------------
 
 def test_generate_flat_returns_result():
-    r = api.generate({"mode": "ostinato", "keys": "C::maj7, A::min9, G::13",
+    r = api.generate({"keys": "C::maj7, A::min9, G::13",
                       "seconds": 8, "bpm": 120})
     assert r.midi[:4] == b"MThd"
-    assert r.mode == "ostinato"
+    assert r.mode == "progression"
     assert r.duration_seconds == 8
     assert len(_midi_notes(r.midi)) > 0
     names = {t.name for t in r.tracks}
@@ -32,26 +32,11 @@ def test_generate_flat_returns_result():
 
 
 def test_generate_dense_collapses_to_ensemble():
-    r = api.generate({"mode": "ostinato", "keys": "C::13, F::maj9",
+    r = api.generate({"keys": "C::13, F::maj9",
                       "voicing": "dense", "seconds": 6})
     names = [t.name for t in r.tracks]
     assert "ensemble" in names
     assert "soprano" not in names
-
-
-def test_generate_fugue():
-    r = api.generate({"fugue": "__default__", "melody_key": "C",
-                      "melody_mode": "major", "instrument": "organ"})
-    assert r.mode == "fugue"
-    assert len(_midi_notes(r.midi)) > 0
-
-
-def test_generate_process():
-    r = api.generate({"process": "phase",
-                      "process_cell": "e1 e2 e3 e5 e7 e5 e3 e2",
-                      "melody_key": "C"})
-    assert r.mode == "process:phase"
-    assert len(_midi_notes(r.midi)) > 0
 
 
 def test_generate_song_roundtrip(tmp_path):
@@ -87,14 +72,14 @@ def test_generate_song_no_perc_silences_drums():
 
 def test_generate_bad_recipe_raises():
     with pytest.raises(api.GenerationError):
-        api.generate({"mode": "ostinato", "keys": "C::definitely_not_a_recipe"})
+        api.generate({"keys": "C::definitely_not_a_recipe"})
 
 
 # --- structured errors ---------------------------------------------------------
 
 def test_generation_error_is_structured_with_suggestion_and_code():
     with pytest.raises(api.GenerationError) as exc_info:
-        api.generate({"mode": "ostinato", "keys": "ZZ::maj7"})
+        api.generate({"keys": "ZZ::maj7"})
     exc = exc_info.value
     d = exc.as_dict()
     assert d["error_type"] == "invalid_chord"
@@ -105,7 +90,7 @@ def test_generation_error_is_structured_with_suggestion_and_code():
 
 def test_generation_error_classifies_bad_recipe():
     with pytest.raises(api.GenerationError) as exc_info:
-        api.generate({"mode": "ostinato", "keys": "C::definitely_not_a_recipe"})
+        api.generate({"keys": "C::definitely_not_a_recipe"})
     d = exc_info.value.as_dict()
     assert d["error_type"] == "invalid_recipe"
     assert d["suggestion"]
@@ -135,13 +120,13 @@ def test_classify_error_covers_the_common_token_mistakes():
 
 def test_generate_is_disk_free():
     before = set(glob.glob(str(mg.MIDI_DIR / "**" / "*.mid"), recursive=True))
-    api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 6})
+    api.generate({"keys": "C::maj7", "seconds": 6})
     after = set(glob.glob(str(mg.MIDI_DIR / "**" / "*.mid"), recursive=True))
     assert before == after
 
 
 def test_generate_returns_a_bucketed_envelope():
-    r = api.generate({"mode": "ostinato", "keys": "C::maj7, A::min7", "seconds": 8,
+    r = api.generate({"keys": "C::maj7, A::min7", "seconds": 8,
                       "seed": 1})
     assert len(r.envelope) == 60
     assert all(0.0 <= v <= 1.0 for v in r.envelope)
@@ -149,12 +134,12 @@ def test_generate_returns_a_bucketed_envelope():
 
 
 def test_envelope_from_bytes_empty_when_duration_zero():
-    r = api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 4, "seed": 1})
+    r = api.generate({"keys": "C::maj7", "seconds": 4, "seed": 1})
     assert api.envelope_from_bytes(r.midi, 0.0) == [0.0] * 60
 
 
 def test_envelope_bucket_count_is_configurable():
-    r = api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 4, "seed": 1})
+    r = api.generate({"keys": "C::maj7", "seconds": 4, "seed": 1})
     assert len(api.envelope_from_bytes(r.midi, r.duration_seconds, buckets=10)) == 10
 
 
@@ -165,7 +150,7 @@ def test_generate_song_includes_envelope():
 
 
 def test_generate_seeded_is_deterministic():
-    spec = {"mode": "ostinato", "keys": "C::maj7, G::13", "seconds": 8,
+    spec = {"keys": "C::maj7, G::13", "seconds": 8,
             "seed": 123, "velocity_mode_chords": "human"}
     assert api.generate(spec).midi == api.generate(spec).midi
 
@@ -173,14 +158,14 @@ def test_generate_seeded_is_deterministic():
 # --- validate ------------------------------------------------------------------
 
 def test_validate_ok_and_error():
-    assert api.validate({"mode": "ostinato", "keys": "C::maj7"}).ok is True
-    bad = api.validate({"mode": "ostinato", "keys": "C::nope"})
+    assert api.validate({"keys": "C::maj7"}).ok is True
+    bad = api.validate({"keys": "C::nope"})
     assert bad.ok is False
     assert "nope" in bad.error
 
 
 def test_validate_surfaces_suggestion_and_type():
-    bad = api.validate({"mode": "ostinato", "keys": "ZZ::maj7"})
+    bad = api.validate({"keys": "ZZ::maj7"})
     d = bad.as_dict()
     assert d["ok"] is False
     assert d["error_type"] == "invalid_chord"

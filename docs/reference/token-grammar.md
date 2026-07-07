@@ -11,12 +11,17 @@ There are two token languages: **chord tokens** (used by `--keys`) and
 
 ## 1. Chord tokens (`--keys`)
 
-How `--keys` is interpreted depends on `--mode`:
+`--keys` is honored by default: the comma-separated list **is** the
+progression, cycled to fill `--seconds`. This is where the token grammar below
+applies.
 
-- `--mode ostinato` → the comma-separated list **is** the progression, looped to
-  fill `--seconds`. This is where the token grammar below applies.
-- `--mode mixed` / `--mode complete` → `--keys` is **ignored**; the engine walks
-  a circle-of-fifths default and chooses chord qualities from `--chords`.
+Two flags change how roots are chosen instead:
+
+- `--random-roots` → `--keys` is **ignored**; the engine shuffles a
+  circle-of-fifths default and chooses chord qualities from `--chords`.
+- `--full-progression` → plays the roots through once with no
+  looping/repeats — your `--keys` chart, or the circle-of-fifths walk if
+  `--keys` is empty.
 
 ### 1a. Bare roots
 A plain note name, optionally minor. Quality comes from `--chords`/`--chords-order`.

@@ -26,7 +26,6 @@ files remain recoverable from git history.
   --seconds 1200 \
   --bpm 176 \
   --instrument saw \
-  --mode ostinato \
   --keys 'A,A,A,A,D,D,A,A,E,D,A,E' \
   --chords triads sevenths ninths quartal sus add6 \
   --chords-order roundrobin \
@@ -50,7 +49,6 @@ files remain recoverable from git history.
   --seconds 300 \
   --bpm 117 \
   --instrument saw \
-  --mode ostinato \
   --keys 'F#m,F#m,F#m,G#m,G#m,G#m,G#m,G#m, A,A,A,G#m,G#m,G#m,G#m,G#m' \
   --chords sevenths sevenths sevenths ninths sus add6 \
   --chords-order random \
@@ -76,7 +74,6 @@ files remain recoverable from git history.
   --seconds 60 \
   --bpm 104 \
   --instrument saw \
-  --mode ostinato \
   --keys 'Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,Eb,B,B,C,C,B,B,Bb,Bb,A,A,A,A,B,B,B,B' \
   --chords sevenths ninths extended-chords lyd-dom sus \
   --chords-order roundrobin \
@@ -102,7 +99,6 @@ expanded chart + 16th perc-main) is in git history.
   --seconds 200 \
   --bpm 200 \
   --instrument saw \
-  --mode ostinato \
   --keys 'Bb,Bb,Gm,Gm,Cm,Cm,F,F, Dm,Dm,Gm,Gm,Cm,Cm,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Em,Em, Bb,Bb,F,F,Bb,Bb,F,F,  Bb,Bb,Gm,Gm,Cm,Cm,F,F, Dm,Dm,Gm,Gm,Cm,Cm,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Em,Em, Bb,Bb,F,F,Bb,Bb,F,F,  D,D,D,D,D,D,D,D, G,G,G,G,G,G,G,G, C,C,C,C,C,C,C,C, F,F,F,F,F,F,F,F,  D,D,D,D,D,D,D,D, G,G,G,G,G,G,G,G, C,C,C,C,C,C,C,C, F,F,F,F,F,F,F,F,  Bb,Bb,Gm,Gm,Cm,Cm,F,F, Dm,Dm,Gm,Gm,Cm,Cm,F,F, Bb,Bb,Bb,Bb,Eb,Eb,Em,Em, Bb,Bb,F,F,Bb,Bb,F,F' \
   --chords sevenths sevenths sevenths sevenths triads ninths add6 \
   --chords-order roundrobin \
@@ -134,7 +130,6 @@ A fast (320 bpm) `rhythm_changes_bb_fast` variant on a Bb/G/C/F vamp is in git h
   --seconds 120 \
   --bpm 160 \
   --instrument saw \
-  --mode ostinato \
   --keys 'F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  E,E,E,E, A,A,A,A, D,D,D,D, G,G,G,G, C,C,C,C, F#,F#,F#,F#, B,B,B,B, B,B,B,B,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab, Db,Db,Db,Db, G,G,G,G, C,C,C,C, C,C,C,C,  F,F,F,F, Bb,Bb,Bb,Bb, Eb,Eb,Eb,Eb, Ab,Ab,Ab,Ab' \
   --chords sevenths ninths \
   --chords-order roundrobin \
@@ -165,8 +160,7 @@ palette is in git history.
 
 ```bash
 ./play_music \
-  --seconds 300 --bpm 150 --instrument saw --mode ostinato \
-  --keys 'E,Eb,E,Eb,E,Eb,E,Eb, E,Eb,E,Eb,E,Eb,E,Eb, E,Eb,E,Eb,E,Eb,E,Eb' \
+  --seconds 300 --bpm 150 --instrument saw --keys 'E,Eb,E,Eb,E,Eb,E,Eb, E,Eb,E,Eb,E,Eb,E,Eb, E,Eb,E,Eb,E,Eb,E,Eb' \
   --chords triads sevenths --chords-order roundrobin --chord-len e --chord-fill-rate 0.22 \
   --chord-interrupters 'er,ec,er,ec,sc' 'er,ec,ec,ec,sc' 'ec,er,ec,ec,sc' \
   --perc-main 'ebg,eg,eg,eg,eg,ebg,ebg,ecg' --perc-fill-rate 0.00 \
@@ -185,8 +179,7 @@ palette is in git history.
 
 ```bash
 ./play_music \
-  --seconds 200 --bpm 220 --instrument saw --mode ostinato \
-  --keys 'Abm,G,F#m,Gm,G, Ab,G,Gm,F#m,G, Abm,G,  Ebm,D,C#m,Dm,D, Eb,D,Dm,C#m,D,Ebm,D,  E,Eb,D,Ebm,Eb, E,Eb,Db,Ebm,Eb,  G,Abm,G,F#m,Gm,G,  C,Bbm,Bb,Ebm,Ab,D,G,  Bbm,Bb,Bbm,Bb,  Ebm,Eb,Ebm,Eb,Ebm,Eb,  G,Abm,G,F#m,Gm,G' \
+  --seconds 200 --bpm 220 --instrument saw --keys 'Abm,G,F#m,Gm,G, Ab,G,Gm,F#m,G, Abm,G,  Ebm,D,C#m,Dm,D, Eb,D,Dm,C#m,D,Ebm,D,  E,Eb,D,Ebm,Eb, E,Eb,Db,Ebm,Eb,  G,Abm,G,F#m,Gm,G,  C,Bbm,Bb,Ebm,Ab,D,G,  Bbm,Bb,Bbm,Bb,  Ebm,Eb,Ebm,Eb,Ebm,Eb,  G,Abm,G,F#m,Gm,G' \
   --chords sevenths sevenths sevenths ninths ninths extended-chords extended-chords lyd-dom sus add6 \
   --chords-order random --chord-len e --chord-fill-rate 0.01 \
   --perc-main 'ebg,eg,eg,ecg,ebg,ecg, ebg,eg,ecg,eg,ebg,eg' \
@@ -201,8 +194,7 @@ palette is in git history.
 
 ```bash
 ./play_music \
-  --seconds 600 --bpm 132 --instrument saw --mode ostinato \
-  --keys 'G,Gm,F#m,G,F,Gb,Fm,E, Eb,Ebm,D,Db,Dm,C, B,Bbm,B, Bb,Abm,Ab,A,Bb,B, C,C#,D,Eb,E,Ebm,F, G,Gm,Em,Eb,Ebm,Cm,C, Ab,Abm,Fm,F,E,Eb, Db,Dbm,Bbm,Bb,Bm,B, Gm,G,Am,A,Bb,Bbm,Abm,Ab, G,Cm,F,Bbm,Eb,Abm,Db,Gb,B,E,Am,D,Gm,C,Fm,Bb,Ebm,Ab,Dbm,Gbm,Bm,Em,A,Dm,G,Cm' \
+  --seconds 600 --bpm 132 --instrument saw --keys 'G,Gm,F#m,G,F,Gb,Fm,E, Eb,Ebm,D,Db,Dm,C, B,Bbm,B, Bb,Abm,Ab,A,Bb,B, C,C#,D,Eb,E,Ebm,F, G,Gm,Em,Eb,Ebm,Cm,C, Ab,Abm,Fm,F,E,Eb, Db,Dbm,Bbm,Bb,Bm,B, Gm,G,Am,A,Bb,Bbm,Abm,Ab, G,Cm,F,Bbm,Eb,Abm,Db,Gb,B,E,Am,D,Gm,C,Fm,Bb,Ebm,Ab,Dbm,Gbm,Bm,Em,A,Dm,G,Cm' \
   --chords sevenths ninths extended-chords lyd-dom sus add6 \
   --chords-order random --chord-len e --chord-fill-rate 0.30 \
   --chord-interrupters 'er,ec,er,ec,er,ec' 'ec,er,ec,er,ec,er' 'er,er,ec,er,ec,er' 'ec,er,ec,ec,er,ec' \

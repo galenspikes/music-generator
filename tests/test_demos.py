@@ -82,8 +82,7 @@ def test_song_renders(song, slug):
 @pytest.mark.parametrize("recipe", sorted(COOKBOOK), ids=sorted(COOKBOOK))
 def test_recipe_renders(recipe, slug):
     args = [str(a) for a in COOKBOOK[recipe]["args"]]
-    # Cap the length so the suite stays fast (later --seconds wins on the flat
-    # path; the fugue/process paths ignore it).
+    # Cap the length so the suite stays fast.
     _run([*args, "--no-play", "--seed", "1", "--seconds", "6", "--out", slug])
     _load_midi(slug)
 
@@ -114,28 +113,11 @@ def _recipe_argv(name, slug, extra=()):
         ["--no-play", "--seed", "1", "--out", slug]
 
 
-PROCESS_MINUTES = {              # the label each preset advertises
-    "process_additive": 2.08,
-    "process_additive_long": 8.17,
-    "process_phase_5min": 5.06,
-    "process_phase_20min": 20.02,
-}
-
-
-@pytest.mark.parametrize("name,minutes", list(PROCESS_MINUTES.items()))
-def test_process_length_matches_label(name, minutes, slug):
-    _run(_recipe_argv(name, slug))          # process ignores --seconds
-    got = _load_midi(slug).length / 60.0
-    assert abs(got - minutes) < 0.4, f"{name}: {got:.2f} min vs ~{minutes} min"
-
-
 PRESET_PROGRAM = {               # preset -> a GM program its description promises
     "counterpoint": 52,          # choir
     "bach_counterpoint": 6,      # harpsichord
     "bach_prelude": 0,           # piano
     "dense_colors": 50,          # slow strings
-    "process_additive": 11,      # vibraphone
-    "fugue": 16,                 # organ
 }
 
 

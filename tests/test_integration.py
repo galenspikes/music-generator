@@ -45,49 +45,36 @@ def slug(request):
         shutil.rmtree(d)
 
 
-def test_render_ostinato(slug):
-    _run(["--mode", "ostinato", "--keys", "C::maj,F::maj,G::maj/C,A::min7",
+def test_render_progression(slug):
+    _run(["--keys", "C::maj,F::maj,G::maj/C,A::min7",
           "--seconds", "4", "--seed", "1", "--no-play", "--out", slug])
     _assert_valid_midi(slug)
 
 
-def test_render_mixed(slug):
-    _run(["--mode", "mixed", "--seconds", "4", "--seed", "1",
+def test_render_random_roots(slug):
+    _run(["--random-roots", "--seconds", "4", "--seed", "1",
           "--no-play", "--out", slug])
     _assert_valid_midi(slug)
 
 
+def test_render_full_progression(slug):
+    _run(["--full-progression", "--keys", "C::maj,F::maj,G::maj/C,A::min7",
+          "--seconds", "4", "--seed", "1", "--no-play", "--out", slug])
+    _assert_valid_midi(slug)
+
+
 def test_render_arpeggio_with_custom_bass(slug):
-    _run(["--mode", "ostinato", "--keys", "C::maj9,A::min11",
+    _run(["--keys", "C::maj9,A::min11",
           "--satb-style", "arpeggio", "--bass-style", "octaves",
           "--seconds", "4", "--seed", "1", "--no-play", "--out", slug])
     _assert_valid_midi(slug)
 
 
 def test_render_dense_voicing(slug):
-    _run(["--mode", "ostinato", "--keys", "E::mystic,C::messiaen_resonance",
+    _run(["--keys", "E::mystic,C::messiaen_resonance",
           "--voicing", "dense", "--seconds", "4", "--seed", "1",
           "--no-play", "--out", slug])
     _assert_valid_midi(slug, min_notes=8)  # dense = many simultaneous tones
-
-
-def test_render_melody_audition(slug):
-    _run(["--mode", "ostinato", "--keys", "C::maj,F::maj,G::maj",
-          "--melody", "q1 q3 q5 q3", "--satb-style", "block",
-          "--seconds", "4", "--seed", "1", "--no-play", "--out", slug])
-    _assert_valid_midi(slug)
-
-
-def test_render_fugue(slug):
-    _run(["--fugue", "--melody-key", "D", "--melody-mode", "minor",
-          "--bpm", "100", "--out", slug])
-    _assert_valid_midi(slug)
-
-
-def test_render_process(slug):
-    _run(["--process", "phase", "--process-reps", "2",
-          "--melody-key", "E", "--out", slug])
-    _assert_valid_midi(slug)
 
 
 def test_render_song(slug, tmp_path):

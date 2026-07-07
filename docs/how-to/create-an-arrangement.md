@@ -72,6 +72,10 @@ Use `melody_relative: chord` to have a short motif re-fit each chord (degree 1
 lands on the current chord's root) — nice for solos over changes. Sections without
 a `melody` keep their SATB top voice as before. Worked example:
 [`songs/kiss.yml`](https://github.com/galenspikes/music-generator/blob/main/songs/kiss.yml).
+See [ADR-0005 (scale degrees)](../explanation/decisions/0005-scale-degree-melody.md)
+for why the grammar uses degrees, and
+[token grammar §4](../reference/token-grammar.md) for the full syntax
+(accidentals, octave marks, rests).
 
 ## The pattern
 

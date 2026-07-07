@@ -38,7 +38,7 @@ def test_static_still_revoices_on_a_real_chord_change():
 
 def test_satb_style_static_is_a_valid_cli_choice():
     args = M.build_parser().parse_args([
-        "--mode", "ostinato", "--keys", "C::maj7", "--seconds", "4",
+        "--keys", "C::maj7", "--seconds", "4",
         "--satb-style", "static",
     ])
     assert args.satb_style == "static"

@@ -4,9 +4,9 @@
 """Music Generator — CLI entry point and render orchestration.
 
 The slim top layer of the package. It parses CLI args, resolves output paths,
-writes run manifests / the master catalog, applies optional melody, and drives
-the render pipeline (tokens → composition → voicing → MidiOut). The music
-engine itself lives in the sibling modules, layered by dependency:
+writes run manifests / the master catalog, and drives the render pipeline
+(tokens → composition → voicing → MidiOut). The music engine itself lives in
+the sibling modules, layered by dependency:
 
     mtheory → percussion / tokens / voicing / midiout → composition → (here)
 
@@ -16,13 +16,12 @@ working. See ``docs/architecture.md`` for the full module map and data flow.
 """
 import argparse
 import json
+import logging
 import math
 import random
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-
-from logging_config import music_generator_logger, log_performance, log_file_operation, log_music_generation
 
 # The music engine lives in the layered sibling modules below. They are
 # re-exported here (star imports, each module defines __all__) so existing
@@ -53,6 +52,10 @@ from composition import (  # noqa: F401
     build_harmony_events, fill_chords_to_end, truncate_timeline_to,
     next_mode_picker,
 )
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+music_generator_logger = logging.getLogger('music_generator')
+
 
 class SpecError(ValueError):
     """A generation spec was invalid (bad ``--voice-instrument`` syntax, an
@@ -258,83 +261,6 @@ def ts_filename(stem: str) -> str:
     return f"{base}_{ts}.mid"
 
 
-def _apply_melody(args, events, seq, chord_len, beats_total, voice_max):
-    """Replace the generated soprano voice with a hand-written melody line
-    (audition path for the melody primitive). Key/mode inferred from `seq`
-    unless overridden. Requires split stems."""
-    import melody as mel
-
-    if not args.split_stems:
-        music_generator_logger.warning(
-            "--melody needs split stems (the melody rides the soprano channel); "
-            "ignoring melody.")
-        return events, voice_max
-
-    if args.melody_key:
-        key_pc, _ = parse_key_name(args.melody_key)
-        mode = args.melody_mode or "major"
-    else:
-        key_pc, mode = mel.infer_key(seq)
-        if args.melody_mode:
-            mode = args.melody_mode
-
-    notes = mel.parse_melody(args.melody)
-    if args.melody_transform == "invert":
-        notes = mel.invert(notes)
-    elif args.melody_transform == "retrograde":
-        notes = mel.retrograde(notes)
-    elif args.melody_transform == "augment":
-        notes = mel.augment(notes, 2.0)
-
-    mlen = sum(n.beats for n in notes)
-    if mlen <= 0:
-        return events, voice_max
-
-    looped: list = []
-    t = 0.0
-    while t < beats_total:
-        looped.extend(notes)
-        t += mlen
-
-    spans = None
-    if args.melody_relative == "chord":
-        spans, tt, i = [], 0.0, 0
-        while tt < beats_total:
-            spans.append((tt, tt + chord_len, seq[i % len(seq)].root_pc))
-            tt += chord_len
-            i += 1
-
-    lo, hi = SOP_RANGE
-    realized = mel.realize_melody(looped, key_pc, mode,
-                                  base_octave=args.melody_octave, lo=lo, hi=hi,
-                                  relative=args.melody_relative,
-                                  chord_roots=spans)
-
-    # strip the generated soprano; expand any block 'chord' events into a/t/b
-    new_events: list = []
-    for e in events:
-        if e[0] == "voice" and e[3][0] == "soprano":
-            continue
-        if e[0] == "chord":
-            when, dur, (_s, a, ten, b) = e[1], e[2], e[3]
-            new_events.append(("voice", when, dur, ("alto", a)))
-            new_events.append(("voice", when, dur, ("tenor", ten)))
-            new_events.append(("voice", when, dur, ("bass", b)))
-            continue
-        new_events.append(e)
-
-    for when, dur, note in realized:
-        if when >= beats_total:
-            break
-        new_events.append(("voice", when, dur, ("soprano", note)))
-        voice_max = max(voice_max, when + dur)
-
-    music_generator_logger.info(
-        "melody: key_pc=%s mode=%s relative=%s transform=%s notes=%d",
-        key_pc, mode, args.melody_relative, args.melody_transform, len(notes))
-    return new_events, voice_max
-
-
 _EVENT_PRIORITY = {
     "tempo": 0, "program": 1, "voice": 2, "chord": 3, "densechord": 3, "drum": 4,
 }
@@ -454,30 +380,6 @@ def _build_from_voice_events(args, voice_events: list,
                            pan_spread=getattr(args, "pan_spread", 0.0))
 
 
-def build_fugue_midi(args) -> tuple["MidiOut", float]:
-    """Build a fugal exposition into an in-memory MidiOut (no disk). Shared by
-    the CLI and the web API so the subject/key/mode resolution lives in one
-    place instead of being copied into each front-end's dispatch."""
-    import fugue as fug
-    subject = fug.DEFAULT_SUBJECT if args.fugue == "__default__" else args.fugue
-    key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
-    events, total = fug.build_fugue(subject, key_pc, args.melody_mode or "major",
-                                    countersubject=args.fugue_countersubject)
-    return _build_from_voice_events(args, events, total), total
-
-
-def build_process_midi(args) -> tuple["MidiOut", float]:
-    """Build a process-music piece into an in-memory MidiOut (no disk). Shared by
-    the CLI and the web API (see :func:`build_fugue_midi`)."""
-    import process as proc
-    cell = args.process_cell or proc.DEFAULT_CELL
-    key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
-    events, total = proc.build_process(
-        cell, key_pc, args.melody_mode or "major", kind=args.process,
-        reps=args.process_reps, stages=args.process_stages)
-    return _build_from_voice_events(args, events, total), total
-
-
 def song_overrides_from_args(args, include) -> dict:
     """Build the arrangement-override dict from parsed args, shared by the CLI
     and the web API.
@@ -529,26 +431,36 @@ def song_overrides_from_args(args, include) -> dict:
 
 
 def build_flat_midi(args) -> tuple["MidiOut", dict]:
-    """Render the flat ostinato/mixed/complete path into an in-memory MidiOut.
+    """Render the flat chord-progression path into an in-memory MidiOut.
 
     Shared by the CLI (``main``) and the web API. Pure with respect to disk: it
     writes nothing and performs no manifest/catalog side effects — the caller
     owns output paths and metadata. Returns ``(midi, meta)`` where ``meta``
     carries the derived fields the CLI manifest records. RNG-consumption order
     matches the original inline ``main`` body, so seeded output is identical.
+
+    Root selection: ``--keys`` (a user-authored chart) is used by default,
+    cycled to fill the piece. ``--random-roots`` ignores ``--keys`` and instead
+    shuffles a circle-of-fifths each run. ``--full-progression`` plays the
+    roots through once with no repeats/looping, instead of the default cycle
+    (applies to either ``--keys`` or the circle-of-fifths fallback).
     """
     tpb = 480
     beats_total = (args.seconds * args.bpm) / 60.0
     chord_len_beats = DUR_MAP[args.chord_len]
 
-    roots = key_roots(args.mode, args.keys)
-    if args.mode == "complete":
-        max_ch = None
-    elif args.mode == "ostinato":
-        max_ch = 9999
-    else:  # mixed
+    if args.random_roots:
+        roots = key_roots("complete", None)
         random.shuffle(roots)
         max_ch = 9999
+    elif args.keys:
+        roots = key_roots("ostinato", args.keys)
+        max_ch = None if args.full_progression else 9999
+    else:
+        roots = key_roots("complete", None)
+        if not args.full_progression:
+            random.shuffle(roots)
+        max_ch = None if args.full_progression else 9999
 
     seq = build_progression(roots, args.chords, args.chords_order,
                             max_chords=max_ch)
@@ -635,10 +547,6 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
             logger=music_generator_logger,
         )
 
-    if args.melody and args.voicing != "dense":
-        events, voice_max = _apply_melody(args, events, seq, chord_len_beats,
-                                          beats_total, voice_max)
-
     for when, dur, hits in drum_tl:
         events.append(("drum", when, dur, hits))
 
@@ -665,9 +573,6 @@ def build_parser() -> argparse.ArgumentParser:
         description=
         "Harmony + Percussion generator (independent parts, SATB, interrupters)."
     )
-    ap.add_argument("--mode",
-                    choices=["complete", "mixed", "ostinato"],
-                    default="mixed")
     ap.add_argument(
         "--song",
         type=str,
@@ -675,34 +580,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a YAML song file (arrangement of sections). When set, "
         "section-based rendering is used and most other flags are ignored.")
     ap.add_argument(
-        "--fugue",
+        "--keys",
         type=str,
         default=None,
-        nargs="?",
-        const="__default__",
-        help="Generate a fugal exposition from a melody subject (scale-degree "
-        "syntax). Bare --fugue uses a built-in subject. Key via --melody-key/"
-        "--melody-mode (default C major); voice timbre via --instrument.")
-    ap.add_argument("--fugue-countersubject", type=str, default=None,
-                    help="Optional countersubject (defaults to the inverted "
-                    "subject).")
+        help="Comma list of keys/chords (e.g. 'C::maj7,F::maj7,G::13'). "
+        "Honored by default and cycled to fill the piece. Ignored if "
+        "--random-roots is set.")
     ap.add_argument(
-        "--process",
-        choices=["phase", "additive", "augment"],
-        default=None,
-        help="Generate a process-music piece from a melodic cell: phase "
-        "(Reich), additive (Glass), or augment (Four Organs). Cell via "
-        "--process-cell; key via --melody-key/--melody-mode.")
-    ap.add_argument("--process-cell", type=str, default=None,
-                    help="Melodic cell (scale-degree syntax) for --process.")
-    ap.add_argument("--process-reps", type=int, default=4,
-                    help="Repetitions held at each stage of the process.")
-    ap.add_argument("--process-stages", type=int, default=6,
-                    help="Number of stages (for --process augment).")
-    ap.add_argument("--keys",
-                    type=str,
-                    default=None,
-                    help="Comma list of keys (Eb,Bb,...) for ostinato")
+        "--random-roots",
+        action="store_true",
+        help="Shuffle a circle-of-fifths for the chord roots each run, "
+        "ignoring --keys. Loops to fill the piece.")
+    ap.add_argument(
+        "--full-progression",
+        action="store_true",
+        help="Play the roots through once with no looping/repeats, instead "
+        "of cycling — either your --keys chart or, without --keys, a full "
+        "circle-of-fifths walk.")
     ap.add_argument("--keys-preset",
                     type=str,
                     default=None,
@@ -746,28 +640,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="Subdivision (in beats) for the bass line when --bass-style is not "
         "'follow' (0.5 = eighths, 1.0 = quarters).")
-    # --- melody primitive (audition a hand-written line on the soprano voice) ---
-    ap.add_argument(
-        "--melody",
-        type=str,
-        default=None,
-        help="Scale-degree melody on the soprano voice, e.g. \"q1 q3 q5 h1\". "
-        "Loops to fill the piece; key/mode inferred from the chords. "
-        "See docs/reference/token-grammar.md / docs/design-notes/melody-primitive-plan.md.")
-    ap.add_argument("--melody-relative", choices=["key", "chord"], default="key",
-                    help="Degrees resolve against the section key, or anchor to "
-                    "the current chord's root (motif fits each chord).")
-    ap.add_argument("--melody-octave", type=int, default=5,
-                    help="Register anchor for the melody.")
-    ap.add_argument(
-        "--melody-transform",
-        choices=["none", "invert", "retrograde", "augment"],
-        default="none",
-        help="Apply a transform to the melody (demo the fugal operations).")
-    ap.add_argument("--melody-key", type=str, default=None,
-                    help="Override inferred key root (e.g. C, Eb, F#).")
-    ap.add_argument("--melody-mode", type=str, default=None,
-                    help="Override inferred mode (e.g. major, minor, dorian).")
     ap.add_argument("--bpm", type=int, default=120)
     ap.add_argument("--chord-length",
                     dest="chord_len",
@@ -961,24 +833,6 @@ def _run(ap, args):
     if args.seed is not None:
         random.seed(args.seed)
 
-    # ----- fugue path -----
-    if args.fugue:
-        fug_out = resolve_out_path(args.out, "fugue")
-        midi, _total = build_fugue_midi(args)
-        midi.save(fug_out)
-        log_file_operation(music_generator_logger, "write", fug_out, True)
-        print(f"Wrote {fug_out}")
-        return 0
-
-    # ----- process-music path -----
-    if args.process:
-        proc_out = resolve_out_path(args.out, f"process_{args.process}")
-        midi, _total = build_process_midi(args)
-        midi.save(proc_out)
-        log_file_operation(music_generator_logger, "write", proc_out, True)
-        print(f"Wrote {proc_out}")
-        return 0
-
     # ----- arrangement (song file) path -----
     if args.song:
         import arrangement
@@ -1005,7 +859,7 @@ def _run(ap, args):
             vel_mode_drums=args.velocity_mode_drums,
             overrides=arr_overrides)
         arrangement.render(spec, song_out)
-        log_file_operation(music_generator_logger, "write", song_out, True)
+        music_generator_logger.info(f"Wrote {song_out}")
         print(f"Wrote {song_out}")
         return 0
 
@@ -1051,10 +905,7 @@ def _run(ap, args):
     # Log completion
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
-    log_performance(music_generator_logger, "Music generation", duration)
-    log_music_generation(music_generator_logger, args.out or "misc", args.seconds, args.bpm, args.keys or "default")
-    log_file_operation(music_generator_logger, "write", out_path, True)
-    music_generator_logger.info(f"Music generation completed successfully in {duration:.3f}s")
+    music_generator_logger.info(f"Music generation completed in {duration:.3f}s")
 
 
 if __name__ == "__main__":

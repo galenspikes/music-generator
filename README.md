@@ -22,7 +22,6 @@ maps how the modules fit together.
 | **ChordBuilder** | A separate, installable (PWA) instrument focused purely on chord progressions: tap-driven, no typing tokens or numbers, with per-chord Strike/Sustain/Arpeggio/Loop playback. | [`webapp/chords-frontend/`](webapp/chords-frontend/), mounted at `/chords`; see the [how-to guide](docs/how-to/use-chordbuilder.md) |
 | **Arrangements** | YAML song files that sequence sections into an evolving long-form piece, instead of one looping groove. | `arrangement.py`, `songs/*.yml`; see the [how-to guide](docs/how-to/create-an-arrangement.md) |
 | **Lead-sheet import** | Turn a chord chart PDF into a working `song.yml`. | `leadsheet.py`, `leadsheet_extract.py`; see [the how-to guide](docs/how-to/import-a-lead-sheet.md) |
-| **Fugue / process music** | Two special generative modes built on the melody primitive: fugal exposition, and Reich/Glass-style process music. *(Experimental.)* | `fugue.py`, `process.py`; see [the how-to guide](docs/how-to/generate-fugues-and-process-music.md) |
 
 **Live demo:** the web instrument is deployed as a Hugging Face Space via
 [`Dockerfile`](Dockerfile) — see [`space/README.md`](space/README.md) for
@@ -80,7 +79,7 @@ From here, pick a way in:
   [`webapp/README.md`](webapp/README.md) to run the frontend(s) locally.
 - **[docs/how-to/](docs/how-to/index.md)** — task-oriented recipes for chord
   progressions, percussion, melodies, arrangements, instruments/voicing,
-  fugue/process modes, and audio rendering.
+  and audio rendering.
 
 Output from CLI generation lands in `output/{midi,audio,metadata}/<slug>/`
 (gitignored).
@@ -101,13 +100,10 @@ music-generator/
   arrangement.py          # YAML song-file arrangements
   leadsheet.py             # lead-sheet chord-symbol -> token DSL, IR -> song.yml
   leadsheet_extract.py     # PDF -> chart IR extraction (text-layer PDFs)
-  fugue.py                 # fugal exposition generator
-  process.py               # minimalist process music
-  melody.py                # scale-degree melody primitive
+  melody.py                # scale-degree melody primitive (song-file overlays)
   render.py                # audio rendering pipeline (FluidSynth, ffmpeg, metadata)
   play_music               # thin shim over render.py
-  cook_song.py              # demo library CLI (songs + presets, gallery batch)
-  query_catalog.py          # query output/master_catalog.json
+  render_gallery.py         # batch-renders the demo gallery (site/assets/midi)
   chord_reference.py        # generates the chord-recipe reference docs/pages
   webapp/                   # web instrument (backend, frontend, ChordBuilder)
   space/                    # Hugging Face Space packaging (README, deploy notes)
@@ -127,7 +123,8 @@ music-generator/
   inversion support.
 - `library/keys_presets.json`: pre-configured key progressions, circle-of-fifths
   sequences, and modal progressions.
-- `library/song_cookbook.py`: pre-configured song recipes for `cook_song.py`.
+- `library/song_cookbook.py`: pre-configured capability-preset recipes (`make gallery`,
+  `docs/how-to/explore-the-demo-library.md`).
 
 ## Development
 

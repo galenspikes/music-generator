@@ -74,7 +74,7 @@ exotic sets (`mystic`, `messiaen_*`, `petrushka`, `whole_tone`) ring out
 complete.
 
 ```bash
-venv/bin/python music_generator.py --mode ostinato \
+venv/bin/python music_generator.py \
   --keys 'C::maj9, A::min11, F::maj7#11, G::13, E::mystic, Db::messiaen_resonance' \
   --voicing dense --instrument strings --chord-length w --out colors --no-play
 ```

@@ -1,14 +1,15 @@
 # How to write chord progressions
 
-*Goal: drive harmony from `--keys` in ostinato mode. Assumes you've read the
+*Goal: drive harmony from `--keys`. Assumes you've read the
 [token grammar](../reference/token-grammar.md) basics.*
 
 ## Basic progression
 
-In `ostinato` mode, `--keys` **is** the progression, looped to fill `--seconds`:
+`--keys` is honored by default: it **is** the progression, cycled to fill
+`--seconds`:
 
 ```bash
-venv/bin/python music_generator.py --mode ostinato \
+venv/bin/python music_generator.py \
   --keys "C::maj7, A::min7, D::min7, G::7" \
   --seconds 60 --out my_progression --no-play
 ```

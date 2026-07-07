@@ -61,12 +61,12 @@ def test_vocab_endpoint_instrument_catalog():
 
 def test_generate_endpoint_returns_midi():
     r = client.post("/api/generate", json={"spec": {
-        "mode": "ostinato", "keys": "C::maj7, A::min9, G::13", "seconds": 8}})
+        "keys": "C::maj7, A::min9, G::13", "seconds": 8}})
     assert r.status_code == 200
     body = r.json()
     data = base64.b64decode(body["midi"])
     assert data[:4] == b"MThd"
-    assert body["mode"] == "ostinato"
+    assert body["mode"] == "progression"
     assert body["tracks"]
     parsed = mido.MidiFile(file=io.BytesIO(data))
     notes = [m for tr in parsed.tracks for m in tr
@@ -76,13 +76,13 @@ def test_generate_endpoint_returns_midi():
 
 def test_generate_endpoint_bad_input_is_422():
     r = client.post("/api/generate", json={"spec": {
-        "mode": "ostinato", "keys": "C::not_a_recipe"}})
+        "keys": "C::not_a_recipe"}})
     assert r.status_code == 422
 
 
 def test_generate_endpoint_error_is_structured():
     r = client.post("/api/generate", json={"spec": {
-        "mode": "ostinato", "keys": "ZZ::maj7"}})
+        "keys": "ZZ::maj7"}})
     assert r.status_code == 422
     detail = r.json()["detail"]
     # structured object, not a bare string, so the UI can show an actionable hint
@@ -94,11 +94,9 @@ def test_generate_endpoint_error_is_structured():
 
 
 def test_validate_endpoint():
-    good = client.post("/api/validate", json={"spec": {"keys": "C::maj7",
-                                                       "mode": "ostinato"}})
+    good = client.post("/api/validate", json={"spec": {"keys": "C::maj7"}})
     assert good.json()["ok"] is True
-    bad = client.post("/api/validate", json={"spec": {"keys": "C::nope",
-                                                      "mode": "ostinato"}})
+    bad = client.post("/api/validate", json={"spec": {"keys": "C::nope"}})
     assert bad.json()["ok"] is False
 
 
