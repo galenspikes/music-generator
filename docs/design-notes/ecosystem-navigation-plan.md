@@ -75,13 +75,13 @@ to each other** — several of the links that do exist are broken (§1).
 | **`site/`** | Static showcase: marketing homepage (`index.html`) + `chords.html` chord reference | GitHub Pages (`pages.yml`, on push to `main`) → `galenspikes.github.io/music-generator/` | anchors; → `chords.html`; → HF Space ("Try it live"); → GitHub (**broken, private**); → Claude artifact (**broken**) |
 | **`webapp/`** | The React "web instrument": Listen / Library / Editor / **Docs** tabs. The Docs tab renders the *entire* `docs/` tree in-app (`/api/docs`) plus an interactive chord-recipe browser | Dev: local (FastAPI + Vite). **Prod: the actual public "try it live" instrument**, deployed as the Hugging Face Space via the root `Dockerfile`, auto-synced by `deploy-space.yml`. Footer expects the static site mounted at `/showcase/` | → GitHub source/docs (**broken, private**); → `/showcase/` (served in-container from `site/`) |
 | **`space/`** | *(retired)* — used to be a separate Gradio demo (`space/app.py`); now just holds the Space's `README.md` (HF metadata). The Space itself now runs `webapp/`, see above. | — | — |
-| **`docs/`** | The Diátaxis markdown tree — tutorials, how-to, reference (incl. the crown-jewel token grammar), explanation | **Not published anywhere public.** Only readable via the private repo or the webapp Docs tab (local) | in-tree relative links only |
+| **`docs/`** | The Diátaxis markdown tree — tutorials, how-to, reference (incl. the token grammar), explanation | **Not published anywhere public.** Only readable via the private repo or the webapp Docs tab (local) | in-tree relative links only |
 
 ### Structural problems
 
 1. **The private repo is the root cause of the "broken links."** Every public
-   link into GitHub 404s. The docs — including the grammar, described in
-   `CLAUDE.md` as "the crown jewel" — have **no public URL at all**.
+   link into GitHub 404s. The docs — including the token grammar — have
+   **no public URL at all**.
 2. **`docs/` has no public home.** The webapp already has a lovely in-app
    renderer for the whole tree, but it only runs behind the local backend. On
    the open web there is nowhere to read the grammar.

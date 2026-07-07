@@ -41,9 +41,9 @@ Four facts about today's system bound every choice below:
 
 ## Cross-cutting trade-offs (these recur in every phase)
 
-- **Reuse the Python engine vs. port to JS/WASM.** The token DSL is the crown jewel;
-  a JS reimplementation risks divergence and double-maintenance. **Principle:** keep
-  the engine authoritative in Python and have it emit *events*; let the browser
+- **Reuse the Python engine vs. port to JS/WASM.** The token DSL is central to the
+  project; a JS reimplementation risks divergence and double-maintenance. **Principle:**
+  keep the engine authoritative in Python and have it emit *events*; let the browser
   *schedule and synthesize*. This thread runs through Phases 3 and 4.
 - **Determinism vs. learned/stochastic behavior.** Anything trained or heavily random
   fights fact #3 (reproducibility, seedable renders) and the hand-authored ethos.
