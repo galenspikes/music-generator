@@ -314,7 +314,9 @@ def generate(spec: dict) -> GenerationResult:
             if exc.suggestion or exc.error_type != "generation_error":
                 raise
             raise _classified(str(exc)) from exc
-        except SystemExit as exc:  # argparse/engine guard rails
+        except mg.SpecError as exc:  # invalid spec (bad voice-instrument, …)
+            raise _classified(str(exc)) from exc
+        except SystemExit as exc:  # argparse guard rails
             raise _classified(str(exc) or "invalid arguments") from exc
         except Exception as exc:  # surface a readable message to the UI
             raise _classified(f"{type(exc).__name__}: {exc}") from exc

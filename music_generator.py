@@ -54,6 +54,15 @@ from composition import (  # noqa: F401
     next_mode_picker,
 )
 
+class SpecError(ValueError):
+    """A generation spec was invalid (bad ``--voice-instrument`` syntax, an
+    unknown preset, …). Raised by the shared, disk-free builders so they stay
+    free of any front-end's error convention: the CLI turns it into a clean
+    ``argparse`` exit, and the web API turns it into a structured
+    ``GenerationError``. Builders used to ``raise SystemExit`` here — a CLI-only
+    signal that forced the platform seam to catch ``SystemExit`` specially."""
+
+
 # --- project folders (relative to the script location) ---
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
@@ -512,16 +521,16 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     voice_programs: dict[str, int] = {}
     for spec in args.voice_instrument:
         if "=" not in spec:
-            raise SystemExit(
+            raise SpecError(
                 f"--voice-instrument expects VOICE=NAME, got '{spec}'")
         voice, name = (part.strip() for part in spec.split("=", 1))
         voice = voice.lower()
         if voice not in VOICE_ORDER:
-            raise SystemExit(
+            raise SpecError(
                 f"--voice-instrument unknown voice '{voice}'; "
                 f"choose from {', '.join(VOICE_ORDER)}")
         if not name:
-            raise SystemExit(
+            raise SpecError(
                 f"--voice-instrument missing instrument name in '{spec}'")
         voice_programs[voice] = resolve_instrument(name)
     if voice_programs and not args.split_stems:
@@ -839,17 +848,27 @@ def apply_arg_normalization(args) -> bool:
 
 
 def main():
-    start_time = datetime.now()
-    music_generator_logger.info("Starting music generation")
+    """CLI entry point. Owns only the front-end concerns — parse argv, translate
+    a :class:`SpecError` into a clean argparse exit — and delegates the actual
+    orchestration to :func:`_run`."""
     ap = build_parser()
     args = ap.parse_args()
+    try:
+        return _run(ap, args)
+    except SpecError as exc:
+        ap.error(str(exc))  # standard argparse: usage + message, exit 2
+
+
+def _run(ap, args):
+    start_time = datetime.now()
+    music_generator_logger.info("Starting music generation")
 
     preset_used = None
     if getattr(args, "keys_preset", None):
         presets = load_key_presets()
         preset = presets.get(args.keys_preset)
         if not preset:
-            raise ValueError(f"Unknown keys preset '{args.keys_preset}'")
+            raise SpecError(f"Unknown keys preset '{args.keys_preset}'")
         args.keys = ','.join(preset)
         preset_used = args.keys_preset
 
