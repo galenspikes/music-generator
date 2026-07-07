@@ -1,13 +1,10 @@
-"""Master-catalog tests: the update side (music_generator.update_master_catalog)
-and the query side (query_catalog). These pin the round-trip and the
-robustness of both against missing fields / malformed files.
+"""Master-catalog tests: the update side (music_generator.update_master_catalog).
+These pin the robustness of catalog writing against missing fields / malformed files.
 """
 
 import json
 
-
 import music_generator as mg
-import query_catalog as qc
 
 
 def _write_manifest(tmp_path, **overrides):
@@ -69,46 +66,3 @@ def test_update_master_catalog_skips_unreadable_manifest(tmp_path, monkeypatch):
     monkeypatch.setattr(mg, "OUTPUT_DIR", tmp_path)
     mg.update_master_catalog(str(tmp_path / "does_not_exist.json"))
     assert not (tmp_path / "master_catalog.json").exists()
-
-
-def test_query_load_catalog_missing(tmp_path, capsys):
-    result = qc.load_catalog(tmp_path / "nope.json")
-    assert result is None
-    assert "No catalog found" in capsys.readouterr().out
-
-
-def test_query_load_catalog_malformed(tmp_path, capsys):
-    p = tmp_path / "master_catalog.json"
-    p.write_text('{"not_songs": 1}', encoding="utf-8")
-    assert qc.load_catalog(p) is None
-    assert "malformed" in capsys.readouterr().out
-
-
-def test_query_handles_entries_missing_fields(capsys):
-    # An entry missing keys/instrument/etc must not raise in any view.
-    catalog = {"songs": [{"base_name": "sparse"}], "last_updated": "x"}
-    qc.list_songs(catalog)
-    qc.search_songs(catalog, "sparse")
-    qc.show_song_details(catalog, "sparse")
-    qc.show_stats(catalog)
-    out = capsys.readouterr().out
-    assert "sparse" in out
-
-
-def test_query_search_and_stats(capsys):
-    catalog = {
-        "songs": [
-            {"base_name": "jazz1", "keys": "C::maj7", "instrument": "piano",
-             "out": "jazz1", "bpm": 120, "seconds": 60},
-            {"base_name": "rock1", "keys": "E::min", "instrument": "distguitar",
-             "out": "rock1", "bpm": 140, "seconds": 90},
-        ],
-        "last_updated": "2026-07-02T00:00:00Z",
-    }
-    qc.search_songs(catalog, "piano")
-    assert "jazz1" in capsys.readouterr().out
-
-    qc.show_stats(catalog)
-    stats = capsys.readouterr().out
-    assert "Total songs: 2" in stats
-    assert "BPM range: 120-140" in stats

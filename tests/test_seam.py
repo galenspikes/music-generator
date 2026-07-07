@@ -36,7 +36,7 @@ def test_build_parser_exposes_core_flags():
     parser = mg.build_parser()
     dests = {a.dest for a in parser._actions}
     for flag in ("mode", "keys", "chords", "bpm", "instrument", "perc_main",
-                 "split_stems", "voicing", "melody", "seconds"):
+                 "split_stems", "voicing", "seconds"):
         assert flag in dests
 
 
@@ -134,24 +134,6 @@ def test_build_generated_returns_inmemory_midi():
     midi = mg.build_generated(120, events, total=2.0, instrument="organ",
                               vel_chords="uniform", vel_drums="uniform")
     assert midi.to_bytes()[:4] == b"MThd"
-
-
-# --- shared fugue/process builders (CLI + API call these) ----------------------
-
-def test_build_fugue_midi_default_subject():
-    args = mg.build_parser().parse_args([])
-    args.fugue = "__default__"
-    midi, total = mg.build_fugue_midi(args)
-    assert total > 0
-    assert len(_notes(midi.mid)) > 0
-
-
-def test_build_process_midi_phase():
-    args = mg.build_parser().parse_args([])
-    args.process = "phase"
-    midi, total = mg.build_process_midi(args)
-    assert total > 0
-    assert len(_notes(midi.mid)) > 0
 
 
 # --- SpecError: shared builders don't leak SystemExit into the platform --------

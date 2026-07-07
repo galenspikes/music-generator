@@ -3,16 +3,11 @@
 """Curated capability presets for the music generator.
 
 Each recipe is a ready-to-run set of ``music_generator.py`` arguments that shows
-off one strength of the engine — dense/exotic harmony, counterpoint, fugue,
-process music, the melody primitive, evolving percussion, or a finished style.
-The args are pure generator args (no ``--sf2``/``--fx``), so the same recipe can
-be rendered to MIDI (``music_generator.py --no-play``) *or* to audio (via
-``play_music``). ``cook_song.py`` looks these up and bakes the command line;
-``make gallery`` renders the ``demo``-tagged ones to committable MIDI.
-
-Arrangements (multi-section *songs*) live in ``songs/*.yml`` and are handled by
-``arrangement.py`` — these recipes are for the things a song file can't express
-(fugue, process music, dense voicing, melody transforms).
+off one strength of the engine — dense/exotic harmony, counterpoint, or evolving
+percussion. The args are pure generator args (no ``--sf2``/``--fx``), so the same
+recipe can be rendered to MIDI (``music_generator.py --no-play``) *or* to audio
+(via ``play_music``). ``make gallery`` renders the ``demo``-tagged ones to
+committable MIDI.
 """
 
 from __future__ import annotations
@@ -79,144 +74,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
         ],
         "aliases": ["counter", "voice_leading"],
         "tags": ["demo", "counterpoint", "classical"],
-    },
-    "fugue": {
-        "title": "Fugue Exposition",
-        "description": (
-            "A fugal exposition in D minor from a scale-degree subject: voices"
-            " enter with subject then answer (up a fifth), the prior voice"
-            " continues with the inverted countersubject, and a V-I cadence"
-            " closes it. Organ, four voice-channels."
-        ),
-        "args": [
-            "--fugue", "q1 e3 e5 q3 e5 e4 e3 e2 h1",
-            "--melody-key", "D",
-            "--melody-mode", "minor",
-            "--instrument", "organ",
-            "--bpm", "96",
-        ],
-        "aliases": ["fugal", "bach_fugue"],
-        "tags": ["demo", "counterpoint", "classical", "generative"],
-    },
-    "process_additive": {
-        "title": "Additive Process (after Glass)",
-        "description": (
-            "Minimalist process music: a melodic cell grows a note at a time,"
-            " then contracts — watch the phrase lengthen and fold back. An arching"
-            " two-register cell on vibraphone. ~2 min."
-        ),
-        "args": [
-            "--process", "additive",
-            "--process-cell", "e1 e2 e3 e5 e6 e1' e6 e5 e3 e2",
-            "--process-reps", "5",
-            "--melody-key", "C",
-            "--melody-mode", "major",
-            "--instrument", "vibes",
-            "--bpm", "120",
-        ],
-        "aliases": ["additive", "glass"],
-        "tags": ["demo", "process", "minimalism", "generative"],
-    },
-    "process_additive_long": {
-        "title": "Additive Process — Long Form (~8 min)",
-        "description": (
-            "The additive process taken to full length on a complex, two-octave"
-            " arching cell: fourteen notes grow one at a time and contract, an"
-            " ~8-minute slow unfolding on vibraphone."
-        ),
-        "args": [
-            "--process", "additive",
-            "--process-cell",
-            "e1 e2 e3 e5 e6 e1' e2' e3' e2' e1' e6 e5 e3 e2",
-            "--process-reps", "11",
-            "--melody-key", "C",
-            "--melody-mode", "major",
-            "--instrument", "vibes",
-            "--bpm", "132",
-        ],
-        "aliases": ["additive_long", "glass_long"],
-        "tags": ["process", "minimalism", "generative", "longform"],
-    },
-    "process_phase": {
-        "title": "Phase Process (after Reich)",
-        "description": (
-            "Two voices loop the same cell; the follower advances one note per"
-            " stage, sweeping every rhythmic alignment before snapping back to"
-            " unison. Marimba, brisk pulse. ~30 s."
-        ),
-        "args": [
-            "--process", "phase",
-            "--process-cell", "s1 s2 s3 s5 s6 s5 s3 s2",
-            "--process-reps", "4",
-            "--melody-key", "E",
-            "--melody-mode", "minor",
-            "--instrument", "marimba",
-            "--bpm", "160",
-        ],
-        "aliases": ["phase", "reich"],
-        "tags": ["demo", "process", "minimalism", "generative"],
-    },
-    "process_phase_5min": {
-        "title": "Phase Process — 5 Minutes",
-        "description": (
-            "The full Reich phasing sweep at ~5 minutes: each alignment held long"
-            " enough to settle before the follower advances. Marimba."
-        ),
-        "args": [
-            "--process", "phase",
-            "--process-cell", "s1 s2 s3 s5 s6 s5 s3 s2",
-            "--process-reps", "45",
-            "--melody-key", "E",
-            "--melody-mode", "minor",
-            "--instrument", "marimba",
-            "--bpm", "160",
-        ],
-        "aliases": ["phase_5", "phase_5min"],
-        "tags": ["process", "minimalism", "generative", "longform"],
-    },
-    "process_phase_20min": {
-        "title": "Phase Process — 20 Minutes",
-        "description": (
-            "The phasing process at full 20-minute length — every rhythmic"
-            " alignment of the cell dwelt on at length, on vibraphone. A whole"
-            " side of a record from eight notes."
-        ),
-        "args": [
-            "--process", "phase",
-            "--process-cell", "s1 s2 s3 s5 s6 s5 s3 s2",
-            "--process-reps", "178",
-            "--melody-key", "E",
-            "--melody-mode", "minor",
-            "--instrument", "vibes",
-            "--bpm", "160",
-        ],
-        "aliases": ["phase_20", "phase_20min"],
-        "tags": ["process", "minimalism", "generative", "longform"],
-    },
-    "melody_transforms": {
-        "title": "Melody + Transform",
-        "description": (
-            "The scale-degree melody primitive riding over changes with"
-            " --melody-relative chord (the motif re-fits each chord), then"
-            " inverted via --melody-transform. Swap invert for retrograde or"
-            " augment to hear the other fugal operations."
-        ),
-        "args": [
-            "--mode", "ostinato",
-            "--keys", "C::maj7, A::min7, F::maj7, G::7",
-            "--melody", "q1 e2 e3 q5 q3 e2 q1 qr",
-            "--melody-relative", "chord",
-            "--melody-transform", "invert",
-            "--satb-style", "block",
-            "--instrument", "epiano",
-            "--voice-instrument", "soprano=saw",
-            "--bpm", "108",
-            "--perc-main", "qb,qc,qb,qc",
-            "--perc-fill-rate", "0.10",
-            "--seconds", "48",
-        ],
-        "aliases": ["melody", "transform", "lead"],
-        "tags": ["demo", "melody", "generative"],
     },
     "perc_evolution": {
         "title": "Percussion Evolution",

@@ -39,21 +39,6 @@ def test_generate_dense_collapses_to_ensemble():
     assert "soprano" not in names
 
 
-def test_generate_fugue():
-    r = api.generate({"fugue": "__default__", "melody_key": "C",
-                      "melody_mode": "major", "instrument": "organ"})
-    assert r.mode == "fugue"
-    assert len(_midi_notes(r.midi)) > 0
-
-
-def test_generate_process():
-    r = api.generate({"process": "phase",
-                      "process_cell": "e1 e2 e3 e5 e7 e5 e3 e2",
-                      "melody_key": "C"})
-    assert r.mode == "process:phase"
-    assert len(_midi_notes(r.midi)) > 0
-
-
 def test_generate_song_roundtrip(tmp_path):
     r = api.generate({"song": "songs/kiss.yml"})
     assert r.mode == "song"

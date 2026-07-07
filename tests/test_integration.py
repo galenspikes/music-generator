@@ -71,25 +71,6 @@ def test_render_dense_voicing(slug):
     _assert_valid_midi(slug, min_notes=8)  # dense = many simultaneous tones
 
 
-def test_render_melody_audition(slug):
-    _run(["--mode", "ostinato", "--keys", "C::maj,F::maj,G::maj",
-          "--melody", "q1 q3 q5 q3", "--satb-style", "block",
-          "--seconds", "4", "--seed", "1", "--no-play", "--out", slug])
-    _assert_valid_midi(slug)
-
-
-def test_render_fugue(slug):
-    _run(["--fugue", "--melody-key", "D", "--melody-mode", "minor",
-          "--bpm", "100", "--out", slug])
-    _assert_valid_midi(slug)
-
-
-def test_render_process(slug):
-    _run(["--process", "phase", "--process-reps", "2",
-          "--melody-key", "E", "--out", slug])
-    _assert_valid_midi(slug)
-
-
 def test_render_song(slug, tmp_path):
     song = tmp_path / "song.yml"
     song.write_text(

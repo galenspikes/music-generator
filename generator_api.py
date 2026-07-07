@@ -346,16 +346,6 @@ def _generate_locked(spec: dict) -> GenerationResult:
     if args.seed is not None:
         random.seed(args.seed)
 
-    # ----- fugue -----
-    if args.fugue:
-        midi, total = mg.build_fugue_midi(args)
-        return _result(midi, total, "fugue")
-
-    # ----- process music -----
-    if args.process:
-        midi, total = mg.build_process_midi(args)
-        return _result(midi, total, f"process:{args.process}")
-
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
     if args.song or song_yaml_text:
         import tempfile
@@ -701,8 +691,6 @@ def _default_control(kind: str, choices) -> str:
 # in song YAML — see parameter_schema()'s docstring.
 HIDDEN_PARAMS: set[str] = {
     "mode",
-    "process", "process_cell", "process_reps", "process_stages",
-    "fugue", "fugue_countersubject",
     "out", "no_play", "song", "sf2", "perc_lib",
 }
 
