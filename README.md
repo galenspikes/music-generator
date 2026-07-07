@@ -41,6 +41,21 @@ mirrored at `/showcase` on the Space).
 - Latin patterns including salsa and bossa nova clave.
 - Ambient arpeggiated textures.
 
+### ChordBuilder
+A separate, installable (PWA) instrument focused purely on chord progressions:
+tap-driven (no typing tokens or numbers), each chord with its own
+Strike/Sustain/Arpeggio/Loop playback, instant client-side soundfont
+audition, and a searchable, saved-progression library. Ships alongside the
+main web editor at `/chords`. See
+[`webapp/README.md`](webapp/README.md#run-dev) and
+[`docs/how-to/use-chordbuilder.md`](docs/how-to/use-chordbuilder.md).
+
+### Lead-sheet import
+Turn a chord chart PDF into a working `song.yml`: extract chords/form
+(`leadsheet_extract.py` for born-digital PDFs, or an agent-assisted workflow
+for scanned charts) and emit an arrangement-ready song file. See
+[`docs/how-to/import-a-lead-sheet.md`](docs/how-to/import-a-lead-sheet.md).
+
 ## Quick start
 
 ### 1. Set up the environment

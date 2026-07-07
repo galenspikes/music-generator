@@ -3,6 +3,10 @@
 *Reference — the command-line flags for the generator and the audio render
 wrapper. Captured from `--help`; regenerate when flags change.*
 
+Duration codes used by `--chord-length` and throughout the token DSL:
+`w`=whole, `h`=half, `q`=quarter, `e`=eighth, `s`=sixteenth, `t`=thirty-second.
+See [reference/token-grammar.md](token-grammar.md) for the full grammar.
+
 ## `music_generator.py` — generate MIDI
 
 ```text

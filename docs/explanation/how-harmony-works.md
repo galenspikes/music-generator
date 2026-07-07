@@ -121,7 +121,7 @@ a lightweight, heuristic cousin of the formal voice-leading frameworks: Tymoczko
 geometry of voice-leading (smooth motion as short paths in chord space) and the
 classical guide-tone practice of jazz arranging. It is not novel; it is a sound,
 taste-driven implementation of well-understood ideas. See the
-[music-theory companion](music-theory-companion.md) *(planned)* for the references.
+[music-theory companion](music-theory-companion.md) for the references.
 
 ## See also
 
