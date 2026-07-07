@@ -26,7 +26,7 @@ kept deliberately separate so each page does exactly one job:
   List*) or open the browser [demo gallery](https://galenspikes.github.io/music-generator/).
   The whole demo library — songs and capability presets — is
   `python cook_song.py list`.
-- **New here?** → [Tutorial 1: Your first groove](tutorials/01-first-groove.md) *(planned)*
+- **New here?** → [Tutorial 1: Your first groove](tutorials/01-first-groove.md)
 - **Want the big picture?** → [Architecture](explanation/architecture.md)
 - **Writing tokens?** → [Token grammar reference](reference/token-grammar.md)
 - **How the flagship is built** → [Kiss On My List study](explanation/song-studies/kiss-on-my-list.md)

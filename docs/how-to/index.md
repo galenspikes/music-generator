@@ -13,8 +13,14 @@ knows the basics. Recipes, not lessons.*
 - **[Create an arrangement](create-an-arrangement.md)** — YAML song files, sections.
 - **[Import a lead sheet](import-a-lead-sheet.md)** — turn a chart PDF into a
   song.yml (chords + form; an agent workflow + a tested chord-symbol mapper).
+- **[Configure instruments and voicing](configure-instruments-and-voicing.md)** —
+  per-voice patches, bass lines, velocity modes, SATB styles, dense voicing.
+- **[Generate fugues and process music](generate-fugues-and-process-music.md)** —
+  the two special melody-driven modes.
 - **[Render audio](render-audio.md)** — FluidSynth + ffmpeg via `render.py` /
   `play_music`.
+- **[Explore the demo library](explore-the-demo-library.md)** — `cook_song.py`
+  presets/songs and the `query_catalog.py` song catalog.
 - **[Use the web instrument](use-the-web-instrument.md)** — make music in the browser:
   the tabs, what each knob does, saving & exporting, troubleshooting (plus how to run it locally).
 - **[ChordBuilder quick start](use-chordbuilder.md)** — the tap-based progression

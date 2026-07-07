@@ -14,7 +14,9 @@ license: mit
 The real [React/FastAPI webapp](https://github.com/galenspikes/music-generator/tree/main/webapp)
 running as a Hugging Face Docker Space: the full instrument (harmony editor,
 percussion editor, instrument/soundfont pickers, presets, lead-sheet PDF
-import, a static docs browser) — not a stripped-down demo.
+import, a static docs browser) — not a stripped-down demo. The Space also
+serves **ChordBuilder**, the standalone tap-driven chord-progression
+instrument, at `/chords`.
 
 ## How it works
 
