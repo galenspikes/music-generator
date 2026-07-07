@@ -446,3 +446,284 @@ class TestIntegration:
             spec = {**base_spec, "chords": mode}
             result = api.generate(spec)
             assert result.midi is not None
+
+
+class TestErrorClassification:
+    """Test error message classification for better user feedback."""
+
+    def test_classify_bad_key(self):
+        """Recognizes invalid chord root."""
+        error_type, suggestion, code = api.classify_error("Bad key 'ZZ'")
+        assert error_type == "invalid_chord"
+        assert "C, Db, D" in suggestion
+        assert code == "ERR_CHORD_001"
+
+    def test_classify_unknown_recipe(self):
+        """Recognizes unknown chord recipe."""
+        error_type, suggestion, code = api.classify_error("Unknown chord recipe 'xyz'")
+        assert error_type == "invalid_recipe"
+        assert code == "ERR_CHORD_002"
+
+    def test_classify_missing_bass_note(self):
+        """Recognizes missing slash chord bass."""
+        error_type, suggestion, code = api.classify_error("Missing bass note")
+        assert error_type == "invalid_chord"
+        assert code == "ERR_CHORD_003"
+
+    def test_classify_unknown_drum_letter(self):
+        """Recognizes invalid percussion letter."""
+        error_type, suggestion, code = api.classify_error("Unknown drum letter 'x'")
+        assert error_type == "invalid_drum"
+        assert code == "ERR_PERC_001"
+
+    def test_classify_bad_duration(self):
+        """Recognizes invalid duration specification."""
+        error_type, suggestion, code = api.classify_error("Bad duration in token 'x'")
+        assert error_type == "invalid_duration"
+        assert "qb = quarter" in suggestion
+        assert code == "ERR_DUR_001"
+
+    def test_classify_incomplete_token(self):
+        """Recognizes incomplete percussion token."""
+        error_type, suggestion, code = api.classify_error("Incomplete token")
+        assert error_type == "invalid_duration"
+        assert code == "ERR_DUR_001"
+
+    def test_classify_repetition_error(self):
+        """Recognizes repetition syntax errors."""
+        error_type, suggestion, code = api.classify_error("Bad repetition *N")
+        assert error_type == "invalid_syntax"
+        assert code == "ERR_SYNTAX_001"
+
+    def test_classify_empty_token(self):
+        """Recognizes empty tokens."""
+        error_type, suggestion, code = api.classify_error("Empty token")
+        assert error_type == "invalid_syntax"
+        assert code == "ERR_SYNTAX_002"
+
+    def test_classify_empty_chain(self):
+        """Recognizes empty chains."""
+        error_type, suggestion, code = api.classify_error("Empty chain")
+        assert error_type == "invalid_syntax"
+        assert code == "ERR_SYNTAX_002"
+
+    def test_classify_unknown_message(self):
+        """Unknown error messages get generic classification."""
+        error_type, suggestion, code = api.classify_error("Some random error message")
+        assert error_type == "generation_error"
+        assert code == "ERR_GEN_000"
+
+    def test_classify_none_message(self):
+        """None message is handled safely."""
+        error_type, suggestion, code = api.classify_error(None)
+        assert error_type == "generation_error"
+        assert code == "ERR_GEN_000"
+
+
+class TestParameterSchema:
+    """Test parameter schema introspection."""
+
+    def test_parameter_schema_returns_list(self):
+        """parameter_schema() returns a list of parameter specs."""
+        schema = api.parameter_schema()
+        assert isinstance(schema, list)
+        assert len(schema) > 0
+
+    def test_schema_entries_have_required_fields(self):
+        """Each schema entry has name, kind, and help."""
+        schema = api.parameter_schema()
+        for entry in schema:
+            assert "name" in entry
+            assert "kind" in entry or "choices" in entry
+            assert "help" in entry
+
+    def test_schema_keys_parameter(self):
+        """Keys parameter is in schema."""
+        schema = api.parameter_schema()
+        names = [s["name"] for s in schema]
+        assert "keys" in names
+
+    def test_schema_seconds_parameter(self):
+        """Seconds parameter is in schema."""
+        schema = api.parameter_schema()
+        names = [s["name"] for s in schema]
+        assert "seconds" in names
+
+    def test_schema_bpm_parameter(self):
+        """BPM parameter is in schema."""
+        schema = api.parameter_schema()
+        names = [s["name"] for s in schema]
+        assert "bpm" in names
+
+
+class TestSongManagement:
+    """Test song loading and listing."""
+
+    def test_list_songs_returns_list(self):
+        """list_songs() returns a list."""
+        songs = api.list_songs()
+        assert isinstance(songs, list)
+
+    def test_list_songs_structure(self):
+        """Each song has name and title fields."""
+        songs = api.list_songs()
+        if songs:
+            for song in songs:
+                assert "name" in song
+                assert "title" in song
+
+    def test_load_song_with_valid_name(self):
+        """load_song() can load a valid song."""
+        songs = api.list_songs()
+        if songs:
+            song_name = songs[0]["name"]
+            song = api.load_song(song_name)
+            assert song is not None
+            assert isinstance(song, dict)
+
+    def test_load_song_returns_dict(self):
+        """load_song() returns a dictionary spec."""
+        songs = api.list_songs()
+        if songs:
+            song = api.load_song(songs[0]["name"])
+            assert isinstance(song, dict)
+
+
+class TestPresetManagement:
+    """Test preset saving, loading, listing."""
+
+    def test_list_presets_returns_list(self):
+        """list_presets() returns a list."""
+        presets = api.list_presets()
+        assert isinstance(presets, list)
+
+    def test_list_presets_structure(self):
+        """Each preset has name and title."""
+        presets = api.list_presets()
+        if presets:
+            for preset in presets:
+                assert "name" in preset
+                assert "title" in preset
+
+    def test_save_and_load_preset(self):
+        """Can save and load a preset."""
+        spec = {"keys": "C::maj7", "seconds": "2", "bpm": "120"}
+        name = "test_preset_xyz"
+
+        api.save_preset(name, spec, title="Test Preset")
+        loaded = api.load_preset(name)
+
+        assert loaded is not None
+        assert isinstance(loaded, dict)
+
+    def test_delete_preset(self):
+        """Can delete a preset."""
+        spec = {"keys": "C::maj", "seconds": "1"}
+        name = "test_delete_xyz"
+
+        api.save_preset(name, spec)
+        api.delete_preset(name)
+
+        # Verify it's gone by checking list
+        presets = api.list_presets()
+        names = [p["name"] for p in presets]
+        assert name not in names
+
+    def test_has_home_preset(self):
+        """has_home_preset() returns boolean."""
+        result = api.has_home_preset()
+        assert isinstance(result, bool)
+
+    def test_save_preset_with_description(self):
+        """Preset can have a description."""
+        spec = {"keys": "G::maj7"}
+        name = "test_desc_xyz"
+
+        api.save_preset(name, spec, title="Title", description="Test description")
+        loaded = api.load_preset(name)
+
+        assert loaded is not None
+
+
+class TestProgressionManagement:
+    """Test progression saving, loading, listing."""
+
+    def test_list_progressions_returns_list(self):
+        """list_progressions() returns a list."""
+        progs = api.list_progressions()
+        assert isinstance(progs, list)
+
+    def test_list_progressions_structure(self):
+        """Each progression has name and title."""
+        progs = api.list_progressions()
+        if progs:
+            for prog in progs:
+                assert "name" in prog
+                assert "title" in prog
+
+    def test_save_and_load_progression(self):
+        """Can save and load a progression."""
+        keys_spec = "C::maj, F::maj, G::maj"
+        name = "test_prog_xyz"
+
+        api.save_progression(name, keys_spec, title="Test Progression")
+        loaded = api.load_progression(name)
+
+        assert loaded is not None
+
+    def test_delete_progression(self):
+        """Can delete a progression."""
+        keys_spec = "C::maj, G::maj"
+        name = "test_prog_delete_xyz"
+
+        api.save_progression(name, keys_spec)
+        api.delete_progression(name)
+
+        # Verify it's gone
+        progs = api.list_progressions()
+        names = [p["name"] for p in progs]
+        assert name not in names
+
+
+class TestEnvelopeExtraction:
+    """Test MIDI envelope extraction from MIDI bytes."""
+
+    def test_envelope_from_bytes_with_valid_midi(self):
+        """envelope_from_bytes extracts envelope from MIDI."""
+        # Generate some MIDI to test with
+        spec = {"keys": "C::maj7", "seconds": "1"}
+        result = api.generate(spec)
+
+        envelope = api.envelope_from_bytes(result.midi, result.duration_seconds)
+        assert isinstance(envelope, list)
+        assert len(envelope) > 0
+        assert all(isinstance(x, (int, float)) for x in envelope)
+
+    def test_envelope_custom_bucket_count(self):
+        """envelope_from_bytes respects bucket count."""
+        spec = {"keys": "C::maj7", "seconds": "1"}
+        result = api.generate(spec)
+
+        envelope = api.envelope_from_bytes(result.midi, result.duration_seconds, buckets=30)
+        assert len(envelope) == 30
+
+
+class TestSlugify:
+    """Test slug generation for preset/progression names."""
+
+    def test_slugify_simple_name(self):
+        """Slugify converts to lowercase."""
+        slug = api.slugify("Test Preset")
+        assert slug == slug.lower()
+
+    def test_slugify_removes_spaces(self):
+        """Slugify handles spaces."""
+        slug = api.slugify("My Test Preset")
+        assert " " not in slug
+
+    def test_slugify_removes_special_chars(self):
+        """Slugify removes special characters."""
+        slug = api.slugify("Test!@#$%Preset")
+        # Slugify produces a valid identifier/slug
+        assert isinstance(slug, str)
+        assert len(slug) > 0

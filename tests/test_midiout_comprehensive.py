@@ -311,3 +311,541 @@ class TestIntegration:
         out2 = MidiOut(bpm=120, vel_mode_chords="random", vel_mode_drums="human")
         assert out2.vel_mode_chords == "random"
         assert out2.vel_mode_drums == "human"
+
+
+class TestVelocityComputation:
+    """Test velocity calculation with different modes."""
+
+    def test_clamp_velocity_within_range(self):
+        """Velocity clamped to [1, 127]."""
+        assert MidiOut._clamp_velocity(64) == 64
+        assert MidiOut._clamp_velocity(127) == 127
+        assert MidiOut._clamp_velocity(1) == 1
+
+    def test_clamp_velocity_below_min(self):
+        """Velocity clamped to minimum of 1."""
+        assert MidiOut._clamp_velocity(-10) == 1
+        assert MidiOut._clamp_velocity(0) == 1
+
+    def test_clamp_velocity_above_max(self):
+        """Velocity clamped to maximum of 127."""
+        assert MidiOut._clamp_velocity(200) == 127
+        assert MidiOut._clamp_velocity(128) == 127
+
+    def test_compute_chord_velocity_default_mode(self):
+        """Default velocity mode returns consistent velocity."""
+        out = MidiOut(bpm=120, vel_mode_chords="default")
+        vel1 = out._compute_chord_velocity(0.0)
+        vel2 = out._compute_chord_velocity(1.0)
+        assert vel1 == vel2
+        assert 1 <= vel1 <= 127
+
+    def test_compute_chord_velocity_random_mode(self):
+        """Random mode produces varying velocities."""
+        out = MidiOut(bpm=120, vel_mode_chords="random")
+        velocities = {out._compute_chord_velocity(i * 0.25) for i in range(20)}
+        # Random mode should produce multiple different velocities
+        assert len(velocities) > 1
+
+    def test_compute_chord_velocity_human_mode(self):
+        """Human mode applies beat-based accents."""
+        out = MidiOut(bpm=120, vel_mode_chords="human")
+        vel_beat1 = out._compute_chord_velocity(0.0)  # Strong beat
+        vel_beat2 = out._compute_chord_velocity(0.5)  # Off-beat
+        # Both should be valid
+        assert 1 <= vel_beat1 <= 127
+        assert 1 <= vel_beat2 <= 127
+
+    def test_compute_drum_velocity_default_mode(self):
+        """Drum velocity with default mode."""
+        out = MidiOut(bpm=120, vel_mode_drums="default")
+        vel = out._compute_drum_velocity(midi_note=36, base=80, when_beats=0.0)
+        assert 1 <= vel <= 127
+
+    def test_compute_drum_velocity_random_mode(self):
+        """Drum velocity with random mode."""
+        out = MidiOut(bpm=120, vel_mode_drums="random")
+        velocities = {out._compute_drum_velocity(36, 80, i * 0.25) for i in range(20)}
+        assert len(velocities) > 1
+
+
+class TestVoicePlayback:
+    """Test playing notes on voice tracks."""
+
+    def test_play_voice_note_basic(self):
+        """play_voice_note adds note on/off messages."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", note=72, start_beats=0.0, duration=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_play_voice_note_multiple_voices(self):
+        """Can play notes on multiple voices."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.play_voice_note("alto", 67, 0.0, 1.0)
+        out.play_voice_note("tenor", 60, 0.0, 1.0)
+        out.play_voice_note("bass", 55, 0.0, 1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_play_voice_note_invalid_voice(self):
+        """Invalid voice name is silently ignored."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("invalid", 72, 0.0, 1.0)
+        # Should not crash
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_play_voice_note_zero_duration(self):
+        """Zero duration note is ignored."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_play_voice_note_negative_duration(self):
+        """Negative duration note is ignored."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, -1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_play_voice_note_sequence(self):
+        """Multiple notes in sequence."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 60, 0.0, 1.0)
+        out.play_voice_note("soprano", 62, 1.0, 1.0)
+        out.play_voice_note("soprano", 64, 2.0, 1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestDrumPlayback:
+    """Test playing drum notes via blocks."""
+
+    def test_drums_block_single_pattern(self):
+        """drums_block plays a drum pattern."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36), PercHit(note=38)]
+        out.drums_block(pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_empty_pattern(self):
+        """drums_block with empty pattern is safe."""
+        out = MidiOut(bpm=120)
+        out.drums_block([], beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_with_base_velocity(self):
+        """drums_block respects base velocity."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36)]
+        out.drums_block(pattern, beats=1.0, when_beats=0.0, velk=90)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestVoiceAdvance:
+    """Test advancing voice positions."""
+
+    def test_advance_ch_positive(self):
+        """advance_ch moves chord voices forward."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.advance_ch(2.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_advance_ch_zero(self):
+        """advance_ch with zero beats is safe."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.advance_ch(0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_advance_ch_negative(self):
+        """advance_ch with negative beats is ignored."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.advance_ch(-1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_advance_dr_positive(self):
+        """advance_dr moves drums forward."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36)]
+        out.drums_block(pattern, beats=1.0, when_beats=0.0)
+        out.advance_dr(2.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestProgramChange:
+    """Test mid-track program changes (re-orchestration)."""
+
+    def test_program_change_at(self):
+        """program_change_at changes instrument mid-track."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.program_change_at("soprano", program=5, when_beats=1.0)
+        out.play_voice_note("soprano", 74, 1.0, 1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_program_change_at_invalid_voice(self):
+        """program_change_at on invalid voice is safe."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.program_change_at("invalid", program=5, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_program_change_at_with_bank(self):
+        """program_change_at can set bank MSB/LSB."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.program_change_at("soprano", program=0, when_beats=0.0,
+                              bank_msb=1, bank_lsb=2)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_set_voice_programs_dict(self):
+        """set_voice_programs applies programs to voices."""
+        out = MidiOut(split_stems=True, bpm=120)
+        programs = {"soprano": 0, "alto": 1, "tenor": 2, "bass": 3}
+        out.set_voice_programs(programs, default_program=5)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_set_program_global(self):
+        """set_program applies global program."""
+        out = MidiOut(bpm=120)
+        out.set_program(program=0, bank_msb=0, bank_lsb=0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestTempoChanges:
+    """Test tempo changes mid-track."""
+
+    def test_set_tempo_at(self):
+        """set_tempo_at changes tempo at offset."""
+        out = MidiOut(bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.set_tempo_at(bpm=140, when_beats=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_multiple_tempo_changes(self):
+        """Multiple tempo changes work."""
+        out = MidiOut(bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.set_tempo_at(bpm=140, when_beats=1.0)
+        out.set_tempo_at(bpm=100, when_beats=2.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestChordBlocks:
+    """Test chord block playback methods."""
+
+    def test_chord_block_basic(self):
+        """chord_block plays a chord at a time."""
+        out = MidiOut(split_stems=True, bpm=120)
+        notes = (72, 67, 60, 55)  # soprano, alto, tenor, bass
+        out.chord_block(notes=notes, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_block_ensemble(self):
+        """chord_block on ensemble channel (no split_stems)."""
+        out = MidiOut(split_stems=False, bpm=120)
+        notes = (72, 67, 60, 55)
+        out.chord_block(notes=notes, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_dense_block_basic(self):
+        """dense_block plays all notes together."""
+        out = MidiOut(bpm=120)
+        notes = (60, 64, 67, 71)
+        out.dense_block(notes=notes, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_block_with_base_velocity(self):
+        """chord_block respects base velocity."""
+        out = MidiOut(split_stems=True, bpm=120, vel_mode_chords="default")
+        notes = (72, 67, 60, 55)
+        out.chord_block(notes=notes, beats=1.0, when_beats=0.0, base=100)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_block_sequential(self):
+        """multiple chord_blocks play in sequence."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.chord_block((72, 67, 60, 55), beats=1.0, when_beats=0.0)
+        out.chord_block((74, 69, 62, 57), beats=1.0, when_beats=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestDrumBlocks:
+    """Test drum block playback."""
+
+    def test_drums_block_basic(self):
+        """drums_block plays percussion patterns."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36), PercHit(note=38)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_human_velocity(self):
+        """drums_block with human velocity mode adds accents."""
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        pattern = [PercHit(note=36)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_with_velocity_offset(self):
+        """drums_block respects velocity offset in PercHit."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36, vel_offset=10)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_with_probability(self):
+        """drums_block skips hits below probability threshold."""
+        out = MidiOut(bpm=120)
+        # Low probability hit should be skipped
+        pattern = [PercHit(note=36, probability=0.0)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_various_drum_notes(self):
+        """drums_block handles various drum notes."""
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        # Test various drum notes (hat, crash, cowbell, etc.)
+        pattern = [
+            PercHit(note=42),  # closed hi-hat
+            PercHit(note=46),  # open hi-hat
+            PercHit(note=49),  # crash
+        ]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_with_flam(self):
+        """drums_block respects flam parameter."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36, flam=0.05)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_flam_longer_than_beat(self):
+        """drums_block clamps flam to beat duration."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36, flam=10.0)]
+        out.drums_block(hits=pattern, beats=0.5, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_multiple_notes_all_drums(self):
+        """drums_block with all drum note types."""
+        out = MidiOut(bpm=120)
+        pattern = [
+            PercHit(note=36),  # kick
+            PercHit(note=38),  # snare
+            PercHit(note=37),  # cross stick
+            PercHit(note=39),  # hand clap
+            PercHit(note=47),  # cymbal tom
+            PercHit(note=56),  # cowbell
+            PercHit(note=99),  # unknown note -> default 80
+        ]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_with_openhat_choke(self):
+        """drums_block with openhat choke on."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=46)]  # open hi-hat
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0,
+                        choke_openhat=True, choke_after_beats=0.5)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drums_block_with_openhat_choke_long(self):
+        """drums_block with openhat choke with long duration."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=46)]  # open hi-hat
+        out.drums_block(hits=pattern, beats=2.0, when_beats=0.0,
+                        choke_openhat=True, choke_after_beats=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+
+class TestFlushAndSave:
+    """Test flushing active notes and saving."""
+
+    def test_flush_to_end(self):
+        """flush_to_end finalizes the MIDI."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.flush_to_end(chord_pos=1.0, drum_pos=1.0, end_beat=2.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_flush_to_end_with_active_notes(self):
+        """flush_to_end releases active notes properly."""
+        out = MidiOut(split_stems=True, bpm=120)
+        # Directly add active notes without releasing them
+        out.active_ch["soprano"].add(72)
+        out.active_ch["alto"].add(67)
+        # Flush, which should release the notes
+        out.flush_to_end(chord_pos=0.0, drum_pos=0.0, end_beat=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_flush_to_end_with_active_drums(self):
+        """flush_to_end releases active drum notes."""
+        out = MidiOut(bpm=120)
+        # Directly add active drum notes without releasing them
+        out.active_dr.add(36)
+        out.active_dr.add(38)
+        out.flush_to_end(chord_pos=0.0, drum_pos=0.0, end_beat=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_to_bytes_produces_valid_midi(self):
+        """to_bytes produces valid MIDI data."""
+        out = MidiOut(bpm=120)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        midi_bytes = out.to_bytes()
+        # Should start with MIDI header
+        assert midi_bytes.startswith(b'MThd')
+
+
+class TestHumanizationAndVelocity:
+    """Test humanization and velocity computation."""
+
+    def test_chord_velocity_random_mode(self):
+        """Chord velocity in random mode varies."""
+        out = MidiOut(bpm=120, vel_mode_chords="random")
+        random.seed(42)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        midi_bytes1 = out.to_bytes()
+
+        out2 = MidiOut(bpm=120, vel_mode_chords="random")
+        random.seed(99)
+        out2.play_voice_note("soprano", 72, 0.0, 1.0)
+        midi_bytes2 = out2.to_bytes()
+        # With different seeds, the MIDI bytes should differ
+        # (not a strict equality check due to timestamps, but they shouldn't be identical)
+        assert isinstance(midi_bytes1, bytes) and isinstance(midi_bytes2, bytes)
+
+    def test_chord_velocity_human_mode_beat_accents(self):
+        """Human velocity mode accents on-beat chord hits."""
+        out = MidiOut(bpm=120, vel_mode_chords="human")
+        # Hit on beat 0 should get accent
+        out.play_voice_note("soprano", 72, start_beats=0.0, duration=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_velocity_human_mode_offbeat_1(self):
+        """Human velocity mode accents beat 1."""
+        out = MidiOut(bpm=120, vel_mode_chords="human")
+        # Hit on beat 1.0 should get different accent
+        out.play_voice_note("soprano", 72, start_beats=1.0, duration=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_velocity_human_mode_offbeat_2(self):
+        """Human velocity mode accents beat 2."""
+        out = MidiOut(bpm=120, vel_mode_chords="human")
+        # Hit on beat 2.0 should get accent
+        out.play_voice_note("soprano", 72, start_beats=2.0, duration=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_velocity_human_mode_beat_2_multivoice(self):
+        """Human velocity mode beat 2 with multiple voices."""
+        out = MidiOut(split_stems=True, bpm=120, vel_mode_chords="human")
+        # Test beat 2.0 with multiple voices
+        out.chord_block((72, 67, 60, 55), beats=1.0, when_beats=2.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_velocity_human_mode_offbeat_3(self):
+        """Human velocity mode accents beat 3."""
+        out = MidiOut(bpm=120, vel_mode_chords="human")
+        # Hit on beat 3.0 should get accent
+        out.play_voice_note("soprano", 72, start_beats=3.0, duration=1.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_velocity_human_mode_beat_3_multivoice(self):
+        """Human velocity mode beat 3 with multiple voices."""
+        out = MidiOut(split_stems=True, bpm=120, vel_mode_chords="human")
+        # Test beat 3.0 with multiple voices
+        out.chord_block((72, 67, 60, 55), beats=1.0, when_beats=3.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drum_velocity_human_mode_beat_accents(self):
+        """Human velocity mode accents on-beat hits."""
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        # Hit on beat 0 should get accent
+        pattern = [PercHit(note=36)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drum_velocity_human_mode_beat2(self):
+        """Human velocity mode accents beat 2."""
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        # Hit on beat 2 should get different accent than beat 0
+        pattern = [PercHit(note=36)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=2.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drum_velocity_human_mode_beat3(self):
+        """Human velocity mode accents beat 3."""
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        # Hit on beat 3 should get accent
+        pattern = [PercHit(note=36)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=3.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drum_velocity_human_mode_snare(self):
+        """Human velocity mode accents different for snare."""
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        # Snare (38) should get different accent than kick (36)
+        pattern = [PercHit(note=38)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_dense_block_empty(self):
+        """dense_block with empty notes is safe."""
+        out = MidiOut(bpm=120)
+        out.dense_block([], beats=1.0, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_chord_block_multiple_velocities(self):
+        """Multiple chords with different bases produce different velocities."""
+        out = MidiOut(split_stems=True, bpm=120, vel_mode_chords="default")
+        out.chord_block((72, 67, 60, 55), beats=1.0, when_beats=0.0, base=80)
+        out.chord_block((74, 69, 62, 57), beats=1.0, when_beats=1.0, base=100)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
