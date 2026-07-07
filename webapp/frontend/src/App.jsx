@@ -96,6 +96,9 @@ export default function App() {
   const [params, setParams] = useState(null);
   const [spec, setSpec] = useState(null);
   const [grooves, setGrooves] = useState([]);
+  // Drum-map letter → label (e.g. b → "Bass Drum 1"), from /api/vocab; powers
+  // the drum legend and autocomplete in the percussion editor.
+  const [drums, setDrums] = useState({});
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   // Wall-clock seconds since the current generate() started; drives the
@@ -172,6 +175,7 @@ export default function App() {
       .then(([schema, vocab, songsData, presetsData]) => {
         setParams(schema.params);
         setGrooves(vocab.grooves || []);
+        setDrums(vocab.drums || {});
         setInstruments(vocab.instruments || []);
         setInstrumentCatalog(vocab.instrument_catalog || []);
         setSongs(songsData.songs || []);
@@ -408,7 +412,16 @@ export default function App() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error(j.detail || `HTTP ${res.status}`);
+        const d = j.detail;
+        // The backend now returns a structured detail object
+        // ({error_type, message, suggestion, code}); keep the string fallback
+        // for any endpoint (or older server) that still sends a bare detail.
+        if (d && typeof d === "object") {
+          const e = new Error(d.message || `HTTP ${res.status}`);
+          e.structured = d;
+          throw e;
+        }
+        throw new Error((typeof d === "string" && d) || `HTTP ${res.status}`);
       }
       const data = await res.json();
       if (myId !== reqIdRef.current) return;
@@ -430,10 +443,23 @@ export default function App() {
       }
     } catch (err) {
       if (myId === reqIdRef.current) {
-        const { message, details } = friendlyError(err.message || err);
         setError(String(err.message || err));
         setStatus("error");
-        pushToast({ type: "error", message: `Couldn't generate — ${message}`, details });
+        const s = err.structured;
+        if (s) {
+          // Actionable error: friendly headline + a 💡 suggestion, with the
+          // stable error code tucked into the collapsible Details.
+          const { message } = friendlyError(s.message);
+          pushToast({
+            type: "error",
+            message: `Couldn't generate — ${message}`,
+            hint: s.suggestion || "",
+            details: s.code ? `${s.code}\n${s.message}` : s.message,
+          });
+        } else {
+          const { message, details } = friendlyError(err.message || err);
+          pushToast({ type: "error", message: `Couldn't generate — ${message}`, details });
+        }
       }
     }
   }
@@ -752,7 +778,7 @@ export default function App() {
                   {ps.map((p) => (
                     <Param key={p.name} param={p} value={spec[p.name]}
                       onChange={setField(p.name)} grooves={grooves} instruments={instruments}
-                      instrumentCatalog={instrumentCatalog}
+                      instrumentCatalog={instrumentCatalog} drums={drums}
                       onPreviewInstrument={previewInstrument} previewing={previewing} />
                   ))}
                 </Panel>
@@ -910,8 +936,8 @@ function Panel({ group, accent, collapsed, onToggle, children }) {
 
 const SPECIAL = {
   keys: (v, oc) => <HarmonyEditor value={v} onChange={oc} />,
-  perc_main: (v, oc) => <PercField value={v} kind="drums" onChange={oc} />,
-  perc_interrupters: (v, oc) => <PercList value={v} kind="drums" onChange={oc} />,
+  perc_main: (v, oc, ctx) => <PercField value={v} kind="drums" onChange={oc} drums={ctx.drums} />,
+  perc_interrupters: (v, oc, ctx) => <PercList value={v} kind="drums" onChange={oc} drums={ctx.drums} />,
   chord_interrupters: (v, oc) => <PercList value={v} kind="chord" onChange={oc} />,
 };
 
@@ -1064,7 +1090,7 @@ function VoiceInstrumentPicker({ value = [], instruments, onChange, onPreview })
 }
 
 function Param({ param, value, onChange, grooves, instruments, instrumentCatalog,
-                onPreviewInstrument, previewing }) {
+                drums, onPreviewInstrument, previewing }) {
   // Preset-groove pickers (perc_main_key / perc_intr_keys) — discoverable
   // dropdowns/chips instead of blank text fields.
   if (param.name === "perc_main_key") {
@@ -1125,7 +1151,7 @@ function Param({ param, value, onChange, grooves, instruments, instrumentCatalog
           <span>{pretty(param.name)}</span>
           {param.help && <span className="info" data-tip={param.help} tabIndex={0} role="button" aria-label={param.help}>?</span>}
         </div>
-        {special(value, onChange)}
+        {special(value, onChange, { drums })}
       </div>
     );
   }

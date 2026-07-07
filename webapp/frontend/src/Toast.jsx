@@ -56,6 +56,7 @@ function Toast({ toast, onDismiss }) {
       <span className="toast-icon">{ICON[toast.type] || ICON.info}</span>
       <div className="toast-body">
         <div className="toast-msg">{toast.message}</div>
+        {toast.hint && <div className="toast-hint">💡 {toast.hint}</div>}
         {toast.details && (
           <div className="toast-details">
             <button className="toast-details-toggle"
