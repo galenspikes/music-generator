@@ -14,10 +14,14 @@ This module is that contract:
     parameter_schema()    -> list[ParamSpec]    (every flag, introspected from argparse)
 
 It is a façade over the existing engine, reusing the shared, disk-free builders
-(`build_flat_midi`, `build_generated`) extracted from ``main``. Generation is
-serialised by a lock because the engine still keeps process-global state (active
-drum map, RNG); each call is ~0.1s so this is fine for a demo. Removing that
-global state (true concurrency) is a later, separate step.
+extracted from ``main`` so the CLI and this seam drive one code path per mode:
+``build_flat_midi`` (ostinato/mixed), ``build_fugue_midi`` / ``build_process_midi``,
+and ``song_overrides_from_args`` (the arrangement override dict — the CLI and API
+pass different ``include`` predicates but share the builder). Invalid specs raise
+``mg.SpecError`` rather than the CLI's ``SystemExit``. Generation is serialised by
+a lock because the engine still keeps process-global state (active drum map, RNG);
+each call is ~0.1s so this is fine for a demo. Removing that global state (true
+concurrency) is a later, separate step.
 """
 
 from __future__ import annotations
