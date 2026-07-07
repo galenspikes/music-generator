@@ -6,6 +6,7 @@ import HarmonyEditor from "./HarmonyEditor.jsx";
 import { PercField, PercList, GrooveSelect, GrooveMulti } from "./PercEditor.jsx";
 import Docs from "./Docs.jsx";
 import LeadSheetImport from "./LeadSheetImport.jsx";
+import { useToasts, ToastStack } from "./Toast.jsx";
 
 const GROUP_ORDER = [
   "Engine", "Harmony", "Voicing", "Bass", "Melody",
@@ -54,6 +55,22 @@ const slugify = (text) => {
 // see generator_api.HOME_PRESET_NAME.
 const HOME_PRESET = "home";
 
+// Split a generation error into a short user-facing line and an optional raw
+// "Details" body. The backend already returns human-written GenerationError
+// text (never a stack trace), so the message stays as-is; details only carries
+// the full string when it's long or multi-line, i.e. when there's more to see.
+const friendlyError = (raw) => {
+  const text = String(raw || "").trim() || "Something went wrong.";
+  // Drop a leading Python exception-type prefix ("ValueError: ", "KeyError: ")
+  // from the headline — a musician shouldn't have to read exception classes.
+  // The untouched text still goes into "Details" for anyone who wants it.
+  const firstLine = text.split("\n")[0].replace(/^[A-Za-z_][\w.]*Error:\s*/, "");
+  const truncated = firstLine.length > 160;
+  const message = truncated ? firstLine.slice(0, 157) + "…" : firstLine;
+  const hasMore = truncated || text.includes("\n") || firstLine !== text;
+  return { message, details: hasMore ? text : "" };
+};
+
 const matchesFilter = (query, ...fields) => {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -81,6 +98,11 @@ export default function App() {
   const [grooves, setGrooves] = useState([]);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
+  // Wall-clock seconds since the current generate() started; drives the
+  // elapsed-time readout (and a ">5s, hang on" reassurance) in the transport.
+  const [elapsed, setElapsed] = useState(0);
+  const genStartRef = useRef(0);
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
   const [tracks, setTracks] = useState([]);
   const [envelope, setEnvelope] = useState([]);
   // Panels start expanded. On phones, the module-picker below already shows
@@ -123,11 +145,14 @@ export default function App() {
   const [saveAsHome, setSaveAsHome] = useState(false);
   const [libraryFilter, setLibraryFilter] = useState("");
   const [activeModule, setActiveModule] = useState("Harmony"); // For mobile module picker
+  const [showHelp, setShowHelp] = useState(false);       // keyboard-shortcuts overlay
+  const [showWelcome, setShowWelcome] = useState(false); // first-visit onboarding
 
   const playerRef = useRef(null);
   const vizRef = useRef(null);
   const debounceRef = useRef(null);
   const reqIdRef = useRef(0);
+  const importFileRef = useRef(null); // hidden <input type=file> for Import Settings
 
   // Switching banks mid-playback would otherwise mix old audio buffers with
   // newly-loaded samples — stop and let the player reload cleanly.
@@ -162,8 +187,8 @@ export default function App() {
         // Boot into the user's home preset if they've set one (ui-homework.md:
         // "the home, or a user-defined home preset") — otherwise the opening demo.
         const hasHome = (presetsData.presets || []).some((p) => p.name === HOME_PRESET);
-        if (hasHome) loadPreset(HOME_PRESET);
-        else loadSong("kiss");
+        if (hasHome) loadPreset(HOME_PRESET, { notify: false });
+        else loadSong("kiss", { notify: false });
       })
       .catch((e) => { setError(String(e)); setStatus("error"); });
   }, []);
@@ -172,8 +197,9 @@ export default function App() {
     fetch("/api/presets").then((r) => r.json())
       .then((data) => setPresets(data.presets || [])).catch(() => {});
 
-  // Load a song by name
-  const loadSong = (name) => {
+  // Load a song by name. `notify` posts a "Loaded: …" toast for explicit user
+  // loads; boot-time loads pass false so the app doesn't greet itself.
+  const loadSong = (name, { notify = true } = {}) => {
     fetch(`/api/songs/${encodeURIComponent(name)}`)
       .then((r) => r.json())
       .then((data) => {
@@ -189,12 +215,19 @@ export default function App() {
           return { ...clean, ...data.spec };
         });
         setTab("listen");
+        if (notify) {
+          const title = songs.find((s) => s.name === name)?.title || name;
+          pushToast({ type: "success", message: `Loaded: ${title}` });
+        }
       })
-      .catch((e) => console.log("Song load failed:", e.message));
+      .catch((e) => {
+        console.log("Song load failed:", e.message);
+        pushToast({ type: "error", message: `Couldn't load "${name}".`, details: String(e.message || e) });
+      });
   };
 
-  // Load a preset by name
-  const loadPreset = (name) => {
+  // Load a preset by name (see loadSong for the `notify` convention).
+  const loadPreset = (name, { notify = true } = {}) => {
     fetch(`/api/presets/${encodeURIComponent(name)}`)
       .then((r) => r.json())
       .then((data) => {
@@ -207,8 +240,15 @@ export default function App() {
           return { ...clean, ...data.spec };
         });
         setTab("listen");
+        if (notify) {
+          const title = presets.find((p) => p.name === name)?.title || name;
+          pushToast({ type: "success", message: `Loaded: ${title}` });
+        }
       })
-      .catch((e) => console.log("Preset load failed:", e.message));
+      .catch((e) => {
+        console.log("Preset load failed:", e.message);
+        pushToast({ type: "error", message: `Couldn't load "${name}".`, details: String(e.message || e) });
+      });
   };
 
   // Save current spec as a preset. `slug` is what's used in the URL (and thus
@@ -265,10 +305,99 @@ export default function App() {
   const setField = (name) => (value) =>
     setSpec((s) => ({ ...s, [name]: value }));
 
+  // A spec of just the engine's own schema defaults. perc_lib is carried over
+  // from the live spec so library-groove lookups keep resolving server-side
+  // (it's an absolute path handed to us at boot, not a musical default).
+  const defaultsSpec = () => {
+    const base = {};
+    for (const p of params) base[p.name] = p.default;
+    if (spec && spec.perc_lib) base.perc_lib = spec.perc_lib;
+    return base;
+  };
+
+  // "+ New" — a fresh patch seeded to a good-sounding start (SEED_OVERRIDES).
+  const newPatch = () => {
+    setSpec({ ...defaultsSpec(), ...SEED_OVERRIDES });
+    setCurrentSong(null);
+    setImportedTitle(null);
+    setTab("editor");
+  };
+
+  // Reset every control to the engine's own defaults (the argparse schema),
+  // with a confirm — the recover-from-a-mess button (plan 4.1). Distinct from
+  // "+ New", which layers the friendlier SEED_OVERRIDES on top.
+  const resetDefaults = () => {
+    if (typeof window !== "undefined" &&
+        !window.confirm("Reset all controls to their defaults?")) return;
+    setSpec(defaultsSpec());
+    setCurrentSong(null);
+    setImportedTitle(null);
+    pushToast({ type: "info", message: "Controls reset to defaults." });
+  };
+
+  const currentTitle = () =>
+    (currentSong ? (songs.find((s) => s.name === currentSong)?.title || currentSong)
+      : (importedTitle || "untitled"));
+
+  // Export/import the current controls as a portable JSON file (plan 4.4) —
+  // reusable across sessions and shareable. Not a preset (which lives on the
+  // server); just the control values, plus a name/timestamp for humans.
+  const exportSettings = () => {
+    const name = currentTitle();
+    const payload = { name, timestamp: new Date().toISOString(), controls: spec };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${slugify(name)}-settings.json`; a.click();
+    URL.revokeObjectURL(url);
+    pushToast({ type: "success", message: "Settings exported." });
+  };
+
+  const importSettings = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        const controls = data.controls || data.spec || data;
+        if (!controls || typeof controls !== "object") throw new Error("no controls in file");
+        // Accept only keys the schema knows, so an old/foreign file can't
+        // inject junk into the spec.
+        const known = new Set(params.map((p) => p.name));
+        const clean = {};
+        for (const [k, v] of Object.entries(controls)) if (known.has(k)) clean[k] = v;
+        if (Object.keys(clean).length === 0) throw new Error("no recognized controls");
+        setSpec((s) => ({ ...s, ...clean }));
+        setCurrentSong(null);
+        setImportedTitle(data.name || "imported settings");
+        setTab("listen");
+        pushToast({ type: "success", message: `Imported: ${data.name || file.name}` });
+      } catch (e) {
+        pushToast({ type: "error", message: "Couldn't read that settings file.",
+          details: String(e.message || e) });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Transport actions reused by both buttons and keyboard shortcuts.
+  const togglePlay = () => {
+    const p = playerRef.current;
+    if (!p) return;
+    try { if (p.playing) p.stop(); else p.start(); } catch (_) { /* not ready */ }
+  };
+  const downloadMidi = () => {
+    if (!downloadUrl) return;
+    const a = document.createElement("a");
+    a.href = downloadUrl; a.download = "music-generator.mid"; a.click();
+  };
+
   async function generate(curSpec) {
     const body = curSpec || spec;
     if (!body) return;
     const myId = ++reqIdRef.current;
+    genStartRef.current = Date.now();
+    setElapsed(0);
     setStatus("generating");
     setError("");
     try {
@@ -300,7 +429,12 @@ export default function App() {
         setSpec((s) => (s.seconds === rounded ? s : { ...s, seconds: rounded }));
       }
     } catch (err) {
-      if (myId === reqIdRef.current) { setError(String(err.message || err)); setStatus("error"); }
+      if (myId === reqIdRef.current) {
+        const { message, details } = friendlyError(err.message || err);
+        setError(String(err.message || err));
+        setStatus("error");
+        pushToast({ type: "error", message: `Couldn't generate — ${message}`, details });
+      }
     }
   }
 
@@ -377,6 +511,53 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spec]);
 
+  // Tick the elapsed-time readout while a generate is in flight. genStartRef is
+  // stamped in generate(); we stop ticking (but keep the final value) the moment
+  // status leaves "generating".
+  useEffect(() => {
+    if (status !== "generating") return;
+    setElapsed((Date.now() - genStartRef.current) / 1000);
+    const id = setInterval(
+      () => setElapsed((Date.now() - genStartRef.current) / 1000), 100);
+    return () => clearInterval(id);
+  }, [status]);
+
+  // First-visit welcome overlay (plan 1.1), remembered per-browser. Auto-
+  // dismisses after 8s so it never blocks a returning user who ignores it.
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    if (!localStorage.getItem("mg_seen_welcome")) setShowWelcome(true);
+  }, []);
+  const dismissWelcome = () => {
+    setShowWelcome(false);
+    try { localStorage.setItem("mg_seen_welcome", "1"); } catch (_) { /* private mode */ }
+  };
+  useEffect(() => {
+    if (!showWelcome) return;
+    const id = setTimeout(dismissWelcome, 8000);
+    return () => clearTimeout(id);
+  }, [showWelcome]);
+
+  // Global keyboard shortcuts (plan 4.2). Deliberately does NOT hijack the
+  // browser's Cmd/Ctrl+R (reload) — Reset stays a button. Ignored while typing
+  // in a field, except Escape (which closes overlays). Depends on downloadUrl
+  // so Cmd/Ctrl+S grabs the current MIDI, not a stale blob.
+  useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" ||
+        t.tagName === "SELECT" || t.isContentEditable);
+      if (e.key === "Escape") { setShowHelp(false); setShowWelcome(false); return; }
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key === "Enter") { e.preventDefault(); togglePlay(); return; }
+      if (mod && (e.key === "s" || e.key === "S")) { e.preventDefault(); downloadMidi(); return; }
+      if (!typing && e.key === "?") { e.preventDefault(); setShowHelp((v) => !v); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [downloadUrl]);
+
   const grouped = useMemo(() => {
     if (!params) return [];
     const by = {};
@@ -419,11 +600,21 @@ export default function App() {
             ⚄ new take
           </button>
           <span className={`lamp lamp-${status}`} />
-          <span className="statustext">{status}</span>
+          <span className="statustext">
+            {status === "generating" ? `generating ${elapsed.toFixed(1)}s` : status}
+          </span>
+          {status === "generating" && elapsed > 5 && (
+            <span className="gen-reassure" role="status">
+              complex parameters — hang on…
+            </span>
+          )}
+          <button className="help-btn" title="Keyboard shortcuts (?)"
+            aria-label="keyboard shortcuts" onClick={() => setShowHelp(true)}>?</button>
         </div>
       </header>
 
-      {error && <pre className="errbar">{error}</pre>}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
 
       <nav className="tabbar">
         <button className={"tab" + (tab === "listen" ? " on" : "")} onClick={() => setTab("listen")}>▸ Listen</button>
@@ -438,15 +629,17 @@ export default function App() {
             : (importedTitle || "untitled")}
         </span>
         <div className="song-actions">
-          <button className="btn-new" onClick={() => {
-            const base = {};
-            for (const p of params) base[p.name] = p.default;
-            setSpec({ ...base, ...SEED_OVERRIDES });
-            setCurrentSong(null);
-            setImportedTitle(null);
-            setTab("editor");
-          }}>+ New</button>
+          <button className="btn-new" onClick={newPatch}>+ New</button>
           <button className="btn-save" onClick={() => setShowSaveDialog(true)}>Save</button>
+          <button className="btn-ghost" title="Reset all controls to defaults"
+            onClick={resetDefaults}>⟲ Reset</button>
+          <button className="btn-ghost" title="Export these settings as a JSON file"
+            onClick={exportSettings}>⤓ Export</button>
+          <button className="btn-ghost" title="Import settings from a JSON file"
+            onClick={() => importFileRef.current && importFileRef.current.click()}>⤒ Import</button>
+          <input ref={importFileRef} type="file" accept="application/json,.json"
+            style={{ display: "none" }}
+            onChange={(e) => { importSettings(e.target.files?.[0]); e.target.value = ""; }} />
         </div>
       </div>
 
@@ -626,6 +819,45 @@ export default function App() {
               <button onClick={() => {
                 if (saveTitle) handleSavePreset(saveTitle);
               }} disabled={!saveTitle}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWelcome && (
+        <div className="modal-overlay" onClick={dismissWelcome}>
+          <div className="modal welcome" onClick={(e) => e.stopPropagation()}>
+            <h3>Welcome to the Music Generator</h3>
+            <p className="welcome-teaser">Edit a chord or turn a knob — it regenerates
+              and plays instantly.</p>
+            <div className="modal-actions">
+              <button className="welcome-primary"
+                onClick={() => { dismissWelcome(); setTab("listen"); }}>
+                ▸ Play the demo
+              </button>
+              <button onClick={() => { dismissWelcome(); newPatch(); }}>
+                Start fresh
+              </button>
+            </div>
+            <div className="welcome-hint">Press <kbd>?</kbd> any time for keyboard shortcuts.</div>
+          </div>
+        </div>
+      )}
+
+      {showHelp && (
+        <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="modal shortcuts" onClick={(e) => e.stopPropagation()}>
+            <h3>Keyboard shortcuts</h3>
+            <ul className="shortcut-list">
+              <li><span><kbd>⌘/Ctrl</kbd> + <kbd>Enter</kbd></span> Play / stop</li>
+              <li><span><kbd>⌘/Ctrl</kbd> + <kbd>S</kbd></span> Download MIDI</li>
+              <li><span><kbd>?</kbd></span> Show / hide this help</li>
+              <li><span><kbd>Esc</kbd></span> Close dialogs</li>
+            </ul>
+            <p className="shortcut-note">Reset, Export and Import live in the bar above
+              the player.</p>
+            <div className="modal-actions">
+              <button onClick={() => setShowHelp(false)}>Close</button>
             </div>
           </div>
         </div>

@@ -113,9 +113,12 @@ export default function HarmonyEditor({ value, onChange }) {
       <div className="harm-modes">
         <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")} title="Edit chord tokens directly">code</button>
         <button className={"hm" + (mode === "build" ? " on" : "")} onClick={() => { commitKeys(); setMode("build"); }} title="Visually build chords with dropdowns">build</button>
+        <a className="tok-help" href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md"
+          target="_blank" rel="noreferrer" title="Chord token syntax reference">syntax ↗</a>
       </div>
 
       {mode === "code" ? (
+        <>
         <textarea
           className={"harm-text" + (parsed.ok ? "" : " err")}
           rows={rows} spellCheck={false}
@@ -124,6 +127,8 @@ export default function HarmonyEditor({ value, onChange }) {
           onBlur={commitKeys}
           placeholder={"C::maj7, A::min9, D::min7, G::13\n\nrepeat sections with groups:\n[A, G]*16,  C::maj7, F::maj9, ..."}
         />
+        <div className="tok-hint">Tokens like <code>C::maj7</code> or <code>[A, G]*16</code> — or switch to <b>build</b>, or copy from a demo.</div>
+        </>
       ) : (
         <div className="harm-build">
           {blocks.map((b, i) =>

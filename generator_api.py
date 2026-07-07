@@ -578,7 +578,10 @@ def _param_spec(action: argparse.Action, default) -> dict:
         "kind": kind,
         "choices": choices,
         "default": default,
-        "help": (action.help or "").strip(),
+        # A UI-facing "why you'd use it" tooltip can override the terser CLI
+        # help via PARAM_ANNOTATIONS["…"]["help"]; otherwise fall back to the
+        # argparse help so every control still gets *some* explanation.
+        "help": (ann.get("help") or action.help or "").strip(),
         "group": ann.get("group", "More"),
         "control": ann.get("control", _default_control(kind, choices)),
     }
@@ -620,50 +623,118 @@ HIDDEN_PARAMS: set[str] = {
 # to grow when we want nicer placement — never to keep the UI in sync.
 PARAM_ANNOTATIONS: dict[str, dict] = {
     # Engine
-    "seconds": {"group": "Engine", "control": "slider", "min": 4, "max": 600, "step": 2},
-    "bpm": {"group": "Engine", "control": "slider", "min": 40, "max": 300, "step": 1},
-    "seed": {"group": "Engine", "control": "int", "min": 0, "max": 999999},
-    "chord_len": {"group": "Engine", "control": "segmented"},
+    "seconds": {"group": "Engine", "control": "slider", "min": 4, "max": 600, "step": 2,
+                "help": "How long the piece runs, in seconds. (Songs use their "
+                        "own per-section lengths, so this is ignored for them.)"},
+    "bpm": {"group": "Engine", "control": "slider", "min": 40, "max": 300, "step": 1,
+            "help": "Tempo, in beats per minute — higher is faster."},
+    "seed": {"group": "Engine", "control": "int", "min": 0, "max": 999999,
+             "help": "The random seed. Same seed + same settings replays the "
+                     "exact same music; change it (or hit ⚄ new take) for a "
+                     "fresh variation."},
+    "chord_len": {"group": "Engine", "control": "segmented",
+                  "help": "How long each chord rings before the next: q=quarter, "
+                          "e=eighth, s=sixteenth, h=half. Shorter = busier."},
     # Harmony
-    "keys": {"group": "Harmony", "control": "text", "multiline": True},
+    "keys": {"group": "Harmony", "control": "text", "multiline": True,
+             "help": "The chord progression, in the token grammar (e.g. "
+                     "'C::maj7, A::min9, D::min7, G::13'). The heart of the patch."},
     "keys_preset": {"group": "Harmony", "control": "text"},
-    "chords": {"group": "Harmony", "control": "chips"},
-    "chords_order": {"group": "Harmony", "control": "segmented"},
+    "chords": {"group": "Harmony", "control": "chips",
+               "help": "When no explicit keys are given, the chord families the "
+                       "generator draws from (triads, sevenths, quartal, …)."},
+    "chords_order": {"group": "Harmony", "control": "segmented",
+                     "help": "With several chord families on, how the next chord "
+                             "is chosen: random, or round-robin (cycles through "
+                             "them in turn)."},
     "chord_interrupters": {"group": "Harmony", "control": "taglist"},
-    "chord_fill_rate": {"group": "Harmony", "control": "knob", "min": 0, "max": 1, "step": 0.01},
+    "chord_fill_rate": {"group": "Harmony", "control": "knob", "min": 0, "max": 1, "step": 0.01,
+                        "help": "0 = every chord plays straight; higher = chord "
+                                "'interrupter' motifs break up the changes more often."},
     # Voicing
-    "voicing": {"group": "Voicing", "control": "segmented"},
-    "satb_style": {"group": "Voicing", "control": "segmented"},
-    "instrument": {"group": "Voicing", "control": "text"},
+    "voicing": {"group": "Voicing", "control": "segmented",
+                "help": "SATB = clean 4-voice harmony. Dense = sounds every chord "
+                        "tone across the register (lush 11ths/13ths, clusters) on "
+                        "one timbre — richer and more complex."},
+    "satb_style": {"group": "Voicing", "control": "segmented",
+                   "help": "Block = re-voice a fresh chord each hit. Static = "
+                           "hold one voicing (no wobble). Counterpoint / arpeggio "
+                           "= flowing, independent melodic lines."},
+    "instrument": {"group": "Voicing", "control": "text",
+                   "help": "The sound for the harmony — a name alias like 'epiano' "
+                           "or 'strings', or a raw GM program number 0–127."},
     "voice_instrument": {"group": "Voicing", "control": "taglist"},
-    "counterpoint_step": {"group": "Voicing", "control": "knob", "min": 0.1, "max": 2, "step": 0.05},
-    "counterpoint_suspension_prob": {"group": "Voicing", "control": "knob", "min": 0, "max": 1, "step": 0.01},
-    "counterpoint_anticipation_prob": {"group": "Voicing", "control": "knob", "min": 0, "max": 1, "step": 0.01},
+    "counterpoint_step": {"group": "Voicing", "control": "knob", "min": 0.1, "max": 2, "step": 0.05,
+                          "help": "How fast counterpoint lines move, in beats per "
+                                  "note — lower is faster and busier. "
+                                  "(Counterpoint style only.)"},
+    "counterpoint_suspension_prob": {"group": "Voicing", "control": "knob", "min": 0, "max": 1, "step": 0.01,
+                                     "help": "Chance a voice holds its note through "
+                                             "a chord change (a suspension) for "
+                                             "tension. 0 = never, 1 = always."},
+    "counterpoint_anticipation_prob": {"group": "Voicing", "control": "knob", "min": 0, "max": 1, "step": 0.01,
+                                       "help": "Chance a voice moves early into the "
+                                               "next chord (an anticipation). "
+                                               "0 = never, 1 = always."},
     # Bass
-    "bass_style": {"group": "Bass", "control": "dropdown"},
-    "bass_step": {"group": "Bass", "control": "knob", "min": 0.125, "max": 2, "step": 0.125},
+    "bass_style": {"group": "Bass", "control": "dropdown",
+                   "help": "How the bass line is built: 'follow' tracks the "
+                           "harmony, or pick an independent line (root, octaves, "
+                           "fifths, walking, arp). 'none' drops the bass entirely."},
+    "bass_step": {"group": "Bass", "control": "knob", "min": 0.125, "max": 2, "step": 0.125,
+                  "help": "Bass note speed, in beats: 0.5 = eighths, 1 = quarters. "
+                          "(Ignored when bass style is 'follow'.)"},
     # Melody
-    "melody": {"group": "Melody", "control": "text", "multiline": True},
-    "melody_relative": {"group": "Melody", "control": "segmented"},
-    "melody_octave": {"group": "Melody", "control": "slider", "min": 2, "max": 8, "step": 1},
-    "melody_transform": {"group": "Melody", "control": "segmented"},
+    "melody": {"group": "Melody", "control": "text", "multiline": True,
+               "help": "A hand-written top line in scale degrees (e.g. "
+                       "'q1 q3 q5 h1'); loops to fill the piece, key inferred "
+                       "from the chords. Leave empty for no lead."},
+    "melody_relative": {"group": "Melody", "control": "segmented",
+                        "help": "Degrees resolve against the section key, or "
+                                "anchor to each chord's root so the motif refits "
+                                "every chord."},
+    "melody_octave": {"group": "Melody", "control": "slider", "min": 2, "max": 8, "step": 1,
+                      "help": "Which octave the melody sits in — higher is brighter."},
+    "melody_transform": {"group": "Melody", "control": "segmented",
+                         "help": "Apply a classic transform to the line: invert "
+                                 "(flip up/down), retrograde (reverse), or augment "
+                                 "(stretch)."},
     "melody_key": {"group": "Melody", "control": "text"},
     "melody_mode": {"group": "Melody", "control": "text"},
     # Percussion
-    "perc_main": {"group": "Percussion", "control": "text", "multiline": True},
-    "perc_interrupters": {"group": "Percussion", "control": "taglist"},
+    "perc_main": {"group": "Percussion", "control": "text", "multiline": True,
+                  "help": "The main drum loop, as tokens (e.g. 'qk, eh, qc, eh'). "
+                          "Leave empty for no drums."},
+    "perc_interrupters": {"group": "Percussion", "control": "taglist",
+                          "help": "Fill motifs that occasionally break up the main "
+                                  "loop; how often is set by perc fill rate."},
     "perc_stages": {"group": "Percussion", "control": "taglist"},
-    "perc_fill_rate": {"group": "Percussion", "control": "knob", "min": 0, "max": 1, "step": 0.01},
+    "perc_fill_rate": {"group": "Percussion", "control": "knob", "min": 0, "max": 1, "step": 0.01,
+                       "help": "0 = a locked, repeating groove; higher = drums swap "
+                               "in fill motifs more often. 1 = constantly changing."},
     "perc_fill_curve": {"group": "Percussion", "control": "text"},
-    "perc_main_key": {"group": "Percussion", "control": "text"},
+    "perc_main_key": {"group": "Percussion", "control": "text",
+                      "help": "Pick a named groove from the percussion library "
+                              "instead of typing a pattern."},
     "perc_intr_keys": {"group": "Percussion", "control": "taglist"},
     # Dynamics
-    "velocity_mode_chords": {"group": "Dynamics", "control": "segmented"},
-    "velocity_mode_drums": {"group": "Dynamics", "control": "segmented"},
-    "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01},
-    "pan_spread": {"group": "Dynamics", "control": "knob", "min": 0, "max": 1, "step": 0.01},
+    "velocity_mode_chords": {"group": "Dynamics", "control": "segmented",
+                             "help": "How hard chords are struck: uniform (even), "
+                                     "random, or human (subtle natural variation)."},
+    "velocity_mode_drums": {"group": "Dynamics", "control": "segmented",
+                            "help": "How hard drums are struck: uniform (even), "
+                                    "random, or human (subtle natural variation)."},
+    "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01,
+              "help": "Delays each off-beat for a swung feel. 0 = straight "
+                      "eighths, 0.5 = triplet swing."},
+    "pan_spread": {"group": "Dynamics", "control": "knob", "min": 0, "max": 1, "step": 0.01,
+                   "help": "Spreads the voices across the stereo field. "
+                           "0 = centered, 1 = wide."},
     # Render
-    "split_stems": {"group": "Render", "control": "toggle"},
+    "split_stems": {"group": "Render", "control": "toggle",
+                    "help": "On = each voice on its own MIDI track/channel (needed "
+                            "for per-voice instruments & independent bass). "
+                            "Off = merge into one track."},
 }
 
 

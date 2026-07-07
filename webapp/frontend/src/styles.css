@@ -136,12 +136,58 @@ body {
   background: #5a6478;
 }
 @keyframes pulse { to { opacity: 0.35; } }
-.statustext { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; width: 64px; }
+.statustext { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; min-width: 64px; white-space: nowrap; }
+.gen-reassure {
+  font-family: var(--mono); font-size: 10px; color: var(--accent);
+  letter-spacing: 0.04em; white-space: nowrap; opacity: 0.9;
+  animation: reassure-in 0.25s ease-out;
+}
+@keyframes reassure-in { from { opacity: 0; } to { opacity: 0.9; } }
 
-.errbar {
-  margin: 0 0 14px; padding: 10px 12px; border-radius: 8px;
-  background: rgba(255, 90, 90, 0.08); border: 1px solid rgba(255, 90, 90, 0.35);
-  color: #ff8f8f; font-family: var(--mono); font-size: 12px; white-space: pre-wrap;
+/* ---- toasts (load confirmations + friendly errors) ---- */
+.toast-stack {
+  position: fixed; top: 16px; right: 16px; z-index: 1000;
+  display: flex; flex-direction: column; gap: 8px;
+  width: min(360px, calc(100vw - 32px)); pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 12px; border-radius: 10px;
+  background: var(--panel-hi); border: 1px solid var(--line-hi);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-family: var(--mono); font-size: 12px; color: var(--ink);
+  animation: toast-in 0.2s ease-out;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.toast-icon { flex: none; line-height: 1.35; }
+.toast-success { border-color: color-mix(in srgb, var(--accent-ok) 45%, var(--line-hi)); }
+.toast-success .toast-icon { color: var(--accent-ok); }
+.toast-error { border-color: color-mix(in srgb, var(--accent-warn) 50%, var(--line-hi)); }
+.toast-error .toast-icon { color: var(--accent-warn); }
+.toast-info .toast-icon { color: var(--accent); }
+.toast-body { flex: 1; min-width: 0; }
+.toast-msg { line-height: 1.4; word-break: break-word; }
+.toast-details { margin-top: 6px; }
+.toast-details-toggle {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.toast-details-toggle:hover { color: var(--ink); }
+.toast-details-body {
+  margin: 6px 0 0; padding: 8px; border-radius: 6px;
+  background: var(--slot); border: 1px solid var(--edge);
+  color: var(--ink-dim); font-size: 11px; white-space: pre-wrap;
+  max-height: 180px; overflow: auto;
+}
+.toast-close {
+  flex: none; background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 15px; line-height: 1; padding: 0 2px;
+}
+.toast-close:hover { color: var(--ink); }
+@media (max-width: 640px) {
+  .toast-stack { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; }
 }
 
 /* ---- tab bar (top-level nav: Listen / Library / Editor) ---- */
@@ -183,8 +229,8 @@ body {
   flex: 1; font-family: var(--mono); font-size: 12px; color: var(--muted);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.song-actions { display: flex; gap: 8px; margin-left: auto; }
-.btn-new, .btn-save {
+.song-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.btn-new, .btn-save, .btn-ghost {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid var(--edge);
@@ -198,10 +244,13 @@ body {
   text-transform: uppercase;
   transition: all 0.12s;
 }
-.btn-new:hover, .btn-save:hover {
+.btn-new:hover, .btn-save:hover, .btn-ghost:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+/* Reset / Export / Import — quieter than New/Save (they're occasional). */
+.btn-ghost { background: transparent; opacity: 0.85; }
+.btn-ghost:hover { opacity: 1; }
 .btn-save {
   background: var(--metal-hi);
   border-color: var(--accent);
@@ -937,6 +986,44 @@ midi-visualizer {
 .modal-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
 .modal-actions button:last-child { background: linear-gradient(180deg, #5a7bff, #3f5be0); border-color: #6f8bff; color: #fff; }
 .modal.modal-wide { max-width: 640px; max-height: 85vh; overflow-y: auto; }
+
+/* ---- help button + keyboard-shortcut / welcome overlays ---- */
+.help-btn {
+  width: 22px; height: 22px; flex: none; border-radius: 50%;
+  border: 1px solid var(--line-hi); background: var(--panel-hi);
+  color: var(--muted); font-family: var(--mono); font-size: 12px; font-weight: 700;
+  cursor: pointer; line-height: 1;
+}
+.help-btn:hover { border-color: var(--accent); color: var(--accent); }
+kbd {
+  display: inline-block; padding: 1px 6px; border-radius: 4px;
+  border: 1px solid var(--line-hi); border-bottom-width: 2px;
+  background: var(--slot); color: var(--ink);
+  font-family: var(--mono); font-size: 11px; line-height: 1.5;
+}
+.shortcut-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.shortcut-list li { display: flex; align-items: center; gap: 12px; font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.shortcut-list li span { flex: none; min-width: 150px; }
+.shortcut-note { margin: 14px 0 0; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.welcome { text-align: center; max-width: 380px; }
+.welcome-teaser { margin: 0 0 18px; color: var(--ink-dim); font-size: 13px; line-height: 1.5; }
+.welcome .modal-actions { justify-content: center; }
+.welcome .modal-actions button:last-child { background: var(--panel-hi); border-color: var(--line-hi); color: var(--text); }
+.welcome-primary { background: linear-gradient(180deg, #5a7bff, #3f5be0) !important; border-color: #6f8bff !important; color: #fff !important; }
+.welcome-hint { margin-top: 16px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+/* ---- token-field syntax help (harmony / percussion editors) ---- */
+.tok-help {
+  margin-left: auto; font-family: var(--mono); font-size: 10px;
+  color: var(--muted); text-decoration: none; letter-spacing: 0.03em;
+  border-bottom: 1px dotted var(--line-hi); align-self: center;
+}
+.tok-help:hover { color: var(--accent); border-color: var(--accent); }
+.tok-hint {
+  margin-top: 6px; font-family: var(--mono); font-size: 10.5px;
+  color: var(--muted); line-height: 1.5;
+}
+.tok-hint code { background: var(--slot); padding: 0 4px; border-radius: 3px; color: var(--ink-dim); }
 
 /* ---- lead-sheet import ---- */
 .import-dropzone {
