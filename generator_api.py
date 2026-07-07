@@ -344,32 +344,12 @@ def _generate_locked(spec: dict) -> GenerationResult:
 
     # ----- fugue -----
     if args.fugue:
-        import fugue as fug
-        subject = fug.DEFAULT_SUBJECT if args.fugue == "__default__" else args.fugue
-        key_pc = mg.parse_key_name(args.melody_key)[0] if args.melody_key else 0
-        events, total = fug.build_fugue(
-            subject, key_pc, args.melody_mode or "major",
-            countersubject=args.fugue_countersubject)
-        midi = mg.build_generated(args.bpm, events, total, args.instrument,
-                                  args.velocity_mode_chords,
-                                  args.velocity_mode_drums,
-                                  swing=getattr(args, "swing", 0.0),
-                                  pan_spread=getattr(args, "pan_spread", 0.0))
+        midi, total = mg.build_fugue_midi(args)
         return _result(midi, total, "fugue")
 
     # ----- process music -----
     if args.process:
-        import process as proc
-        cell = args.process_cell or proc.DEFAULT_CELL
-        key_pc = mg.parse_key_name(args.melody_key)[0] if args.melody_key else 0
-        events, total = proc.build_process(
-            cell, key_pc, args.melody_mode or "major", kind=args.process,
-            reps=args.process_reps, stages=args.process_stages)
-        midi = mg.build_generated(args.bpm, events, total, args.instrument,
-                                  args.velocity_mode_chords,
-                                  args.velocity_mode_drums,
-                                  swing=getattr(args, "swing", 0.0),
-                                  pan_spread=getattr(args, "pan_spread", 0.0))
+        midi, total = mg.build_process_midi(args)
         return _result(midi, total, f"process:{args.process}")
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
@@ -377,31 +357,13 @@ def _generate_locked(spec: dict) -> GenerationResult:
         import tempfile
         import arrangement
 
-        # Forward UI params as overrides so changes (bpm, instrument, etc.) take
-        # effect.  Params load_song() doesn't extract (chords, chords_order) keep
-        # the arrangement YAML's own defaults.
-        arr_overrides: dict = {
-            "tempo": args.bpm,
-            "instrument": args.instrument,
-            "chord_length": args.chord_len,
-            "satb": args.satb_style,
-            "bass": {"style": args.bass_style, "step": float(args.bass_step)},
-            "perc": {"fill_rate": float(args.perc_fill_rate)},
-            "swing": float(getattr(args, "swing", 0.0)),
-            "pan_spread": float(getattr(args, "pan_spread", 0.0)),
-        }
-        if getattr(args, "no_perc", False):
-            arr_overrides["perc"]["main"] = ""  # explicit silence (gap-analysis I1)
-        elif args.perc_main is not None:
-            arr_overrides["perc"]["main"] = args.perc_main
-        if args.voice_instrument:
-            voices: dict = {}
-            for vi in args.voice_instrument:
-                if "=" in str(vi):
-                    v, instr = str(vi).split("=", 1)
-                    voices[v.strip()] = instr.strip()
-            if voices:
-                arr_overrides["voices"] = voices
+        # Forward every UI param as an override so changes (bpm, instrument, …)
+        # take effect. Unlike the CLI — which forwards only flags the user set,
+        # to preserve a song's authored defaults — every web control carries an
+        # explicit value, so the include predicate is always true. Params
+        # load_song() doesn't extract (chords, chords_order) keep the YAML's own
+        # defaults.
+        arr_overrides = mg.song_overrides_from_args(args, lambda *a: True)
 
         with tempfile.TemporaryDirectory(prefix="mg_song_") as tmp:
             song_path = args.song

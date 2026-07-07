@@ -443,12 +443,89 @@ def build_generated(bpm: int, voice_events: list, total: float,
     return midi
 
 
-def _render_generated(out_path: str, bpm: int, voice_events: list, total: float,
-                      instrument: str, vel_chords: str, vel_drums: str,
-                      swing: float = 0.0, pan_spread: float = 0.0) -> None:
-    """Build the fugue/process MIDI and save it to ``out_path`` (CLI path)."""
-    build_generated(bpm, voice_events, total, instrument, vel_chords,
-                    vel_drums, swing=swing, pan_spread=pan_spread).save(out_path)
+def _build_from_voice_events(args, voice_events: list,
+                             total: float) -> "MidiOut":
+    """Wrap the fugue/process ``(voice, when, dur, note)`` stream into an
+    in-memory MidiOut, reading timbre/velocity/swing from ``args``. Shared tail
+    of :func:`build_fugue_midi` and :func:`build_process_midi`."""
+    return build_generated(args.bpm, voice_events, total, args.instrument,
+                           args.velocity_mode_chords, args.velocity_mode_drums,
+                           swing=getattr(args, "swing", 0.0),
+                           pan_spread=getattr(args, "pan_spread", 0.0))
+
+
+def build_fugue_midi(args) -> tuple["MidiOut", float]:
+    """Build a fugal exposition into an in-memory MidiOut (no disk). Shared by
+    the CLI and the web API so the subject/key/mode resolution lives in one
+    place instead of being copied into each front-end's dispatch."""
+    import fugue as fug
+    subject = fug.DEFAULT_SUBJECT if args.fugue == "__default__" else args.fugue
+    key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
+    events, total = fug.build_fugue(subject, key_pc, args.melody_mode or "major",
+                                    countersubject=args.fugue_countersubject)
+    return _build_from_voice_events(args, events, total), total
+
+
+def build_process_midi(args) -> tuple["MidiOut", float]:
+    """Build a process-music piece into an in-memory MidiOut (no disk). Shared by
+    the CLI and the web API (see :func:`build_fugue_midi`)."""
+    import process as proc
+    cell = args.process_cell or proc.DEFAULT_CELL
+    key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
+    events, total = proc.build_process(
+        cell, key_pc, args.melody_mode or "major", kind=args.process,
+        reps=args.process_reps, stages=args.process_stages)
+    return _build_from_voice_events(args, events, total), total
+
+
+def song_overrides_from_args(args, include) -> dict:
+    """Build the arrangement-override dict from parsed args, shared by the CLI
+    and the web API.
+
+    ``include(dest, *flags) -> bool`` decides whether a flag contributes an
+    override. The CLI passes a predicate that is true only for flags the user
+    actually set, so a song's authored YAML defaults aren't clobbered by
+    argparse defaults; the web API passes ``lambda *a: True`` because every UI
+    control is an explicit value.
+    """
+    ov: dict = {}
+    if include("bpm", "--bpm"):
+        ov["tempo"] = args.bpm
+    if include("instrument", "--instrument"):
+        ov["instrument"] = args.instrument
+    if include("chord_len", "--chord-length"):
+        ov["chord_length"] = args.chord_len
+    if include("satb_style", "--satb-style"):
+        ov["satb"] = args.satb_style
+    if include("swing", "--swing"):
+        ov["swing"] = float(args.swing)
+    if include("pan_spread", "--pan-spread"):
+        ov["pan_spread"] = float(args.pan_spread)
+    bass: dict = {}
+    if include("bass_style", "--bass-style"):
+        bass["style"] = args.bass_style
+    if include("bass_step", "--bass-step"):
+        bass["step"] = float(args.bass_step)
+    if bass:
+        ov["bass"] = bass
+    perc: dict = {}
+    if include("perc_fill_rate", "--perc-fill-rate"):
+        perc["fill_rate"] = float(args.perc_fill_rate)
+    if getattr(args, "no_perc", False):
+        perc["main"] = ""  # explicit silence (gap-analysis I1)
+    elif args.perc_main is not None and include("perc_main", "--perc-main"):
+        perc["main"] = args.perc_main
+    if perc:
+        ov["perc"] = perc
+    if args.voice_instrument:
+        voices: dict = {}
+        for vi in args.voice_instrument:
+            if "=" in str(vi):
+                v, instr = str(vi).split("=", 1)
+                voices[v.strip()] = instr.strip()
+        if voices:
+            ov["voices"] = voices
+    return ov
 
 
 def build_flat_midi(args) -> tuple["MidiOut", dict]:
@@ -886,37 +963,18 @@ def _run(ap, args):
 
     # ----- fugue path -----
     if args.fugue:
-        import fugue as fug
-        subject = fug.DEFAULT_SUBJECT if args.fugue == "__default__" else args.fugue
-        if args.melody_key:
-            key_pc, _ = parse_key_name(args.melody_key)
-        else:
-            key_pc = 0
-        fmode = args.melody_mode or "major"
         fug_out = resolve_out_path(args.out, "fugue")
-        fug_events, total = fug.build_fugue(subject, key_pc, fmode,
-                                            countersubject=args.fugue_countersubject)
-        _render_generated(fug_out, args.bpm, fug_events, total, args.instrument,
-                          args.velocity_mode_chords, args.velocity_mode_drums,
-                          swing=args.swing, pan_spread=args.pan_spread)
+        midi, _total = build_fugue_midi(args)
+        midi.save(fug_out)
         log_file_operation(music_generator_logger, "write", fug_out, True)
         print(f"Wrote {fug_out}")
         return 0
 
     # ----- process-music path -----
     if args.process:
-        import process as proc
-        cell = args.process_cell or proc.DEFAULT_CELL
-        key_pc = parse_key_name(args.melody_key)[0] if args.melody_key else 0
-        pmode = args.melody_mode or "major"
         proc_out = resolve_out_path(args.out, f"process_{args.process}")
-        proc_events, total = proc.build_process(
-            cell, key_pc, pmode, kind=args.process,
-            reps=args.process_reps, stages=args.process_stages)
-        _render_generated(proc_out, args.bpm, proc_events, total,
-                          args.instrument, args.velocity_mode_chords,
-                          args.velocity_mode_drums,
-                          swing=args.swing, pan_spread=args.pan_spread)
+        midi, _total = build_process_midi(args)
+        midi.save(proc_out)
         log_file_operation(music_generator_logger, "write", proc_out, True)
         print(f"Wrote {proc_out}")
         return 0
@@ -940,43 +998,7 @@ def _run(ap, args):
             return any(tok == f or tok.startswith(f + "=")
                        for tok in argv_tokens for f in flags)
 
-        arr_overrides: dict = {}
-        if _cli_set("bpm", "--bpm"):
-            arr_overrides["tempo"] = args.bpm
-        if _cli_set("instrument", "--instrument"):
-            arr_overrides["instrument"] = args.instrument
-        if _cli_set("chord_len", "--chord-length"):
-            arr_overrides["chord_length"] = args.chord_len
-        if _cli_set("satb_style", "--satb-style"):
-            arr_overrides["satb"] = args.satb_style
-        if _cli_set("swing", "--swing"):
-            arr_overrides["swing"] = float(args.swing)
-        if _cli_set("pan_spread", "--pan-spread"):
-            arr_overrides["pan_spread"] = float(args.pan_spread)
-        bass_over: dict = {}
-        if _cli_set("bass_style", "--bass-style"):
-            bass_over["style"] = args.bass_style
-        if _cli_set("bass_step", "--bass-step"):
-            bass_over["step"] = float(args.bass_step)
-        if bass_over:
-            arr_overrides["bass"] = bass_over
-        perc_over: dict = {}
-        if _cli_set("perc_fill_rate", "--perc-fill-rate"):
-            perc_over["fill_rate"] = float(args.perc_fill_rate)
-        if args.no_perc:
-            perc_over["main"] = ""  # explicit silence (gap-analysis I1)
-        elif _cli_set("perc_main", "--perc-main"):
-            perc_over["main"] = args.perc_main
-        if perc_over:
-            arr_overrides["perc"] = perc_over
-        if args.voice_instrument:
-            voices: dict = {}
-            for vi in args.voice_instrument:
-                if "=" in str(vi):
-                    v, instr = str(vi).split("=", 1)
-                    voices[v.strip()] = instr.strip()
-            if voices:
-                arr_overrides["voices"] = voices
+        arr_overrides = song_overrides_from_args(args, _cli_set)
         spec = arrangement.load_spec(
             args.song,
             vel_mode_chords=args.velocity_mode_chords,
