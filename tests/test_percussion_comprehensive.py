@@ -383,3 +383,171 @@ class TestPercussionPatternParsing:
         """Empty pattern string is handled."""
         result = parse_pattern('', drum_map=None)
         assert isinstance(result, list)
+
+
+class TestBuildDrumTimelineStages:
+    """Test building drum timelines from stage specifications."""
+
+    def test_build_drum_timeline_stages_empty_stages(self):
+        """build_drum_timeline_stages with empty stages returns empty."""
+        from percussion import build_drum_timeline_stages
+
+        result = build_drum_timeline_stages(
+            stages=[],
+            beats_total=4.0,
+            fallback_main=[],
+            fallback_intr=None,
+            base_fill_rate=0.2,
+            fill_curve=None
+        )
+        assert result == []
+
+    def test_build_drum_timeline_stages_zero_beats(self):
+        """build_drum_timeline_stages with zero beats returns empty."""
+        from percussion import build_drum_timeline_stages
+
+        main = [(0.0, [PercHit(note=36)])]
+        stage = PercStage(beats=4.0, main=main)
+        result = build_drum_timeline_stages(
+            stages=[stage],
+            beats_total=0.0,
+            fallback_main=main,
+            fallback_intr=None,
+            base_fill_rate=0.2,
+            fill_curve=None
+        )
+        assert result == []
+
+    def test_build_drum_timeline_stages_negative_beats(self):
+        """build_drum_timeline_stages with negative beats returns empty."""
+        from percussion import build_drum_timeline_stages
+
+        main = [(0.0, [PercHit(note=36)])]
+        stage = PercStage(beats=4.0, main=main)
+        result = build_drum_timeline_stages(
+            stages=[stage],
+            beats_total=-1.0,
+            fallback_main=main,
+            fallback_intr=None,
+            base_fill_rate=0.2,
+            fill_curve=None
+        )
+        assert result == []
+
+
+class TestParseChordInterrupters:
+    """Test parsing chord interrupter patterns."""
+
+    def test_parse_chord_interrupters_single_motif(self):
+        """parse_chord_interrupters parses single motif."""
+        from percussion import parse_chord_interrupters
+
+        result = parse_chord_interrupters(['qc,qr,qc'])
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert len(result[0]) == 3  # Three tokens
+
+    def test_parse_chord_interrupters_multiple_motifs(self):
+        """parse_chord_interrupters handles multiple motifs."""
+        from percussion import parse_chord_interrupters
+
+        result = parse_chord_interrupters(['qc,qr', 'hc', 'qc,qc,qc,qc'])
+        assert len(result) == 3
+
+    def test_parse_chord_interrupters_various_durations(self):
+        """parse_chord_interrupters handles different duration types."""
+        from percussion import parse_chord_interrupters
+
+        result = parse_chord_interrupters(['wc,hc,qc,ec,sc'])
+        assert len(result) == 1
+        assert len(result[0]) == 5
+
+    def test_parse_chord_interrupters_rest_flag(self):
+        """parse_chord_interrupters distinguishes 'c' and 'r' flags."""
+        from percussion import parse_chord_interrupters
+
+        result = parse_chord_interrupters(['qc,qr,qc,qr'])
+        motif = result[0]
+        assert motif[0][1] == 'c'
+        assert motif[1][1] == 'r'
+
+    def test_parse_chord_interrupters_whitespace(self):
+        """parse_chord_interrupters handles whitespace."""
+        from percussion import parse_chord_interrupters
+
+        result = parse_chord_interrupters(['  qc  ,  qr  '])
+        assert len(result[0]) == 2
+
+    def test_parse_chord_interrupters_invalid_duration(self):
+        """parse_chord_interrupters rejects invalid duration."""
+        from percussion import parse_chord_interrupters
+
+        with pytest.raises(ValueError, match="Bad chord interrupter"):
+            parse_chord_interrupters(['xc'])  # 'x' is not a valid duration
+
+    def test_parse_chord_interrupters_invalid_flag(self):
+        """parse_chord_interrupters rejects invalid c/r flag."""
+        from percussion import parse_chord_interrupters
+
+        with pytest.raises(ValueError, match="must end with c/r"):
+            parse_chord_interrupters(['qx'])  # 'x' is not 'c' or 'r'
+
+
+class TestPercussionGridQuantization:
+    """Test grid quantization for percussion timing."""
+
+    def test_quantize_to_grid_basic(self):
+        """quantize_to_grid rounds pattern to grid."""
+        from percussion import quantize_to_grid, GRID_STEP
+
+        # GRID_STEP determines the quantization granularity
+        pattern = [(0.5, [PercHit(note=36)])]
+        result = quantize_to_grid(pattern)
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+    def test_quantize_to_grid_empty_pattern(self):
+        """quantize_to_grid handles empty pattern."""
+        from percussion import quantize_to_grid
+
+        result = quantize_to_grid([])
+        assert result == []
+
+    def test_quantize_to_grid_multiple_hits(self):
+        """quantize_to_grid works on patterns with multiple hits."""
+        from percussion import quantize_to_grid
+
+        pattern = [
+            (0.25, [PercHit(note=36)]),
+            (0.25, [PercHit(note=38)]),
+            (0.5, [PercHit(note=42)])
+        ]
+        result = quantize_to_grid(pattern)
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+
+class TestParseManyPatterns:
+    """Test parsing multiple percussion patterns."""
+
+    def test_parse_many_patterns_empty(self):
+        """parse_many_patterns handles empty list."""
+        from percussion import parse_many_patterns
+
+        result = parse_many_patterns([], drum_map=None)
+        assert isinstance(result, list)
+
+    def test_parse_many_patterns_single(self):
+        """parse_many_patterns parses single pattern."""
+        from percussion import parse_many_patterns
+
+        result = parse_many_patterns(['qbeg'], drum_map=None)
+        assert isinstance(result, list)
+
+    def test_parse_many_patterns_multiple(self):
+        """parse_many_patterns handles multiple patterns."""
+        from percussion import parse_many_patterns
+
+        result = parse_many_patterns(['qbeg', 'qcegh', 'qb'], drum_map=None)
+        assert isinstance(result, list)
+        assert len(result) == 3
