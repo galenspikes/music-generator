@@ -37,7 +37,115 @@ _LOCK = threading.Lock()
 
 
 class GenerationError(RuntimeError):
-    """A spec could not be turned into music (bad tokens, bad args, …)."""
+    """A spec could not be turned into music (bad tokens, bad args, …).
+
+    Carries optional structured fields so the web UI can show an *actionable*
+    error — a machine-readable ``error_type``/``code`` and a human ``suggestion``
+    ("Valid roots: C, Db, D, …") alongside the raw message. Plain
+    ``GenerationError("msg")`` still works everywhere it did before: the fields
+    fall back to a generic classification, so nothing that raises the bare form
+    (songs, presets, the deep engine) has to change.
+    """
+
+    def __init__(self, message, *, error_type="generation_error",
+                 suggestion="", code="ERR_GEN_000"):
+        super().__init__(message)
+        self.error_type = error_type
+        self.suggestion = suggestion
+        self.code = code
+
+    def as_dict(self) -> dict:
+        return {
+            "error_type": self.error_type,
+            "message": str(self),
+            "suggestion": self.suggestion,
+            "code": self.code,
+        }
+
+
+# Chord roots, in a friendly chromatic order (flats preferred), for
+# "invalid chord" suggestions — the musically useful subset of NOTE_TO_PC,
+# which also lists rarer spellings (B#, Fb, E#, Cb) we don't need to advertise.
+_FRIENDLY_ROOTS = ["C", "Db", "D", "Eb", "E", "F",
+                   "Gb", "G", "Ab", "A", "Bb", "B"]
+
+# duration letter → what it means; the first letter of every rhythm token.
+_DUR_CRIB = "w=whole, h=half, q=quarter, e=eighth, s=16th, t=32nd"
+
+
+def _drum_letter_crib() -> str:
+    """A short 'letter=name' crib drawn from the active drum map, for
+    unknown-drum-letter suggestions. Falls back to the standard kit if the
+    map can't be read."""
+    common = [("b", "kick"), ("c", "snare"), ("g", "hi-hat"),
+              ("i", "open-hat"), ("k", "ride"), ("j", "crash"),
+              ("s", "tom"), ("f", "clap")]
+    try:
+        dm = mg.get_drum_map() or {}
+    except Exception:
+        dm = {}
+    have = [f"{ltr}={name}" for ltr, name in common if not dm or ltr in dm]
+    return ", ".join(have) if have else "b=kick, c=snare, g=hi-hat, k=ride"
+
+
+def classify_error(message: str) -> tuple[str, str, str]:
+    """Map a raw engine error message to ``(error_type, suggestion, code)``.
+
+    Pattern-matches the human strings the token/percussion parsers raise
+    (``Bad key 'ZZ'``, ``Unknown drum letter 'x' …``, …) and attaches a
+    concrete fix. Matching is done at this API boundary rather than at each
+    deep ``raise`` site, so the CLI and engine are untouched. Unknown messages
+    get a safe generic classification — never a crash.
+    """
+    m = message or ""
+    if re.search(r"[Bb]ad key '([^']*)'", m):
+        return ("invalid_chord",
+                "Chord roots are note names — try one of: "
+                f"{', '.join(_FRIENDLY_ROOTS)} (optionally with a recipe, "
+                "e.g. C::maj7).",
+                "ERR_CHORD_001")
+    if "has no tones" in m or "recipe" in m.lower():
+        return ("invalid_recipe",
+                "That chord recipe isn't known. Browse Docs → Chord Recipes for "
+                "valid names (e.g. maj7, min9, sus4, 13).",
+                "ERR_CHORD_002")
+    if re.search(r"[Mm]issing bass note", m):
+        return ("invalid_chord",
+                "A slash chord needs a bass note after '/', e.g. C::maj7/G.",
+                "ERR_CHORD_003")
+    if re.search(r"[Uu]nknown drum letter", m):
+        return ("invalid_drum",
+                f"Valid drum letters: {_drum_letter_crib()} — see the drum "
+                "legend under the pattern field for the full list.",
+                "ERR_PERC_001")
+    if re.search(r"[Bb]ad duration|duration in token|[Ii]ncomplete token", m):
+        return ("invalid_duration",
+                f"Each token starts with a duration letter ({_DUR_CRIB}), then "
+                "the drum letters — e.g. qb = quarter kick, eg = eighth hi-hat.",
+                "ERR_DUR_001")
+    if "keys preset" in m.lower():
+        return ("invalid_preset",
+                "That key preset name isn't known — check the spelling.",
+                "ERR_PRESET_001")
+    if re.search(r"repetition|\*N", m):
+        return ("invalid_syntax",
+                "Repeats use *N — e.g. C*4, or [C, G]*2 for a group.",
+                "ERR_SYNTAX_001")
+    if re.search(r"[Ee]mpty .*token|[Ee]mpty chain|[Ee]mpty base", m):
+        return ("invalid_syntax",
+                "A token came out empty — check for a stray comma or a ':' with "
+                "nothing after it.",
+                "ERR_SYNTAX_002")
+    return ("generation_error",
+            "Check the chord and percussion tokens against Docs → Token grammar.",
+            "ERR_GEN_000")
+
+
+def _classified(message: str) -> GenerationError:
+    """Build a GenerationError with a suggestion inferred from its message."""
+    error_type, suggestion, code = classify_error(message)
+    return GenerationError(message, error_type=error_type,
+                           suggestion=suggestion, code=code)
 
 
 @dataclass
@@ -78,9 +186,12 @@ class GenerationResult:
 class ValidationResult:
     ok: bool
     error: str | None = None
+    suggestion: str | None = None
+    error_type: str | None = None
 
     def as_dict(self) -> dict:
-        return {"ok": self.ok, "error": self.error}
+        return {"ok": self.ok, "error": self.error,
+                "suggestion": self.suggestion, "error_type": self.error_type}
 
 
 # --- spec -> argparse.Namespace ------------------------------------------------
@@ -197,12 +308,16 @@ def generate(spec: dict) -> GenerationResult:
     with _LOCK:
         try:
             return _generate_locked(spec)
-        except GenerationError:
-            raise
+        except GenerationError as exc:
+            # Already-structured errors pass through; bare ones (raised deep in
+            # the engine / here) get classified so they gain a suggestion too.
+            if exc.suggestion or exc.error_type != "generation_error":
+                raise
+            raise _classified(str(exc)) from exc
         except SystemExit as exc:  # argparse/engine guard rails
-            raise GenerationError(str(exc) or "invalid arguments") from exc
+            raise _classified(str(exc) or "invalid arguments") from exc
         except Exception as exc:  # surface a readable message to the UI
-            raise GenerationError(f"{type(exc).__name__}: {exc}") from exc
+            raise _classified(f"{type(exc).__name__}: {exc}") from exc
 
 
 def _generate_locked(spec: dict) -> GenerationResult:
@@ -441,9 +556,10 @@ def parse_keys(keys: str, mode: str = "ostinato") -> dict:
                 err_index = idx
                 err_span = [off, off + len(tok)]
                 break
+        _etype, suggestion, _code = classify_error(str(exc))
         return {"ok": False, "chords": [], "segments": [], "total": 0,
-                "error": str(exc), "error_index": err_index,
-                "error_span": err_span}
+                "error": str(exc), "suggestion": suggestion,
+                "error_index": err_index, "error_span": err_span}
 
 
 # --- percussion / interrupter parsing (powers the perc editors' chip strips) --
@@ -513,7 +629,9 @@ def parse_perc(pattern: str, kind: str = "drums") -> dict:
         tokens.append(d)
         if not d["ok"] and first_err is None:
             first_err = d["error"]
-    return {"ok": first_err is None, "tokens": tokens, "error": first_err}
+    suggestion = classify_error(first_err)[1] if first_err else None
+    return {"ok": first_err is None, "tokens": tokens, "error": first_err,
+            "suggestion": suggestion}
 
 
 def validate(spec: dict) -> ValidationResult:
@@ -523,7 +641,9 @@ def validate(spec: dict) -> ValidationResult:
         generate(spec)
         return ValidationResult(ok=True)
     except GenerationError as exc:
-        return ValidationResult(ok=False, error=str(exc))
+        return ValidationResult(ok=False, error=str(exc),
+                                suggestion=exc.suggestion or None,
+                                error_type=exc.error_type)
 
 
 # --- schema (introspected, never hand-mirrored) --------------------------------
@@ -720,10 +840,13 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     # Dynamics
     "velocity_mode_chords": {"group": "Dynamics", "control": "segmented",
                              "help": "How hard chords are struck: uniform (even), "
-                                     "random, or human (subtle natural variation)."},
+                                     "random, or human (subtle natural variation). "
+                                     "Reach for human on organic jazz or classical."},
     "velocity_mode_drums": {"group": "Dynamics", "control": "segmented",
                             "help": "How hard drums are struck: uniform (even), "
-                                    "random, or human (subtle natural variation)."},
+                                    "random, or human (subtle natural variation). "
+                                    "human keeps a live-drummer feel; uniform suits "
+                                    "electronic grooves."},
     "swing": {"group": "Dynamics", "control": "knob", "min": 0, "max": 0.75, "step": 0.01,
               "help": "Delays each off-beat for a swung feel. 0 = straight "
                       "eighths, 0.5 = triplet swing."},

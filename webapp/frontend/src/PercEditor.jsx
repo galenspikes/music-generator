@@ -1,6 +1,40 @@
 // Music Generator — Copyright (c) 2026 Galen Spikes. MIT License.
 // https://github.com/galenspikes/music-generator
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
+
+// A few ready-to-tweak drum patterns offered as autocomplete on the code
+// field (plan 4.1). Kept short and idiomatic — a starting point, not a preset
+// library. Letters match the actual drum map (b=kick, c=snare, g=hi-hat, …).
+const COMMON_DRUM_PATTERNS = [
+  "qb, eg, qc, eg",          // four-on-the-floor backbeat
+  "qb, qc, qb, qc",          // plain kick/snare
+  "sb, sg, sc, sg",          // sixteenth groove
+  "eb, eg, ec, eg, eb, eg, ec, eg", // busy eighths
+  "qb, er, sc, sc",          // syncopated
+];
+const COMMON_CHORD_PATTERNS = ["ec, er, sc, qr", "qc, qc, qc, qc", "hc, hr"];
+
+// letter → friendly label from the drum map (values may be a bare string or a
+// {label, note} object, depending on how vocab is served).
+const drumLabel = (v) => (v && typeof v === "object" ? v.label : v) || "";
+
+// A collapsible "what does each letter mean" crib, driven by the live drum map
+// (never a hard-coded guess). Toggled by the ? button next to the field.
+function DrumLegend({ drums }) {
+  const entries = Object.entries(drums || {});
+  if (entries.length === 0) {
+    return <div className="perc-legend-empty">Drum letters unavailable.</div>;
+  }
+  return (
+    <div className="perc-legend" role="group" aria-label="drum letter legend">
+      {entries.map(([letter, v]) => (
+        <span className="perc-legend-item" key={letter}>
+          <code>{letter}</code> {drumLabel(v)}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 /* ---- token helpers (bracket-aware so [vel+1,prob.5] isn't split) ---- */
 function splitTokens(s) {
@@ -113,10 +147,12 @@ function PercSequencer({ value, onChange }) {
 
 /* A single percussion / interrupter motif. kind = "drums" | "chord".
    Drums get a code/grid mode toggle (the step sequencer). */
-export function PercField({ value, onChange, kind = "drums", placeholder }) {
+export function PercField({ value, onChange, kind = "drums", placeholder, drums }) {
   const [parsed, setParsed] = useState({ ok: true, tokens: [] });
   const [mode, setMode] = useState("code");
+  const [showLegend, setShowLegend] = useState(false);
   const debounce = useRef(null);
+  const listId = useId(); // unique per field so multiple motifs don't collide
 
   // Draft drives the field + chip strip live; audio regeneration only fires
   // when the committed value changes on blur (not on every keystroke).
@@ -146,10 +182,15 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
         <div className="perc-modes">
           <button className={"hm" + (mode === "code" ? " on" : "")} onClick={() => setMode("code")} title="Edit drum pattern with tokens">code</button>
           <button className={"hm" + (mode === "grid" ? " on" : "")} onClick={() => { commit(); setMode("grid"); }} title="Visually edit with step sequencer">grid</button>
+          <button className={"hm perc-legend-btn" + (showLegend ? " on" : "")}
+            aria-expanded={showLegend} title="Show what each drum letter means"
+            onClick={() => setShowLegend((s) => !s)}>? letters</button>
           <a className="tok-help" href="https://github.com/galenspikes/music-generator/blob/main/docs/reference/token-grammar.md#percussion"
             target="_blank" rel="noreferrer" title="Percussion token syntax reference">syntax ↗</a>
         </div>
       )}
+
+      {kind === "drums" && showLegend && <DrumLegend drums={drums} />}
 
       {mode === "grid" && kind === "drums" ? (
         <PercSequencer value={value} onChange={onChange} />
@@ -158,12 +199,18 @@ export function PercField({ value, onChange, kind = "drums", placeholder }) {
         <input
           className={"perc-text" + (parsed.ok ? "" : " err")}
           spellCheck={false}
+          list={listId}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           placeholder={placeholder || (kind === "chord" ? "ec, er, sc, qr" : "qb, eg, qc, eg")}
         />
+        <datalist id={listId}>
+          {(kind === "chord" ? COMMON_CHORD_PATTERNS : COMMON_DRUM_PATTERNS).map((p) => (
+            <option value={p} key={p} />
+          ))}
+        </datalist>
         <div className="tok-hint">
           {kind === "chord"
             ? <>Tokens like <code>ec, er, sc</code> (duration + c/r).</>
@@ -231,7 +278,7 @@ export function GrooveMulti({ value = [], grooves = [], onChange }) {
 }
 
 /* A list of motifs (perc_interrupters / chord_interrupters). */
-export function PercList({ value = [], onChange, kind = "drums" }) {
+export function PercList({ value = [], onChange, kind = "drums", drums }) {
   const list = value || [];
   const update = (i, v) => onChange(list.map((x, j) => (j === i ? v : x)));
   const remove = (i) => onChange(list.filter((_, j) => j !== i));
@@ -242,7 +289,7 @@ export function PercList({ value = [], onChange, kind = "drums" }) {
         <div className="perc-row" key={i}>
           <span className="perc-idx">{i + 1}</span>
           <div className="perc-row-body">
-            <PercField value={motif} kind={kind} onChange={(v) => update(i, v)} />
+            <PercField value={motif} kind={kind} drums={drums} onChange={(v) => update(i, v)} />
           </div>
           <button className="cx" onClick={() => remove(i)}>×</button>
         </div>

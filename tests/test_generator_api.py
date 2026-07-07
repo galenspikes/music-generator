@@ -90,6 +90,49 @@ def test_generate_bad_recipe_raises():
         api.generate({"mode": "ostinato", "keys": "C::definitely_not_a_recipe"})
 
 
+# --- structured errors ---------------------------------------------------------
+
+def test_generation_error_is_structured_with_suggestion_and_code():
+    with pytest.raises(api.GenerationError) as exc_info:
+        api.generate({"mode": "ostinato", "keys": "ZZ::maj7"})
+    exc = exc_info.value
+    d = exc.as_dict()
+    assert d["error_type"] == "invalid_chord"
+    assert d["code"] == "ERR_CHORD_001"
+    assert d["message"]  # a human message survives
+    assert "C, Db, D" in d["suggestion"]  # actionable list of valid roots
+
+
+def test_generation_error_classifies_bad_recipe():
+    with pytest.raises(api.GenerationError) as exc_info:
+        api.generate({"mode": "ostinato", "keys": "C::definitely_not_a_recipe"})
+    d = exc_info.value.as_dict()
+    assert d["error_type"] == "invalid_recipe"
+    assert d["suggestion"]
+
+
+def test_bare_generation_error_still_works():
+    # The plain constructor (used deep in the engine / for songs & presets)
+    # keeps a safe generic classification — nothing to migrate.
+    exc = api.GenerationError("something went sideways")
+    d = exc.as_dict()
+    assert d["message"] == "something went sideways"
+    assert d["error_type"] == "generation_error"
+    assert d["suggestion"] == ""
+
+
+def test_classify_error_covers_the_common_token_mistakes():
+    assert api.classify_error("Bad key 'QQ'")[0] == "invalid_chord"
+    assert api.classify_error("Unknown drum letter '1' in token 'q1'")[0] == "invalid_drum"
+    assert api.classify_error("Bad duration in token '2b'")[0] == "invalid_duration"
+    assert api.classify_error("Unknown keys preset 'nope'")[0] == "invalid_preset"
+    # every branch returns a non-empty (type, suggestion, code) triple
+    for msg in ["Bad key 'x'", "recipe boom", "Unknown drum letter 'z'",
+                "Bad duration in token 'q'", "whatever else"]:
+        etype, suggestion, code = api.classify_error(msg)
+        assert etype and suggestion and code
+
+
 def test_generate_is_disk_free():
     before = set(glob.glob(str(mg.MIDI_DIR / "**" / "*.mid"), recursive=True))
     api.generate({"mode": "ostinato", "keys": "C::maj7", "seconds": 6})
@@ -134,6 +177,14 @@ def test_validate_ok_and_error():
     bad = api.validate({"mode": "ostinato", "keys": "C::nope"})
     assert bad.ok is False
     assert "nope" in bad.error
+
+
+def test_validate_surfaces_suggestion_and_type():
+    bad = api.validate({"mode": "ostinato", "keys": "ZZ::maj7"})
+    d = bad.as_dict()
+    assert d["ok"] is False
+    assert d["error_type"] == "invalid_chord"
+    assert d["suggestion"]
 
 
 # --- parse_keys ----------------------------------------------------------------
@@ -214,6 +265,14 @@ def test_parse_perc_bad_letter_flags_token():
     r = api.parse_perc("qb, q@, qc")
     assert r["ok"] is False
     assert r["tokens"][1]["ok"] is False
+    # a suggestion accompanies the first error so the editor can hint a fix
+    assert "drum letters" in r["suggestion"].lower()
+
+
+def test_parse_perc_ok_has_no_suggestion():
+    r = api.parse_perc("qb, eg, qc, eg")
+    assert r["ok"] is True
+    assert r["suggestion"] is None
 
 
 def test_parse_perc_chord_kind():

@@ -132,7 +132,10 @@ def generate(req: SpecRequest) -> dict:
     try:
         result = api.generate(req.spec)
     except api.GenerationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        # Structured detail ({error_type, message, suggestion, code}) so the UI
+        # can show an actionable hint, not just a bare string. FastAPI wraps it
+        # as {"detail": {...}}; older string-only clients still read .message.
+        raise HTTPException(status_code=422, detail=exc.as_dict()) from exc
     return {
         "midi": base64.b64encode(result.midi).decode("ascii"),
         **result.as_dict(),

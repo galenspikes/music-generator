@@ -80,6 +80,19 @@ def test_generate_endpoint_bad_input_is_422():
     assert r.status_code == 422
 
 
+def test_generate_endpoint_error_is_structured():
+    r = client.post("/api/generate", json={"spec": {
+        "mode": "ostinato", "keys": "ZZ::maj7"}})
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    # structured object, not a bare string, so the UI can show an actionable hint
+    assert isinstance(detail, dict)
+    assert detail["error_type"] == "invalid_chord"
+    assert detail["code"] == "ERR_CHORD_001"
+    assert detail["message"]
+    assert detail["suggestion"]
+
+
 def test_validate_endpoint():
     good = client.post("/api/validate", json={"spec": {"keys": "C::maj7",
                                                        "mode": "ostinato"}})
