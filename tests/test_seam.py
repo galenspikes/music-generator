@@ -134,3 +134,61 @@ def test_build_generated_returns_inmemory_midi():
     midi = mg.build_generated(120, events, total=2.0, instrument="organ",
                               vel_chords="uniform", vel_drums="uniform")
     assert midi.to_bytes()[:4] == b"MThd"
+
+
+# --- shared fugue/process builders (CLI + API call these) ----------------------
+
+def test_build_fugue_midi_default_subject():
+    args = mg.build_parser().parse_args([])
+    args.fugue = "__default__"
+    midi, total = mg.build_fugue_midi(args)
+    assert total > 0
+    assert len(_notes(midi.mid)) > 0
+
+
+def test_build_process_midi_phase():
+    args = mg.build_parser().parse_args([])
+    args.process = "phase"
+    midi, total = mg.build_process_midi(args)
+    assert total > 0
+    assert len(_notes(midi.mid)) > 0
+
+
+# --- SpecError: shared builders don't leak SystemExit into the platform --------
+
+def test_build_flat_midi_bad_voice_instrument_raises_specerror():
+    args = _flat_args(voice_instrument=["bogus"])  # missing VOICE=NAME
+    with pytest.raises(mg.SpecError):
+        mg.build_flat_midi(args)
+
+
+def test_specerror_is_ordinary_exception_not_systemexit():
+    # SystemExit derives from BaseException (not Exception); SpecError must be a
+    # plain Exception so the API's `except Exception` catch-all classifies it.
+    assert issubclass(mg.SpecError, Exception)
+    assert not issubclass(mg.SpecError, SystemExit)
+
+
+# --- song_overrides_from_args: one builder, two front-end semantics ------------
+
+def test_song_overrides_include_all_forces_ui_values():
+    args = mg.build_parser().parse_args(
+        ["--bpm", "111", "--instrument", "organ", "--no-perc"])
+    ov = mg.song_overrides_from_args(args, lambda *a: True)
+    assert ov["tempo"] == 111
+    assert ov["instrument"] == "organ"
+    assert ov["perc"]["main"] == ""          # --no-perc -> explicit silence
+    assert ov["bass"] == {"style": "follow", "step": 0.5}
+
+
+def test_song_overrides_none_set_preserves_yaml_defaults():
+    args = mg.build_parser().parse_args([])
+    # CLI semantics: nothing the user set -> no overrides, YAML defaults win.
+    assert mg.song_overrides_from_args(args, lambda *a: False) == {}
+
+
+def test_song_overrides_only_set_flag_contributes():
+    args = mg.build_parser().parse_args(["--bpm", "90"])
+    only_bpm = lambda dest, *flags: dest == "bpm"  # noqa: E731
+    ov = mg.song_overrides_from_args(args, only_bpm)
+    assert ov == {"tempo": 90}
