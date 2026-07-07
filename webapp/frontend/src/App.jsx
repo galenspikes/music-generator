@@ -29,7 +29,6 @@ const PRESETS = [
 
 // First-load overrides on top of the schema defaults — a good-sounding start.
 const SEED_OVERRIDES = {
-  mode: "ostinato",
   keys: "C::maj7, A::min9, D::min7, G::13",
   instrument: "epiano",
   seconds: 16,
@@ -436,7 +435,7 @@ export default function App() {
       // Song mode has its own per-section durations — args.seconds plays no
       // part in it (generator_api ignores it for songs). Sync the Engine
       // panel's "seconds" to the song's real length so it doesn't keep
-      // showing whatever unrelated value was left over from ostinato mode.
+      // showing whatever unrelated value was left over from the chord path.
       if (data.mode === "song" && typeof data.duration_seconds === "number") {
         const rounded = Math.round(data.duration_seconds);
         setSpec((s) => (s.seconds === rounded ? s : { ...s, seconds: rounded }));
@@ -477,7 +476,7 @@ export default function App() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           spec: {
-            mode: "ostinato", keys: "C::maj7", chord_len: "h", seconds: 1.5,
+            keys: "C::maj7", chord_len: "h", seconds: 1.5,
             bpm: 120, seed: 1, no_perc: true, bass_style: "none",
             satb_style: "static", instrument: instrumentValue,
           },

@@ -315,7 +315,6 @@ def test_perc_main_key_without_explicit_lib():
     # BUG FIX: perc_main_key should work without explicit --perc-lib.
     # We default to the bundled library in build_perc_from_args.
     args = M.build_parser().parse_args([
-        "--mode", "ostinato",
         "--keys", "C::maj7",
         "--perc-main-key", "funk:4/4:med",
         "--seconds", "8",
@@ -327,7 +326,7 @@ def test_perc_main_key_without_explicit_lib():
 
 
 def _base_args(**overrides):
-    argv = ["--mode", "ostinato", "--keys", "C::maj7", "--seconds", "8"]
+    argv = ["--keys", "C::maj7", "--seconds", "8"]
     for flag, value in overrides.items():
         if value is True:
             argv.append(flag)

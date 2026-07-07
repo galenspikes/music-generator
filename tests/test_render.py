@@ -109,7 +109,7 @@ def slug(request):
 
 def test_run_generator_returns_midi_path(slug):
     midi = render.run_generator(
-        ["--mode", "ostinato", "--keys", "C::maj,F::maj", "--seconds", "4",
+        ["--keys", "C::maj,F::maj", "--seconds", "4",
          "--seed", "1", "--no-play", "--out", slug])
     assert midi.endswith(".mid")
     assert Path(midi).exists()

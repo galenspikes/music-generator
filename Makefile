@@ -40,11 +40,11 @@ check: lint test ## Lint then test — run before committing
 
 .PHONY: demo
 demo: ## Play the flagship demo (Kiss On My List) — the "press demo" button
-	$(PY) cook_song.py make kiss
+	./play_music --song songs/kiss.yml --out kiss
 
 .PHONY: gallery
 gallery: ## Render the demo highlight set to committable MIDI (site/assets/midi)
-	$(PY) cook_song.py gallery
+	$(PY) render_gallery.py
 
 .PHONY: chords
 chords: ## Regenerate the chord-recipe reference (site/chords.html + docs table)

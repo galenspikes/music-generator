@@ -376,9 +376,15 @@ def _generate_locked(spec: dict) -> GenerationResult:
         return GenerationResult(data, _track_infos(mid), duration, "song",
                                 envelope=envelope_from_bytes(data, duration))
 
-    # ----- flat (ostinato / mixed / complete) -----
+    # ----- flat (chord progression) -----
     midi, _meta = mg.build_flat_midi(args)
-    return _result(midi, float(args.seconds), args.mode)
+    if args.full_progression:
+        result_mode = "full-progression"
+    elif args.random_roots or not args.keys:
+        result_mode = "random-roots"
+    else:
+        result_mode = "progression"
+    return _result(midi, float(args.seconds), result_mode)
 
 
 def _result(midi, duration: float, mode: str) -> GenerationResult:
@@ -613,11 +619,10 @@ def parameter_schema() -> list[dict]:
     Annotations (group + control hint + range) live in PARAM_ANNOTATIONS; any
     flag not annotated still appears (group 'More', inferred control), so the
     UI can never silently omit a real instrument control. HIDDEN_PARAMS is the
-    one deliberate exception: baggage (mode, the parked process/fugue group,
-    CLI/render plumbing) that the controllability audit flagged for removal
-    from the surface. Those flags stay fully functional on the CLI and in song
-    YAML — they're just not rendered as rack controls. See
-    docs/design-notes/controllability-audit.md.
+    one deliberate exception: CLI/render plumbing (output path, song file,
+    soundfont, ...) that isn't an instrument control. Those flags stay fully
+    functional on the CLI and in song YAML — they're just not rendered as
+    rack controls. See docs/design-notes/controllability-audit.md.
     """
     defaults = vars(mg.build_parser().parse_args([]))
     out: list[dict] = []
@@ -685,12 +690,10 @@ def _default_control(kind: str, choices) -> str:
     return "text"
 
 
-# Baggage cut from the webapp control surface (controllability-audit.md): the
-# parked mode switch and process/fugue group, plus CLI/render plumbing that
-# isn't an instrument control. The underlying flags still work on the CLI and
-# in song YAML — see parameter_schema()'s docstring.
+# Baggage cut from the webapp control surface (controllability-audit.md):
+# CLI/render plumbing that isn't an instrument control. The underlying flags
+# still work on the CLI and in song YAML — see parameter_schema()'s docstring.
 HIDDEN_PARAMS: set[str] = {
-    "mode",
     "out", "no_play", "song", "sf2", "perc_lib",
 }
 
@@ -714,8 +717,16 @@ PARAM_ANNOTATIONS: dict[str, dict] = {
     # Harmony
     "keys": {"group": "Harmony", "control": "text", "multiline": True,
              "help": "The chord progression, in the token grammar (e.g. "
-                     "'C::maj7, A::min9, D::min7, G::13'). The heart of the patch."},
+                     "'C::maj7, A::min9, D::min7, G::13'). The heart of the patch. "
+                     "Cycled to fill the piece; ignored if Random Roots is on."},
     "keys_preset": {"group": "Harmony", "control": "text"},
+    "random_roots": {"group": "Harmony", "control": "bool",
+                     "help": "Ignore Keys and shuffle a circle-of-fifths for the "
+                             "chord roots instead — a new take every run."},
+    "full_progression": {"group": "Harmony", "control": "bool",
+                         "help": "Play the roots through once with no looping — "
+                                 "your Keys chart, or the full circle-of-fifths "
+                                 "if Keys is empty — instead of cycling."},
     "chords": {"group": "Harmony", "control": "chips",
                "help": "When no explicit keys are given, the chord families the "
                        "generator draws from (triads, sevenths, quartal, …)."},

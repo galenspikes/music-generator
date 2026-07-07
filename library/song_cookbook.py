@@ -32,7 +32,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " voice-leading reduction."
         ),
         "args": [
-            "--mode", "ostinato",
             "--keys",
             "C::maj9, A::min11, F::maj7#11, G::13, "
             "E::mystic, Ab::messiaen_resonance, Db::quartal, G::7alt, C::maj9",
@@ -56,7 +55,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " counterpoint and the suspension/anticipation probabilities."
         ),
         "args": [
-            "--mode", "ostinato",
             "--keys",
             "C::maj7, A::min7, D::min7, G::7, "
             "E::min7, A::min7, D::min7, G::7",
@@ -84,7 +82,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " across the piece so the groove keeps opening up."
         ),
         "args": [
-            "--mode", "ostinato",
             "--keys", "A::min9, A::min9, F::maj9, G::13",
             "--instrument", "pad",
             "--chord-length", "w",
@@ -112,7 +109,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " and lively counterpoint lines."
         ),
         "args": [
-            "--mode", "mixed",
             "--keys", "C,F,G,Bb",
             "--bpm", "188",
             "--instrument", "trumpet",
@@ -138,7 +134,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " and round-robin chord movement."
         ),
         "args": [
-            "--mode", "mixed",
             "--keys", "E,A,D",
             "--bpm", "144",
             "--instrument", "distguitar",
@@ -162,7 +157,6 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " humanized dynamics, and soulful counterpoint."
         ),
         "args": [
-            "--mode", "mixed",
             "--keys", "Eb,Gb,Bb",
             "--bpm", "92",
             "--instrument", "epiano",
@@ -189,7 +183,7 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " with steady arpeggiated motion and gentle harmonic shifts."
         ),
         "args": [
-            "--mode", "complete",
+            "--full-progression",
             "--keys",
             "C::maj, D:3:min7, G:1:7, C::maj, A:1:min, D:3:7, G:1:maj, "
             "C:3:maj7, A::min7, D::7, G::maj, G::dim7, D:1:min, F::dim7, "
@@ -218,7 +212,7 @@ SONG_COOKBOOK: Dict[str, Dict[str, object]] = {
             " harpsichord, with independent SATB motion and subtle suspensions."
         ),
         "args": [
-            "--mode", "complete",
+            "--full-progression",
             "--keys",
             "C::maj, D:3:min7, G:1:7, C::maj, A:1:min, D:3:7, G:1:maj, "
             "C:3:maj7, A::min7, D::7, G::maj, G::dim7, D:1:min, F::dim7, "

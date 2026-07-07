@@ -9,7 +9,7 @@ Tokens are `<duration><letters>[modifiers]`, comma-separated. Stacked letters
 sound together; `r` is a rest.
 
 ```bash
-venv/bin/python music_generator.py --mode ostinato \
+venv/bin/python music_generator.py \
   --keys "C::min9" --seconds 30 --out groove --no-play \
   --perc-main "qb, eg, qc, eg, qb, eg, qc, eg"
 #            kick  hat snare hat ...

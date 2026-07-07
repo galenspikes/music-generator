@@ -22,7 +22,7 @@ SoundFont works).
 ## 2. Generate your first piece (MIDI only)
 
 ```bash
-venv/bin/python music_generator.py --mode ostinato \
+venv/bin/python music_generator.py \
   --keys "C::maj9, A::min11, F::maj7, G::7" \
   --perc-main "qb, eg, qc, eg, qb, eg, qc, eg" \
   --seconds 30 --out first_groove --no-play
@@ -35,7 +35,6 @@ beat. The MIDI is under `output/midi/first_groove/`. Open it in any DAW or playe
 
 ```bash
 ./play_music --save-wav --sf2 SoundFonts/your.sf2 \
-  --mode ostinato \
   --keys "C::maj9, A::min11, F::maj7, G::7" \
   --perc-main "qb, eg, qc, eg, qb, eg, qc, eg" \
   --seconds 30 --out first_groove
@@ -58,7 +57,9 @@ project — see [how percussion works](../explanation/how-percussion-works.md).
 
 ## What you learned
 
-- `--mode ostinato` + `--keys` = a looped progression in [colon tokens](../reference/token-grammar.md).
+- `--keys` = a looped progression in [colon tokens](../reference/token-grammar.md) —
+  honored and cycled by default; see `--random-roots` / `--full-progression`
+  for other ways to pick the roots.
 - `--perc-main` writes a beat; interrupters + `--perc-fill-rate` add variation.
 - `--no-play` makes MIDI only; `./play_music --save-wav` renders audio.
 

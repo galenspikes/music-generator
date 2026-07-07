@@ -10,18 +10,19 @@ notations** (chords, percussion, melody) is parsed into musical structures;
 a **harmony/voicing engine** turns chord tokens into voice-led SATB parts; a
 **percussion engine** turns drum tokens into hits; these are assembled into a
 timeline of **MIDI events** and written to a `.mid` file. An optional **render**
-step turns MIDI into normalized audio via FluidSynth + ffmpeg. Several **modes**
-(ostinato, arrangement, fugue, process) sit on top of the same core.
+step turns MIDI into normalized audio via FluidSynth + ffmpeg. A **chord
+progression** (from `--keys`, or a shuffled/complete circle-of-fifths) and an
+**arrangement** (a YAML song of sections) sit on top of the same core.
 
 ```
-                       ┌─────────────── modes ───────────────┐
-  token DSL            │ ostinato · arrangement · fugue ·     │
-  (chords/perc/melody) │ process · mixed/complete             │
-        │              └──────────────────┬───────────────────┘
-        ▼                                 ▼
+                       ┌──── root selection ────┐
+  token DSL            │ --keys (cycled) ·       │
+  (chords/perc/melody) │ --random-roots ·        │      arrangement
+        │              │ --full-progression      │   (song.yml sections)
+        ▼              └────────────┬────────────┘            │
+        │                           ▼                          ▼
    parse tokens  ──►  harmony + voicing  ──►  event timeline  ──►  MIDI file
         │            percussion engine          (notes, hits)          │
-        │            melody / transforms                               │
         ▼                                                              ▼
    (CLI or API)                                           render.py: FluidSynth
                                                           → WAV → ffmpeg → audio
@@ -46,8 +47,7 @@ re-exports every public name (star imports), so callers that reach through
 | **`voicing.py`** | `realize_SATB`, `realize_dense`, `build_bass_line`, `build_arpeggio_events`, `build_counterpoint_lines` + voice-leading helpers. | mtheory |
 | **`midiout.py`** | The `MidiOut` writer — mido-backed Type-1 serializer with stem splitting, humanisation, drum/chord scheduling. | mtheory, percussion |
 | **`composition.py`** | `build_progression` + chord-family pickers, `build_chord_timeline`, `build_dense_timeline`, `build_harmony_events`. | mtheory, tokens, voicing |
-| **`music_generator.py`** | CLI/`main`, manifest + master catalog, `render_events`/`resolve_out_path`/`_apply_melody`, project paths; re-exports all of the above. | everything above |
-| **`logging_config.py`** | Centralized logging used across the core. | — |
+| **`music_generator.py`** | CLI/`main`, manifest + master catalog, `render_events`/`resolve_out_path`, project paths, logging setup; re-exports all of the above. | everything above |
 
 Key entry points:
 
@@ -63,15 +63,11 @@ Key entry points:
 | MIDI serialization | `MidiOut` | [midiout.py](https://github.com/galenspikes/music-generator/blob/main/midiout.py) |
 
 ### Satellites (each depends on the core)
-- **`melody.py`** → core. The scale-degree melody mini-language, its model, and the
-  fugal transforms (invert / retrograde / augment).
+- **`melody.py`** → core. The scale-degree melody mini-language and its model,
+  used for song-file melody overlays (`melody:` in `songs/*.yml`).
 - **`arrangement.py`** → core. The arrangement layer: a *song* is global settings
   plus an ordered list of *sections*, each rendered through the core and
   concatenated into one evolving piece. Driven by YAML song files (`songs/*.yml`).
-- **`fugue.py`** → `melody` + core. The fugue generator (v1: exposition + cadence)
-  on the four SATB voice-channels.
-- **`process.py`** → `melody` + core. Process-music generator: phasing, additive,
-  and augmentation applied to a melodic cell.
 - **`generator_api.py`** → core. The **programmatic API seam** — the in-process
   entry point the web UI and tests build on, sharing one render path with the CLI.
 - **`leadsheet.py`** → mtheory. Lead-sheet import's deterministic core: `chordsym_to_token`
@@ -88,9 +84,8 @@ Key entry points:
   Pipeline: `music_generator.py → FluidSynth (WAV) → ffmpeg (loudnorm/boost) → play`.
   Consumes wrapper flags (`--sf2`, `--fx`, `--normalize`, `--boost-db`,
   `--save-wav`, …) and forwards the rest to the generator.
-- **`cook_song.py`** — convenience CLI for rendering curated song recipes.
-- **`query_catalog.py`** — query the master catalog of generated songs
-  (`output/master_catalog.json`, written by each render).
+- **`render_gallery.py`** — batch-renders the curated demo set (`songs/*.yml` +
+  `library/song_cookbook.py` presets) to `site/assets/midi/`. Run via `make gallery`.
 - **`chord_reference.py`** — generates the chord-recipe reference: reads
   `library/chord_recipes.py`, analyses every recipe with `theory.py`, and writes
   `site/chords.html` (interactive explorer) and
@@ -126,8 +121,8 @@ tokens percussion voicing │
                           ▲
       ┌───────────────────┼───────────────────┐
    melody           arrangement          generator_api
-      ▲                                        ▲
-  fugue, process                        webapp backend ──► webapp frontend
+                                                ▲
+                                        webapp backend ──► webapp frontend
 ```
 
 **Two invariants:**
@@ -141,7 +136,7 @@ isolation.
 
 ## Data flow, in detail
 
-1. **Input.** Tokens arrive via the CLI (`--keys`, `--perc-main`, `--melody`, …),
+1. **Input.** Tokens arrive via the CLI (`--keys`, `--perc-main`, …),
    a YAML song file (arrangement mode), or the API (`generator_api`, used by the web UI).
    A song file can itself originate from a lead-sheet PDF:
    `leadsheet_extract.py` → chart IR → `leadsheet.py`'s `ir_to_song_yml` → `song.yml`
@@ -162,17 +157,20 @@ isolation.
 7. **Render (optional).** `render.py` runs FluidSynth to WAV, then ffmpeg for
    loudness normalization / boost. Output lands under `output/{midi,audio,metadata}/<slug>/`.
 
-## Modes (where they plug in)
+## Root selection (where it plugs in)
 
-All modes ultimately produce a core event timeline; they differ in *how the
-material is chosen*:
+The flat (non-arrangement) path always produces a core event timeline; a flag
+combination only decides *which chord roots feed it*, in `build_flat_midi`
+(`music_generator.py`):
 
-- **ostinato** — `--keys` is the looped progression (token grammar applies).
-- **mixed / complete** — the engine walks a circle-of-fifths default and picks
-  chord qualities from `--chords` (ignores `--keys`).
-- **arrangement** — a YAML song sequences multiple sections, each a core render.
-- **fugue** — `fugue.py` builds an exposition from a melodic subject.
-- **process** — `process.py` applies phasing/additive/augmentation to a cell.
+- **default** — `--keys` is honored and cycled to fill the piece (the token
+  grammar applies). With no `--keys`, falls back to a shuffled circle-of-fifths.
+- **`--random-roots`** — shuffles a circle-of-fifths each run, ignoring `--keys`.
+- **`--full-progression`** — plays the roots through once with no
+  looping/repeats, instead of cycling — either the `--keys` chart or, without
+  `--keys`, a full circle-of-fifths walk.
+- **`--song`** — a YAML arrangement sequences multiple sections, each a core
+  render, instead of the flat path above.
 
 ## See also
 

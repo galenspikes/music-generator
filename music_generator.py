@@ -23,9 +23,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format='%(message)s')
-music_generator_logger = logging.getLogger('music_generator')
-
 # The music engine lives in the layered sibling modules below. They are
 # re-exported here (star imports, each module defines __all__) so existing
 # callers reaching through ``music_generator`` (e.g. ``mg.build_harmony_events``)
@@ -55,6 +52,10 @@ from composition import (  # noqa: F401
     build_harmony_events, fill_chords_to_end, truncate_timeline_to,
     next_mode_picker,
 )
+
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+music_generator_logger = logging.getLogger('music_generator')
+
 
 class SpecError(ValueError):
     """A generation spec was invalid (bad ``--voice-instrument`` syntax, an
@@ -430,26 +431,36 @@ def song_overrides_from_args(args, include) -> dict:
 
 
 def build_flat_midi(args) -> tuple["MidiOut", dict]:
-    """Render the flat ostinato/mixed/complete path into an in-memory MidiOut.
+    """Render the flat chord-progression path into an in-memory MidiOut.
 
     Shared by the CLI (``main``) and the web API. Pure with respect to disk: it
     writes nothing and performs no manifest/catalog side effects — the caller
     owns output paths and metadata. Returns ``(midi, meta)`` where ``meta``
     carries the derived fields the CLI manifest records. RNG-consumption order
     matches the original inline ``main`` body, so seeded output is identical.
+
+    Root selection: ``--keys`` (a user-authored chart) is used by default,
+    cycled to fill the piece. ``--random-roots`` ignores ``--keys`` and instead
+    shuffles a circle-of-fifths each run. ``--full-progression`` plays the
+    roots through once with no repeats/looping, instead of the default cycle
+    (applies to either ``--keys`` or the circle-of-fifths fallback).
     """
     tpb = 480
     beats_total = (args.seconds * args.bpm) / 60.0
     chord_len_beats = DUR_MAP[args.chord_len]
 
-    roots = key_roots(args.mode, args.keys)
-    if args.mode == "complete":
-        max_ch = None
-    elif args.mode == "ostinato":
-        max_ch = 9999
-    else:  # mixed
+    if args.random_roots:
+        roots = key_roots("complete", None)
         random.shuffle(roots)
         max_ch = 9999
+    elif args.keys:
+        roots = key_roots("ostinato", args.keys)
+        max_ch = None if args.full_progression else 9999
+    else:
+        roots = key_roots("complete", None)
+        if not args.full_progression:
+            random.shuffle(roots)
+        max_ch = None if args.full_progression else 9999
 
     seq = build_progression(roots, args.chords, args.chords_order,
                             max_chords=max_ch)
@@ -562,19 +573,30 @@ def build_parser() -> argparse.ArgumentParser:
         description=
         "Harmony + Percussion generator (independent parts, SATB, interrupters)."
     )
-    ap.add_argument("--mode",
-                    choices=["complete", "mixed", "ostinato"],
-                    default="mixed")
     ap.add_argument(
         "--song",
         type=str,
         default=None,
         help="Path to a YAML song file (arrangement of sections). When set, "
         "section-based rendering is used and most other flags are ignored.")
-    ap.add_argument("--keys",
-                    type=str,
-                    default=None,
-                    help="Comma list of keys (Eb,Bb,...) for ostinato")
+    ap.add_argument(
+        "--keys",
+        type=str,
+        default=None,
+        help="Comma list of keys/chords (e.g. 'C::maj7,F::maj7,G::13'). "
+        "Honored by default and cycled to fill the piece. Ignored if "
+        "--random-roots is set.")
+    ap.add_argument(
+        "--random-roots",
+        action="store_true",
+        help="Shuffle a circle-of-fifths for the chord roots each run, "
+        "ignoring --keys. Loops to fill the piece.")
+    ap.add_argument(
+        "--full-progression",
+        action="store_true",
+        help="Play the roots through once with no looping/repeats, instead "
+        "of cycling — either your --keys chart or, without --keys, a full "
+        "circle-of-fifths walk.")
     ap.add_argument("--keys-preset",
                     type=str,
                     default=None,
