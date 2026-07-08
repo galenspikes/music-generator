@@ -22,6 +22,9 @@ plan here as a record.*
 - **[refactor-plan.md](refactor-plan.md)** — the active code-health plan
   (monolith breakup + hardening). **Check this before refactoring.**
 - **[webapp-ui-design.md](webapp-ui-design.md)** — the instrument UI/UX direction.
+- **[perc-grammar-extension-plan.md](perc-grammar-extension-plan.md)** — proposed
+  percussion-grammar additions: Euclidean rhythm macro `(K,N[,R])` and
+  deterministic cycle alternation `<a|b>`.
 - **[webui-perc-editor-recommendations.md](webui-perc-editor-recommendations.md)** —
   external review recommendations for the webapp and the percussion editor
   (lossless grid edits, per-pad accents, motif audition, undo/redo).
