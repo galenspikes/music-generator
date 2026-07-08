@@ -7,7 +7,10 @@ overrides the song-level `defaults` and contributes its own chords,
 instrumentation, bass, percussion density, tempo, and length. Sections are laid
 end-to-end on a single timeline; the existing engine builders are reused per
 section with a beat offset, and program/tempo changes are emitted at the
-boundaries (hard cuts in v1 — transitions/fills come later).
+boundaries. Sections default to a hard cut; a section can opt into a
+`transition` (drum fill into the cut, crash on the next downbeat). Voice
+leading (soprano line, bass register) carries across the cut so the harmony
+doesn't reset each section.
 
 See docs/design-notes/arrangement-plan.md for the design.
 """
@@ -16,6 +19,7 @@ from __future__ import annotations
 
 import copy
 import math
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -71,6 +75,44 @@ class SongSpec:
     pan_spread: float = 0.0
 
 
+def _expand_form(raw: dict) -> list[dict]:
+    """Expand a DRY `blocks` + `form` song into a flat sections list.
+
+    ``blocks`` names reusable section configs; ``form`` sequences them by
+    name (optionally with a ``{block_name: overrides}`` entry to tweak one
+    occurrence, e.g. a louder second chorus). Returns a new list of section
+    dicts, each carrying a default ``name`` (the block name, disambiguated
+    with a ``-2``, ``-3``, ... suffix on repeat occurrences).
+    """
+    form = raw.get("form")
+    blocks = raw.get("blocks") or {}
+    if not blocks:
+        raise ValueError("Song file has 'form' but no 'blocks' to reference.")
+    counts: dict[str, int] = {}
+    sections: list[dict] = []
+    for i, entry in enumerate(form):
+        if isinstance(entry, str):
+            block_name, entry_override = entry, None
+        elif isinstance(entry, dict) and len(entry) == 1:
+            block_name, entry_override = next(iter(entry.items()))
+        else:
+            raise ValueError(
+                f"Form entry #{i + 1} must be a block name or a "
+                "{block_name: overrides} mapping.")
+        if block_name not in blocks:
+            raise ValueError(f"Form references unknown block '{block_name}'.")
+        sec = copy.deepcopy(blocks[block_name])
+        if entry_override:
+            sec = _deep_merge(sec, entry_override)
+        counts[block_name] = counts.get(block_name, 0) + 1
+        sec.setdefault(
+            "name",
+            block_name if counts[block_name] == 1
+            else f"{block_name}-{counts[block_name]}")
+        sections.append(sec)
+    return sections
+
+
 def build_spec(raw: dict,
                vel_mode_chords: str = "human",
                vel_mode_drums: str = "human",
@@ -82,12 +124,18 @@ def build_spec(raw: dict,
     per-section explicit values — so a section that hard-codes
     ``instrument: saw`` keeps its saw even when the caller overrides the
     default instrument.
+
+    A song may define sections directly (``sections: [...]``) or via a DRY
+    ``blocks`` + ``form`` pair (define each section once, sequence by name;
+    see :func:`_expand_form`). ``form`` wins if both are present.
     """
     if not isinstance(raw, dict):
         raise ValueError("Song file must be a mapping at the top level.")
-    sections_raw = raw.get("sections")
+    sections_raw = _expand_form(raw) if raw.get("form") else raw.get("sections")
     if not sections_raw:
-        raise ValueError("Song file needs a non-empty 'sections' list.")
+        raise ValueError(
+            "Song file needs a non-empty 'sections' list (or 'form' + "
+            "'blocks').")
 
     global_tempo = int(raw.get("tempo", BASE_DEFAULTS["tempo"]))
     defaults = _deep_merge(BASE_DEFAULTS, raw.get("defaults"))
@@ -143,6 +191,41 @@ def load_spec(path: str,
     return build_spec(raw, vel_mode_chords, vel_mode_drums, overrides)
 
 
+def _parse_transition_fill(val) -> float:
+    """Fill length in beats, from a bar count (`1`, `1.5`) or a `"1bar"`/
+    `"2bars"` string."""
+    if isinstance(val, (int, float)):
+        return float(val) * BEATS_PER_BAR
+    s = str(val).strip().lower()
+    if s.endswith("bars"):
+        s = s[:-4]
+    elif s.endswith("bar"):
+        s = s[:-3]
+    return float(s.strip()) * BEATS_PER_BAR
+
+
+def _apply_transition_fill(drum_tl: list[tuple[float, float, list]],
+                           sec_beats: float,
+                           fill_spec,
+                           main_pat: list,
+                           intr_pats: list[list] | None
+                           ) -> list[tuple[float, float, list]]:
+    """Replace the last `fill_spec` beats of a section's drum timeline with a
+    fill motif (an interrupter pattern played back-to-back, or the main
+    pattern if no interrupters are configured)."""
+    fill_beats = min(_parse_transition_fill(fill_spec), sec_beats)
+    if fill_beats <= 0.0:
+        return drum_tl
+    cut = sec_beats - fill_beats
+    kept = [(w, d, h) for (w, d, h) in drum_tl if w < cut]
+    if kept and kept[-1][0] + kept[-1][1] > cut:
+        w, d, h = kept[-1]
+        kept[-1] = (w, cut - w, h)
+    fill_pat = random.choice(intr_pats) if intr_pats else main_pat
+    fill_tl = mg.build_drum_segment(cut, fill_beats, fill_pat, None, 0.0)
+    return kept + fill_tl
+
+
 def _section_beats(sec: dict, seq_len: int, chord_len: float) -> float:
     """Length of a section in beats, from `bars` (preferred) or `repeat`."""
     if sec.get("bars") is not None:
@@ -186,8 +269,10 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
     """
     events: list = []
     cursor = 0.0
+    prev_sop: int | None = None
+    bass_anchor = 43
 
-    for sec in spec.sections:
+    for sec_idx, sec in enumerate(spec.sections):
         start = cursor
         chord_len = mg.DUR_MAP[sec["chord_length"]]
         roots = mg.key_roots("ostinato", sec["keys"])
@@ -195,7 +280,12 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                                    max_chords=len(roots))
         sec_beats = _section_beats(sec, len(seq), chord_len)
         chord_tl = mg.build_chord_timeline(seq, sec_beats, chord_len,
-                                           static=(sec["satb"] == "static"))
+                                           static=(sec["satb"] == "static"),
+                                           prev_sop=prev_sop,
+                                           bass_anchor=bass_anchor)
+        if chord_tl:
+            prev_sop = chord_tl[-1][2][0]
+            bass_anchor = chord_tl[-1][2][3]
 
         # tempo + per-voice programs at the boundary
         events.append(("tempo", start, 0.0, int(sec["tempo"])))
@@ -266,8 +356,21 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
         intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
         drum_tl = mg.build_drum_timeline_with_fills(
             main_pat, intr, sec_beats, float(perc.get("fill_rate", 0.0)))
+
+        # transition: replace the section's tail with a fill, and/or crash
+        # into the next section's downbeat (hard cut stays the default).
+        transition = sec.get("transition") or {}
+        is_last = sec_idx == len(spec.sections) - 1
+        fill_spec = transition.get("fill")
+        if fill_spec and main_pat:
+            drum_tl = _apply_transition_fill(drum_tl, sec_beats, fill_spec,
+                                             main_pat, intr)
         for when, dur, hits in drum_tl:
             events.append(("drum", when + start, dur, hits))
+        if transition.get("crash") and not is_last:
+            crash_note = mg.get_drum_map().get("j", 49)
+            events.append(("drum", start + sec_beats, 0.0,
+                          [mg.PercHit(note=crash_note)]))
 
         cursor += sec_beats
 

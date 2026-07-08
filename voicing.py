@@ -447,12 +447,17 @@ def recenter_if_needed(sop, alto, tenor, bass):
 def realize_SATB(prev_sop: int | None,
                  root_pc: int,
                  chord_pcs: list[int],
-                 bass_pc: int | None = None):
+                 bass_pc: int | None = None,
+                 bass_anchor: int = 43):
     """
     Voice a chord into SATB with:
       - bass at/near the root (or provided bass_pc) in BASS_RANGE
       - tenor/alto from other chord pcs in their ranges
       - soprano picked via anti-stagnation helper
+    `bass_anchor` is the MIDI center the bass octave is chosen nearest to
+    (default ~G2); pass the previous chord's realized bass note to keep the
+    register continuous across a section boundary instead of always
+    recentering on the same default.
     Returns (sop, alto, tenor, bass) as MIDI notes.
     """
 
@@ -499,7 +504,7 @@ def realize_SATB(prev_sop: int | None,
 
     # bass picks the root (or provided) in range
     broot = bass_pc if bass_pc is not None else root_pc
-    bass = nearest_in_register(mid_note_for(broot, 43), *BASS_RANGE)
+    bass = nearest_in_register(mid_note_for(broot, bass_anchor), *BASS_RANGE)
 
     satisfied_pcs = {sop_choice % 12, root_pc}
 

@@ -79,3 +79,138 @@ def test_render_produces_valid_midi_with_tempo_map(tmp_path):
     # at least the two section tempos appear in the map
     assert len(tempos) >= 2
     assert mid.length > 0
+
+
+# --- Thread 1a: form references (blocks + form) --------------------------
+
+FORM_RAW = {
+    "title": "form-song",
+    "tempo": 120,
+    "defaults": {"chord_length": "q"},
+    "blocks": {
+        "verse": {"keys": "C::maj, F::maj", "bass": {"style": "root"}},
+        "chorus": {"keys": "G::maj, C::maj", "bass": {"style": "octaves"}},
+    },
+    "form": ["verse", "chorus", "verse", {"chorus": {"tempo": 130}}],
+}
+
+
+def test_expand_form_names_and_overrides():
+    spec = A.build_spec(FORM_RAW)
+    names = [s["name"] for s in spec.sections]
+    assert names == ["verse", "chorus", "verse-2", "chorus-2"]
+    assert spec.sections[0]["bass"]["style"] == "root"
+    assert spec.sections[1]["bass"]["style"] == "octaves"
+    # inline per-occurrence override applies only to that one instance
+    assert spec.sections[3]["tempo"] == 130
+    assert spec.sections[1]["tempo"] == 120
+
+
+def test_expand_form_unknown_block_errors():
+    bad = {"blocks": {"verse": {"keys": "C"}}, "form": ["chorus"]}
+    with pytest.raises(ValueError):
+        A.build_spec(bad)
+
+
+def test_expand_form_requires_blocks():
+    with pytest.raises(ValueError):
+        A.build_spec({"form": ["verse"]})
+
+
+def test_expand_form_bad_entry_errors():
+    bad = {"blocks": {"verse": {"keys": "C"}},
+           "form": [{"verse": {}, "chorus": {}}]}  # not a single-key mapping
+    with pytest.raises(ValueError):
+        A.build_spec(bad)
+
+
+# --- Thread 1b: cross-section voice-leading continuity --------------------
+
+def test_build_chord_timeline_prev_sop_seeds_first_voicing():
+    from mtheory import ChordDef
+    import composition as C
+    from voicing import realize_SATB
+
+    chord = ChordDef(root_pc=0, pcs=(0, 4, 7))
+    tl_seeded = C.build_chord_timeline([chord], beats_total=1.0,
+                                       base_len_beats=1.0,
+                                       prev_sop=72, bass_anchor=50)
+    expected = realize_SATB(72, chord.root_pc, list(chord.pcs),
+                            bass_pc=chord.bass_pc, bass_anchor=50)
+    assert tl_seeded[0][2] == expected
+
+
+def test_build_events_threads_prev_sop_between_sections(monkeypatch):
+    calls = []
+    orig = mg.build_chord_timeline
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs.get("prev_sop"))
+        return orig(*args, **kwargs)
+
+    monkeypatch.setattr(mg, "build_chord_timeline", spy)
+    spec = A.build_spec(RAW)
+    A.build_events(spec)
+    assert len(calls) == 2
+    assert calls[0] is None       # first section starts with no lead-in
+    assert calls[1] is not None   # second section is seeded from the first
+
+
+# --- Thread 1c: transitions / fills at section boundaries -----------------
+
+def test_parse_transition_fill_units():
+    assert A._parse_transition_fill("1bar") == 4.0
+    assert A._parse_transition_fill("2bars") == 8.0
+    assert A._parse_transition_fill("0.5bar") == 2.0
+    assert A._parse_transition_fill(1.5) == 6.0
+
+
+def test_apply_transition_fill_replaces_tail():
+    import percussion as P
+    main = P.quantize_to_grid(P.parse_pattern("qk,qk,qk,qk"))
+    fill = P.quantize_to_grid(P.parse_pattern("er,er,er,er,er,er,er,er"))
+    drum_tl = P.build_drum_timeline_with_fills(main, None, 4.0, 0.0)
+
+    out = A._apply_transition_fill(drum_tl, 4.0, "1bar", main, [fill])
+
+    kept = [h for w, d, h in out if w < 3.0]
+    tail = [(w, d, h) for w, d, h in out if w >= 3.0]
+    assert kept  # untouched head remains
+    assert tail  # fill occupies the last bar
+    assert all(w >= 3.0 for w, _, _ in tail)
+    assert sum(d for _, d, _ in out) == pytest.approx(4.0)
+
+
+def test_transition_crash_added_at_next_section_downbeat():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q", "perc": {"main": "qk,qk,qk,qk"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "transition": {"crash": True}},
+            {"name": "b", "bars": 1, "keys": "G::maj"},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, total = A.build_events(spec)
+    crash_note = mg.get_drum_map()["j"]
+    crash_hits = [(w, h) for k, w, _, h in events
+                  if k == "drum" for hit in h if hit.note == crash_note
+                  for _ in [None]]
+    assert any(w == pytest.approx(4.0) for w, _ in crash_hits)
+
+
+def test_transition_crash_skipped_on_last_section():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q", "perc": {"main": "qk,qk,qk,qk"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "transition": {"crash": True}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, total = A.build_events(spec)
+    crash_note = mg.get_drum_map()["j"]
+    assert not any(hit.note == crash_note for k, _, _, h in events
+                  if k == "drum" for hit in h)

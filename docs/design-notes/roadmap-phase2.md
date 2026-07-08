@@ -1,8 +1,9 @@
 # Roadmap — toward an EP of generative grooves
 
-Planning doc (not yet implemented). North star: produce release-quality,
-long-form grooves from charts, finished in a DAW. Four threads, each with a
-concrete design. Cross-cutting enabler called out at the end.
+Planning doc; some threads are now shipped (marked inline). North star: produce
+release-quality, long-form grooves from charts, finished in a DAW. Four
+threads, each with a concrete design. Cross-cutting enabler called out at the
+end.
 
 Current foundation: per-voice channels (split stems), per-voice instruments,
 independent bass generator, arrangement layer Phase 1 (YAML sections, per-section
@@ -16,30 +17,33 @@ tempo/instruments, `build_harmony_events`, `MidiOut.set_tempo_at` /
 **Goal:** sections that connect musically, breathe dynamically, and can be
 arranged into real song forms without copy-paste.
 
-### 1a. Form references (DRY song structure) — *do first, pure loader change*
-Define sections once, sequence by name.
+### 1a. Form references (DRY song structure) — SHIPPED
+Define sections once, sequence by name:
 ```yaml
 blocks:
-  verse:  { repeat: 2, keys: "...", bass: {style: root} }
-  chorus: { repeat: 2, keys: "...", bass: {style: octaves}, voices: {soprano: saw} }
-form: [intro, verse, chorus, verse, chorus, solo, chorus, outro]
+  verse:  { keys: "...", bass: {style: root} }
+  chorus: { keys: "...", bass: {style: octaves}, voices: {soprano: saw} }
+form: [verse, chorus, verse, chorus]
 ```
-`build_spec` expands `form` → the flat `sections` list (with optional inline
-overrides per reference). No engine change. High value, low risk.
+`build_spec` expands `form` → the flat `sections` list, with optional inline
+`{block_name: overrides}` per occurrence (e.g. a louder second chorus).
+`form`/`blocks` and plain `sections` are both supported; `form` wins if both
+are present. See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-### 1b. Cross-section continuity — *fixes the one rough edge in Phase 1*
-Today each section starts voicing fresh. Thread state across boundaries:
-- `build_chord_timeline` gains optional `prev_sop` in / final-sop out (default
-  None keeps the flat path identical).
-- bass register cursor carried between sections.
-- `arrange()` passes the trailing state of section N into section N+1.
+### 1b. Cross-section continuity — SHIPPED
+Each section no longer starts voicing fresh: `arrangement.build_events` threads
+the soprano lead-in and bass register anchor from the end of section N into
+the start of section N+1 via `build_chord_timeline(..., prev_sop=, bass_anchor=)`
+/ `realize_SATB(..., bass_anchor=)` (both default to the old behavior, so the
+flat single-render path is unaffected).
 
-### 1c. Transitions / fills at boundaries
+### 1c. Transitions / fills at boundaries — SHIPPED
 Per-section `transition: {fill: 1bar, crash: true}`:
-- replace the last N beats of the section's drum timeline with a fill (reuse
-  `build_drum_segment` at high fill-rate, or a named fill pattern),
-- add a crash (`j`) on the next section's downbeat.
-Hard cut remains the default.
+- `fill` replaces the last N bars of the section's drum timeline with a fill
+  drawn from `perc.interrupters` (falls back to the main pattern),
+- `crash` adds a crash-cymbal hit on the next section's downbeat (skipped on
+  the last section).
+Hard cut remains the default when `transition` is unset.
 
 ### 1d. Dynamics arc
 Per-section intensity → base velocity + density:

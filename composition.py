@@ -338,6 +338,8 @@ def build_chord_timeline(
         interrupters: list[list[tuple[float, str]]] | None = None,
         chord_fill_rate: float = 0.0,  # <-- add this
         static: bool = False,
+        prev_sop: int | None = None,
+        bass_anchor: int = 43,
 ) -> list[tuple[float, float, tuple[int, int, int, int]]]:
     """
     Returns [(when_beats, dur_beats, (s,a,t,b))].
@@ -349,10 +351,14 @@ def build_chord_timeline(
     consecutive (root, pcs, bass) reuse the exact previous (s,a,t,b) instead of
     re-voicing through `realize_SATB` (whose anti-stagnation logic would
     otherwise wobble the soprano between two chord tones every hit).
+
+    `prev_sop`/`bass_anchor` seed the voice-leading state (the soprano note
+    and bass register to lead from for the very first chord); pass the
+    previous section's final (soprano, bass) to keep the arrangement's voices
+    continuous across a section boundary instead of resetting each section.
     """
     out: list[tuple[float, float, tuple[int, int, int, int]]] = []
     pos = 0.0
-    prev_sop: int | None = None
     prev_chord_key: tuple | None = None
     prev_voicing: tuple[int, int, int, int] | None = None
     i = 0
@@ -382,9 +388,11 @@ def build_chord_timeline(
                     sop, alto, tenor, bass = realize_SATB(prev_sop,
                                                           root_pc,
                                                           pcs,
-                                                          bass_pc=bass_pc)
+                                                          bass_pc=bass_pc,
+                                                          bass_anchor=bass_anchor)
                 out.append((pos, dur, (sop, alto, tenor, bass)))
                 prev_sop = sop
+                bass_anchor = bass
                 prev_chord_key = chord_key
                 prev_voicing = (sop, alto, tenor, bass)
             pos += dur

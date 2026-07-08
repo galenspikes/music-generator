@@ -77,6 +77,56 @@ for why the grammar uses degrees, and
 [token grammar §4](../reference/token-grammar.md) for the full syntax
 (accidentals, octave marks, rests).
 
+## DRY song structure: `blocks` + `form`
+
+Instead of writing out every repeat of a verse/chorus by hand, define each
+section once under `blocks` and sequence them by name under `form`:
+
+```yaml
+blocks:
+  verse:  { keys: "A::min7, D::7, G::maj7, C::maj7", bars: 4,
+            bass: { style: root } }
+  chorus: { keys: "F::maj7, G::7, E::min7, A::min7", bars: 4,
+            bass: { style: octaves }, voices: { soprano: saw } }
+
+form: [verse, chorus, verse, chorus]
+```
+
+Each occurrence gets a default name from its block (`verse`, then `verse-2` on
+repeat) so tempo/program events stay easy to trace. Give one occurrence its own
+tweak — a louder second chorus, say — with a `{block_name: overrides}` entry
+instead of a bare name:
+
+```yaml
+form: [verse, chorus, verse, {chorus: {tempo: 130, perc: {fill_rate: 0.2}}}]
+```
+
+`form` + `blocks` replaces `sections` entirely when present; use whichever
+reads better for a given song (a linear chart is often clearer as plain
+`sections`, a repeating song form is clearer as `blocks` + `form`).
+
+## Transitions between sections
+
+By default sections hard-cut into each other. A section can opt into a
+`transition` to smooth the boundary:
+
+```yaml
+sections:
+  - name: verse
+    keys: "..."
+    transition: { fill: 1bar, crash: true }
+```
+
+- `fill` replaces the last N bars of the section's drum timeline with a fill
+  (drawn from the section's `perc.interrupters`, or the main pattern if none
+  are set) — accepts a bar count (`1`, `1.5`) or a `"1bar"`/`"2bars"` string.
+- `crash` adds a crash-cymbal hit on the *next* section's downbeat (skipped on
+  the last section, since there's nothing after it to accent).
+
+Voice leading also carries across the cut automatically: the soprano line and
+bass register continue from the end of one section into the start of the
+next, instead of every section re-centering its voicing from scratch.
+
 ## The pattern
 
 The arrangement layer is where the *evolution* lives: keep `keys` similar across
