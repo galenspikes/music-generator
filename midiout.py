@@ -5,6 +5,8 @@ timeline (optionally split into per-voice stems), apply velocity humanisation,
 and save a Type-1 MIDI file. Depends on :mod:`mtheory` (channels, voice order)
 and :mod:`percussion` (:class:`PercHit`).
 """
+import copy
+import os
 import random
 
 from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
@@ -573,6 +575,29 @@ class MidiOut:
         if target is None:
             raise ValueError("MidiOut.save() needs a path (none set at init)")
         self.mid.save(target)
+
+    def write_stems(self, base_path: str) -> list[str]:
+        """Write each voice (+ drums) as its own standalone MIDI file
+        alongside the main render, e.g. `song.mid` -> `song_soprano.mid`,
+        `song_bass.mid`, ..., `song_drums.mid` — directly importable into a
+        DAW for external mixing. Requires split stems (per-voice channels);
+        a merged ensemble render has nothing to split, so this is a no-op.
+        Call after `flush_to_end` so notes are properly terminated. Returns
+        the written paths.
+        """
+        if not self.split_stems:
+            return []
+        stem_base, ext = os.path.splitext(base_path)
+        ext = ext or ".mid"
+        paths: list[str] = []
+        for name, track in list(self.chord_tracks.items()) + [("drums", self.tr_dr)]:
+            stem_mid = MidiFile(type=1, ticks_per_beat=self.tpb)
+            stem_mid.tracks.append(copy.deepcopy(self.tr_meta))
+            stem_mid.tracks.append(copy.deepcopy(track))
+            path = f"{stem_base}_{name}{ext}"
+            stem_mid.save(path)
+            paths.append(path)
+        return paths
 
     def to_bytes(self) -> bytes:
         """Serialize the MIDI to an in-memory bytes object (no disk write).

@@ -483,8 +483,13 @@ def intensity_lookup(spec: SongSpec):
     return lookup
 
 
-def render(spec: SongSpec, out_path: str) -> str:
-    """Render the arrangement to a MIDI file at out_path. Returns out_path."""
+def render(spec: SongSpec, out_path: str, stems: bool = False) -> str:
+    """Render the arrangement to a MIDI file at out_path. Returns out_path.
+
+    `stems=True` also writes each voice + drums as its own standalone MIDI
+    file alongside `out_path` (see `MidiOut.write_stems`), for mixing/
+    mastering externally.
+    """
     events, total = build_events(spec)
 
     midi = mg.MidiOut(spec.tempo, out_path,
@@ -498,4 +503,6 @@ def render(spec: SongSpec, out_path: str) -> str:
                                           intensity_at=intensity_lookup(spec))
     midi.flush_to_end(total, t_dr, total)
     midi.save()
+    if stems:
+        midi.write_stems(out_path)
     return out_path

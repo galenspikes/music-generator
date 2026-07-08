@@ -69,6 +69,14 @@ def test_build_events_timeline():
     assert whens == sorted(whens)
 
 
+def test_render_with_stems_writes_stem_files(tmp_path):
+    spec = A.build_spec(RAW)
+    out = str(tmp_path / "song.mid")
+    A.render(spec, out, stems=True)
+    for name in ("soprano", "alto", "tenor", "bass", "drums"):
+        assert (tmp_path / f"song_{name}.mid").exists()
+
+
 def test_render_produces_valid_midi_with_tempo_map(tmp_path):
     spec = A.build_spec(RAW)
     out = str(tmp_path / "song.mid")

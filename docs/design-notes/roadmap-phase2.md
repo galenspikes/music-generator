@@ -166,14 +166,19 @@ and per-section mixes, e.g.*
 mix: { bass: {vol: 105, pan: 64}, soprano: {pan: 84}, drums: {vol: 110} }
 ```
 
-### 4b. Stems export — *the "actually releasable" feature*
-Voices are already on separate channels/tracks. Render **per-stem WAVs** so you
-mix/master externally. Two approaches:
-- **Per-stem MIDI** (simple, DAW-friendly): write one MIDI per voice + drums;
-  render each to WAV. Also directly importable into Logic/Ableton.
-- **Channel-mute rendering:** one MIDI, render N times muting all but one
-  channel. Fewer files but fiddlier with FluidSynth.
-Recommendation: per-stem MIDI; pairs with the render port below.
+### 4b. Stems export — *the "actually releasable" feature* — MIDI SHIPPED
+Voices are already on separate channels/tracks. `MidiOut.write_stems(base_path)`
+writes one standalone MIDI file per voice + drums (`song.mid` ->
+`song_soprano.mid`, `song_bass.mid`, ..., `song_drums.mid`) — directly
+importable into a DAW. Wired to `--stems` (flat CLI path) and
+`arrangement.render(spec, out, stems=True)` (song path). See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
+
+**Still open: WAV bounce.** This ships the "per-stem MIDI" half of the
+original two options; rendering each stem MIDI to its own WAV still needs the
+`render.py` port below (FluidSynth orchestration) to do the bouncing.
+Channel-mute rendering (the other original option) is superseded — per-stem
+MIDI is simpler and was the doc's own recommendation.
 
 ### 4c. Per-section FX via CC — SHIPPED
 CC91 (reverb send) / CC93 (chorus send) per channel/section for spatial

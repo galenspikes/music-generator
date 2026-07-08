@@ -3,6 +3,7 @@
 Tests MIDI event writing, humanization, voice scheduling, and stem splitting.
 """
 
+import os
 import random
 
 import mido
@@ -225,6 +226,50 @@ class TestMidiFileGeneration:
         out.save(str(midi_path))
         assert midi_path.exists()
         assert midi_path.stat().st_size > 0
+
+
+class TestWriteStems:
+    """Test per-stem MIDI export (Thread 4b)."""
+
+    def test_write_stems_writes_one_file_per_voice_and_drums(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=True)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.play_voice_note("bass", 48, 0.0, 1.0)
+        out.drums_block([PercHit(note=36)], beats=1.0, when_beats=0.0)
+        out.flush_to_end(1.0, 1.0, 1.0)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+
+        paths = out.write_stems(base)
+        assert len(paths) == 5  # soprano, alto, tenor, bass, drums
+        names = {p.split("_")[-1] for p in paths}
+        assert names == {"soprano.mid", "alto.mid", "tenor.mid", "bass.mid",
+                         "drums.mid"}
+        for path in paths:
+            assert os.path.exists(path)
+            stem_mid = mido.MidiFile(path)
+            assert len(stem_mid.tracks) == 2  # tempo map + the one voice track
+
+    def test_write_stems_soprano_only_has_soprano_notes(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=True)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.play_voice_note("bass", 48, 0.0, 1.0)
+        out.flush_to_end(1.0, 0.0, 1.0)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+
+        paths = out.write_stems(base)
+        soprano_path = next(p for p in paths if p.endswith("_soprano.mid"))
+        stem_mid = mido.MidiFile(soprano_path)
+        notes_on = {m.note for tr in stem_mid.tracks for m in tr
+                   if m.type == "note_on" and m.velocity > 0}
+        assert notes_on == {72}
+
+    def test_write_stems_no_op_without_split_stems(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=False)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+        assert out.write_stems(base) == []
 
 
 class TestProgramChanges:

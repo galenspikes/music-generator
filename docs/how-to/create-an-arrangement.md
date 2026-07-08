@@ -10,6 +10,12 @@ ignored.*
 venv/bin/python music_generator.py --song songs/autumn_leaves.yml --out autumn --no-play
 ```
 
+Add `--stems` to also write each voice (soprano/alto/tenor/bass) and drums as
+its own standalone MIDI file alongside the main one — `autumn_soprano.mid`,
+`autumn_bass.mid`, ... — directly importable into a DAW for external
+mixing/mastering. Works for both the song path and the flat `--keys` path;
+needs split stems (the default — `--no-split-stems` disables it).
+
 ## The song file
 
 A *song* is global settings + `defaults` + an ordered list of `sections`. Each

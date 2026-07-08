@@ -778,6 +778,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="0–1. Stereo width of the SATB voices across the field "
              "(0=centred/mono, 1=widest). Needs split stems. Default=0.0.")
+    ap.add_argument(
+        "--stems",
+        action="store_true",
+        help="Also write each voice + drums as its own standalone MIDI file "
+             "alongside the main output, for mixing externally. Needs split "
+             "stems (the default).")
 
     return ap
 
@@ -876,9 +882,11 @@ def _run(ap, args):
             vel_mode_chords=args.velocity_mode_chords,
             vel_mode_drums=args.velocity_mode_drums,
             overrides=arr_overrides)
-        arrangement.render(spec, song_out)
+        arrangement.render(spec, song_out, stems=args.stems)
         music_generator_logger.info(f"Wrote {song_out}")
         print(f"Wrote {song_out}")
+        if args.stems:
+            print(f"Wrote stems alongside {song_out}")
         return 0
 
     # ----- output path + sidecar JSON -----
@@ -916,9 +924,18 @@ def _run(ap, args):
         })
 
     midi.save(out_path)
+    if args.stems:
+        if args.split_stems:
+            midi.write_stems(out_path)
+        else:
+            music_generator_logger.warning(
+                "--stems has no effect without split stems "
+                "(all voices share one channel); ignoring.")
 
     # music_generator.py is MIDI-only; audio rendering/preview lives in render.py.
     print(f"Wrote {out_path}")
+    if args.stems and args.split_stems:
+        print(f"Wrote stems alongside {out_path}")
 
     # Log completion
     end_time = datetime.now()
