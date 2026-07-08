@@ -464,6 +464,75 @@ def test_perc_ghost_rate_zero_is_default_noop():
             assert all(hit.vel_offset >= 0 for hit in h)
 
 
+
+# --- Thread 2: lead/hook generator (5th voice) ------------------------------
+
+LEAD_RAW = {
+    "title": "t", "tempo": 120,
+    "defaults": {"chord_length": "q"},
+    "sections": [
+        {"name": "verse", "bars": 2, "keys": "C::maj, F::maj"},
+        {"name": "chorus", "bars": 2, "keys": "G::maj, C::maj",
+         "lead": {"instrument": "sax", "motif": "q1 q3 q5 qr",
+                  "rests": 0.0}},
+    ],
+}
+
+
+def test_lead_section_emits_lead_voice_and_program():
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    assert spec.with_lead is True
+    events, _ = A.build_events(spec)
+    lead_notes = [(w, p) for k, w, _, p in events
+                  if k == "voice" and p[0] == "lead"]
+    assert lead_notes
+    # lead only plays in the chorus (beats 8..16)
+    assert all(8.0 <= w < 16.0 for w, _ in lead_notes)
+    sax = mg.resolve_instrument("sax")
+    assert ("program", 8.0, 0.0, ("lead", sax)) in events
+
+
+def test_lead_keeps_full_satb_underneath():
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    events, _ = A.build_events(spec)
+    chorus_voices = {p[0] for k, w, _, p in events
+                     if k == "voice" and w >= 8.0}
+    assert {"soprano", "alto", "tenor", "bass", "lead"} <= chorus_voices
+
+
+def test_spec_without_lead_has_with_lead_false():
+    spec = A.build_spec(RAW)
+    assert spec.with_lead is False
+
+
+def test_lead_render_puts_notes_on_lead_channel(tmp_path):
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    out = str(tmp_path / "song.mid")
+    A.render(spec, out)
+    import mido
+    from mtheory import LEAD_CH
+    mid = mido.MidiFile(out)
+    lead_notes = [m for tr in mid.tracks for m in tr
+                  if m.type == "note_on" and m.velocity > 0
+                  and m.channel == LEAD_CH]
+    assert lead_notes
+
+
+def test_lead_render_with_stems_writes_lead_stem(tmp_path):
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    out = str(tmp_path / "song.mid")
+    A.render(spec, out, stems=True)
+    assert (tmp_path / "song_lead.mid").exists()
+
+
 def test_transition_crash_skipped_on_last_section():
     raw = {
         "title": "t", "tempo": 120,

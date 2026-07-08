@@ -228,6 +228,55 @@ class TestMidiFileGeneration:
         assert midi_path.stat().st_size > 0
 
 
+class TestLeadVoice:
+    """Test the optional 5th 'lead' voice (Thread 2)."""
+
+    def test_with_lead_registers_lead_track_on_lead_channel(self):
+        from mtheory import LEAD_CH
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        assert "lead" in out.chord_tracks
+        assert out.chord_channels["lead"] == LEAD_CH
+        # SATB channels are untouched
+        assert [out.chord_channels[v] for v in
+                ("soprano", "alto", "tenor", "bass")] == [0, 1, 2, 3]
+
+    def test_without_lead_no_lead_track(self):
+        out = MidiOut(bpm=120, split_stems=True)
+        assert "lead" not in out.chord_tracks
+
+    def test_with_lead_requires_split_stems(self):
+        out = MidiOut(bpm=120, split_stems=False, with_lead=True)
+        assert "lead" not in out.chord_tracks
+
+    def test_play_voice_note_on_lead(self):
+        from mtheory import LEAD_CH
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        out.play_voice_note("lead", 72, 0.0, 1.0)
+        note_ons = [m for m in out.chord_tracks["lead"]
+                    if m.type == "note_on" and m.velocity > 0]
+        assert len(note_ons) == 1
+        assert note_ons[0].channel == LEAD_CH
+
+    def test_program_and_cc_work_on_lead(self):
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        out.program_change_at("lead", program=65, when_beats=0.0)
+        out.control_change_at("lead", control=91, value=50, when_beats=0.0)
+        msgs = list(out.chord_tracks["lead"])
+        assert any(m.type == "program_change" and m.program == 65 for m in msgs)
+        assert any(m.type == "control_change" and m.control == 91
+                   and m.value == 50 for m in msgs)
+
+    def test_write_stems_includes_lead(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        out.play_voice_note("lead", 72, 0.0, 1.0)
+        out.flush_to_end(1.0, 0.0, 1.0)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+        paths = out.write_stems(base)
+        assert len(paths) == 6  # SATB + lead + drums
+        assert any(p.endswith("_lead.mid") for p in paths)
+
+
 class TestWriteStems:
     """Test per-stem MIDI export (Thread 4b)."""
 

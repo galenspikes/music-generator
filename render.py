@@ -36,8 +36,10 @@ GENERATOR = SCRIPT_DIR / "music_generator.py"
 CONFIG_PATH = SCRIPT_DIR / "config.json"
 SOUNDFONTS_DIR = SCRIPT_DIR / "SoundFonts"
 
-# Matches MidiOut.write_stems's naming: <base>_<name>.mid alongside the main MIDI.
-STEM_NAMES = ("soprano", "alto", "tenor", "bass", "drums")
+# Matches MidiOut.write_stems's naming: <base>_<name>.mid alongside the main
+# MIDI ("lead" only exists when the song used one; find_stem_midis skips
+# whichever stems weren't written).
+STEM_NAMES = ("soprano", "alto", "tenor", "bass", "lead", "drums")
 
 FX_PRESETS: dict[str, list[str]] = {
     "none": [],

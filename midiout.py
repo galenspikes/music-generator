@@ -11,7 +11,7 @@ import random
 
 from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
 
-from mtheory import CHORD_CH, DRUM_CH, VOICE_ORDER
+from mtheory import CHORD_CH, DRUM_CH, LEAD_CH, VOICE_ORDER
 from percussion import PercHit
 
 __all__ = ["MidiOut"]
@@ -35,13 +35,19 @@ class MidiOut:
                  vel_mode_drums: str = "uniform",
                  split_stems: bool = False,
                  swing: float = 0.0,
-                 pan_spread: float = 0.0) -> None:
+                 pan_spread: float = 0.0,
+                 with_lead: bool = False) -> None:
         self.bpm = bpm
         self.fname = fname
         self.tpb = tpb
         self.vel_mode_chords = (vel_mode_chords or "uniform").lower()
         self.vel_mode_drums = (vel_mode_drums or "uniform").lower()
         self.split_stems = bool(split_stems)
+        # Optional 5th melodic voice ("lead") on its own channel (LEAD_CH),
+        # registered in chord_tracks like the SATB voices so per-voice notes,
+        # program changes, mix CCs, and stems all work on it unchanged.
+        # Needs split stems (a merged ensemble has no per-voice channels).
+        self.with_lead = bool(with_lead) and self.split_stems
         # Off-beat swing warp applied in render_events (0 = straight eighths).
         self.swing = max(0.0, min(0.75, float(swing or 0.0)))
         # Stereo spread of the SATB voices (0 = mono/centred, 1 = widest).
@@ -58,8 +64,11 @@ class MidiOut:
         tempo = bpm2tempo(self.bpm)
 
         if self.split_stems:
-            for idx, voice in enumerate(self.STEM_VOICES):
-                channel = idx
+            voice_channels = [(voice, idx)
+                              for idx, voice in enumerate(self.STEM_VOICES)]
+            if self.with_lead:
+                voice_channels.append(("lead", LEAD_CH))
+            for voice, channel in voice_channels:
                 track = MidiTrack()
                 self.mid.tracks.append(track)
                 self.chord_tracks[voice] = track

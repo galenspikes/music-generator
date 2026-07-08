@@ -139,7 +139,8 @@ def test_run_generator_with_stems_writes_sibling_midis(slug):
         ["--keys", "C::maj,F::maj", "--stems", "--seconds", "4",
          "--seed", "1", "--no-play", "--out", slug])
     found = render.find_stem_midis(midi)
-    assert set(found) == set(render.STEM_NAMES)
+    # flat renders have no lead voice; the other five stems must all exist
+    assert set(found) == {"soprano", "alto", "tenor", "bass", "drums"}
     for path in found.values():
         assert Path(path).exists()
 

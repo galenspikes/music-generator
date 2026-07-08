@@ -81,41 +81,46 @@ repeats.
 
 ---
 
-## Thread 2 — Melody / lead generator (the hook)
+## Thread 2 — Melody / lead generator (the hook) — v1+v2 SHIPPED
 
-**Goal:** a monophonic, motif-based lead — the part a listener hums. Today the
-"lead" is just the SATB soprano; this is a dedicated generator.
+**Goal:** a monophonic, motif-based lead — the part a listener hums. Distinct
+from the SATB soprano (harmony) and from `melody` (a literal authored tune).
 
-### Design
-- **Where it lives:** a 5th voice on its own channel (ch 4). Requires extending
-  `MidiOut` beyond the 4 SATB voices (optional `lead` track/channel + program).
-- **Pitch material:** per chord (from `chord_tl`) derive chord tones + a scale
-  (chord-tone set, optionally widened to a mode). Strong beats favor chord
-  tones; weak beats allow steps/passing tones; leaps resolve.
-- **Rhythm:** draw from a small rhythm-cell pool (the percussion token grammar
-  could even describe lead rhythms), with rests — silence is what makes a hook.
-- **Phrasing/development:** state a motif, then develop it — repeat, transpose
-  to fit the next chord, invert, sequence; antecedent/consequent over a 4/8-bar
-  phrase; call-and-response (phrase, rest, answer).
+### What shipped (`lead.py` + per-section `lead:` in the arrangement)
+- **Where it lives — resolved: true 5th voice.** `MidiOut(with_lead=True)`
+  registers a "lead" entry in `chord_tracks` on `LEAD_CH` (channel 4), so
+  per-voice notes, `program_change_at`, mix CCs, intensity scaling, and
+  `write_stems` (a lead stem) all work on it with no other core changes.
+  Full SATB keeps playing underneath.
+- **Pitch material — resolved: hybrid.** Degrees resolve against the section
+  `key`/`mode` (explicit or inferred) on a fixed octave line transposed once
+  into the register, so authored/generated intervals sound exactly as
+  written; strong-beat onsets snap to the nearest tone of the chord
+  underneath; the final note cadences on a chord tone.
+- **Motif — resolved: both.** `lead.motif` (scale-degree grammar) is
+  developed as authored; without it, `generate_motif` draws a rhythm cell
+  from a density-tiered pool and walks a stepwise contour (leaps resolve by
+  step, ends on a stable degree). Seed-reproducible.
+- **Development (v2):** phrase-per-bar call-and-response plan — statement,
+  response (silent with probability `rests`), restatement diatonically
+  transposed to fit the current chord, then inversion or sequence.
 
-### Surface
+### Surface (as shipped)
 ```yaml
-lead: { instrument: sax, style: motif, density: 0.5, register: high, rests: 0.4 }
+lead: { instrument: sax, motif: "q1 e2 e3 q5 hr", density: 0.5,
+        register: high, rests: 0.3 }
 ```
-Per-section (lead only in chorus/solo), like other section knobs.
+Per-section, like other knobs; `mix: { lead: {...} }` targets it. See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-### Phasing
-- **v1:** chord-tone motif with rests + repetition fit to each chord (sounds
-  intentional, not noodly).
-- **v2:** motif development (transpose/invert/sequence) + call-and-response.
-- **v3:** scale-aware passing tones, proper phrase arcs, tension/release.
+### Still open (v3)
+Proper phrase arcs and tension/release curves; scale-aware passing-tone
+insertion beyond what the motif itself carries; a `style` knob if more than
+the motif engine ever exists. The `style: motif` field from the original
+sketch was dropped — with one engine it was dead config.
 
-**Open questions:** scale source — derive from chord, or declare key/mode per
-section? Lead as a true 5th channel vs repurposing soprano when active? Degree
-of randomness vs a stated, developed motif?
-
-**Effort:** large (most ambitious). **Risk:** medium — biggest musical payoff,
-and the MidiOut 5th-voice change touches core.
+**Effort:** was large; v3 remainder medium. **Risk of v3:** medium — mostly
+ear-tuning.
 
 ---
 
@@ -265,11 +270,11 @@ doubles as a showcase and a learning aid.
 3. **Groove — DONE:** Thread 3 v2 (bass-locked-to-kick, ghost notes, per-hit
    timing offset), Thread 4a (per-section pan/vol), Thread 4c (per-section
    reverb/chorus), Thread 4b (stems, MIDI + WAV bounce), the `render.py` port.
-4. **The hook (next up):** Thread 2 v1–v2 (melody) — the biggest musical leap,
-   and the last major unshipped thread. Has open design questions (see
-   Thread 2) worth settling before starting.
-5. **Polish (smaller, can thread in anytime):** Thread 3 v3 (genre feel
-   presets — depends on Thread 3's remaining open questions), per-voice SATB
-   micro-timing/early nudges, album batch rendering.
+4. **The hook — DONE (v1+v2):** Thread 2 (motif-based lead on its own 5th
+   channel, developed across the changes). v3 (phrase arcs, tension/release)
+   remains.
+5. **Polish (smaller, can thread in anytime):** Thread 2 v3, Thread 3 v3
+   (genre feel presets — depends on Thread 3's remaining open questions),
+   per-voice SATB micro-timing/early nudges, album batch rendering.
 
 Groove polish (Thread 3 v2+) threads in throughout.

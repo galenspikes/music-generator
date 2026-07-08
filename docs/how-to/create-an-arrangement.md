@@ -83,6 +83,37 @@ for why the grammar uses degrees, and
 [token grammar §4](../reference/token-grammar.md) for the full syntax
 (accidentals, octave marks, rests).
 
+## Add a lead (the hook)
+
+Where `melody` plays a literal tune on the soprano channel, `lead` is a
+*generator*: it states a short motif and develops it across the section —
+restated and transposed to fit each chord, answered with inversions and
+sequences, with call-and-response silence between phrases. The lead gets its
+own 5th channel (and its own stem with `--stems`), and the full SATB keeps
+playing underneath it:
+
+```yaml
+sections:
+  - name: chorus
+    keys: "F::maj7, G::7, E::min7, A::min7"
+    lead:
+      instrument: sax          # any GM name/alias/number (default: sax)
+      motif: "q1 e2 e3 q5 hr"  # scale-degree grammar; omit to auto-generate
+      density: 0.5             # 0-1, only used when generating: busier motif
+      rests: 0.3               # 0-1: chance a response phrase stays silent
+      register: high           # low | mid | high
+```
+
+- **Pitch rule (hybrid):** degrees resolve against the section `key`/`mode`
+  (inferred from the chords when unset); any note landing on a strong beat
+  snaps to the nearest tone of the chord sounding under it, so the line
+  always agrees with the harmony. The final note cadences on a chord tone.
+- **Motif:** give one in the [scale-degree grammar](../reference/token-grammar.md)
+  and it is developed verbatim-first; omit it and one is generated
+  (seed-reproducible via `--seed`).
+- Per-section like everything else — put `lead` only on the chorus/solo, and
+  target it in `mix` (`mix: { lead: {reverb: 60, vol: 110} }`) like any voice.
+
 ## DRY song structure: `blocks` + `form`
 
 Instead of writing out every repeat of a verse/chorus by hand, define each

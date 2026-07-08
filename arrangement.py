@@ -24,6 +24,7 @@ import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import lead as leadgen
 import melody as mel
 import music_generator as mg
 
@@ -51,6 +52,10 @@ BASE_DEFAULTS: dict = {
     # A real tune on top (scale-degree grammar). When set on a section it plays
     # on the soprano channel and replaces the SATB soprano for that section.
     "melody": None,
+    # Lead/hook generator (roadmap Thread 2): a motif-based line on its own
+    # 5th channel, with full SATB still playing underneath. Dict of
+    # {instrument, motif, density, rests, register}; None = no lead.
+    "lead": None,
     "melody_relative": "key",   # "key" (degrees vs the section scale) | "chord"
     "key": None,                # tonic name (e.g. "C", "Eb"); None -> inferred
     "mode": None,               # major/minor/dorian/...; None -> inferred
@@ -83,6 +88,7 @@ class SongSpec:
     sections: list[dict] = field(default_factory=list)
     swing: float = 0.0
     pan_spread: float = 0.0
+    with_lead: bool = False  # any section carries a lead -> MidiOut 5th voice
 
 
 def _expand_form(raw: dict) -> list[dict]:
@@ -249,6 +255,7 @@ def build_spec(raw: dict,
         sections=sections,
         swing=float(defaults.get("swing", 0.0) or 0.0),
         pan_spread=float(defaults.get("pan_spread", 0.0) or 0.0),
+        with_lead=any(isinstance(s.get("lead"), dict) for s in sections),
     )
 
 
@@ -325,6 +332,19 @@ def _chord_root_spans(seq: list, chord_len: float,
     while pos < sec_beats and seq:
         root = seq[i % len(seq)].root_pc
         spans.append((pos, min(pos + chord_len, sec_beats), root))
+        pos += chord_len
+        i += 1
+    return spans
+
+
+def _chord_spans(seq: list, chord_len: float,
+                 sec_beats: float) -> list[tuple[float, float, object]]:
+    """Full ChordDef per chord slot (the lead generator needs the chord's
+    pitch classes for strong-beat snapping, not just its root)."""
+    spans: list[tuple[float, float, object]] = []
+    pos, i = 0.0, 0
+    while pos < sec_beats and seq:
+        spans.append((pos, min(pos + chord_len, sec_beats), seq[i % len(seq)]))
         pos += chord_len
         i += 1
     return spans
@@ -468,6 +488,23 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                         events.append(
                             ("voice", start + when, dur, ("soprano", note)))
 
+        # lead: motif-based hook on its own channel (full SATB underneath)
+        lead_cfg = sec.get("lead")
+        if isinstance(lead_cfg, dict):
+            key_pc, mode = _section_key(sec, seq)
+            lead_events = leadgen.build_lead_events(
+                _chord_spans(seq, chord_len, sec_beats),
+                key_pc, mode,
+                motif_text=lead_cfg.get("motif"),
+                density=float(lead_cfg.get("density", 0.5)),
+                rests=float(lead_cfg.get("rests", 0.3)),
+                register=str(lead_cfg.get("register", "high")))
+            lead_prog = mg.resolve_instrument(
+                str(lead_cfg.get("instrument", "sax")))
+            events.append(("program", start, 0.0, ("lead", lead_prog)))
+            for when, dur, note in lead_events:
+                events.append(("voice", start + when, dur, ("lead", note)))
+
         cursor += sec_beats
 
     priority = {"tempo": 0, "program": 1, "cc": 1, "voice": 2, "drum": 3}
@@ -515,7 +552,8 @@ def render(spec: SongSpec, out_path: str, stems: bool = False) -> str:
                       vel_mode_drums=spec.vel_mode_drums,
                       split_stems=True,
                       swing=spec.swing,
-                      pan_spread=spec.pan_spread)
+                      pan_spread=spec.pan_spread,
+                      with_lead=spec.with_lead)
 
     _t_ch, t_dr, _vmax = mg.render_events(midi, events,
                                           intensity_at=intensity_lookup(spec))
