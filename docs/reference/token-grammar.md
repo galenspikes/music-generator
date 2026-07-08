@@ -96,9 +96,15 @@ Comma-separated inside the brackets:
 - `[vel+N]` / `[vel-N]` — velocity offset (before humanization)
 - `[probX]` — play with probability X (0–1, clamped)
 - `[flamX]` — add a grace hit X beats later (≥0)
+- `[to+N]` / `[toN]` — micro-timing nudge, delay-only ("laid back"): pushes
+  this hit N beats later within its own slot, clamped to the slot's
+  duration. `[to-N]` parses but clamps to 0 at render time — early/ahead-of-
+  the-beat nudges aren't supported (they'd need to reach into the previous
+  slot). A `flam` on the same hit trails the (possibly delayed) main hit,
+  not the slot start.
 
 Example: `qk[vel+10,prob0.5]sh` — a quarter with ride (louder, 50% chance),
-low tom, and pedal hat.
+low tom, and pedal hat. `qc[to0.03]` — a quarter snare laid back slightly.
 
 ---
 

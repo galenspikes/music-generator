@@ -129,8 +129,17 @@ and the MidiOut 5th-voice change touches core.
   eighths, 0.5 = triplet swing). It reads `MidiOut.swing`, so it applies to
   every render path (flat, arrangement, fugue, process); songs set it under
   `defaults: { swing: ... }`. *Still open: per-section swing.*
-- **Pocket / micro-timing:** small per-voice timing offsets — bass slightly
-  ahead, snare laid back. Per-voice `timing_offset` in ms/ticks.
+- **Pocket / micro-timing — PARTIALLY SHIPPED (drums, delay-only):** the
+  percussion token DSL gained a `[to+N]`/`[toN]` per-hit modifier
+  (`PercHit.timing_offset`, applied in `MidiOut.drums_block`) that lays a hit
+  back N beats within its own slot — "snare laid back" from this idea.
+  Resolved as **raw timing offsets** (not a preset), matching how `vel`/
+  `flam`/`prob` already work as composable per-hit modifiers. *Still open:*
+  early/ahead-of-the-beat nudges (would need to reach into the previous
+  slot — a bigger change than a per-hit clamp) and per-voice SATB offsets
+  ("bass slightly ahead" — riskier: shifting a sustained note's start without
+  also handling overlap with the previous note needs more care than a
+  discrete drum hit).
 - **Bass locked to kick — SHIPPED:** `bass.lock_kick: true` (arrangement) /
   `--bass-lock-kick` (flat CLI) times the independent bass line's onsets to
   this section's kick-drum hits (`percussion.kick_onsets`) instead of the even
@@ -147,7 +156,7 @@ and the MidiOut 5th-voice change touches core.
 
 ### Phasing
 - **v1:** swing + laid-back snare + accent-on-1 (contained, immediately audible).
-- **v2 — SHIPPED:** bass-locked-to-kick + ghost notes.
+- **v2 — SHIPPED:** bass-locked-to-kick + ghost notes + per-hit timing offset.
 - **v3:** per-genre feel presets.
 
 **Open questions:** swing global vs per-section? expose raw timing offsets or
@@ -253,14 +262,14 @@ doubles as a showcase and a learning aid.
 1. **Quick wins — DONE:** Thread 4a (pan/volume) + Thread 3 v1 (swing/feel).
 2. **Composition — DONE:** Thread 1a–1e (form refs, continuity, transitions,
    dynamics, length target) — songs that hold together over 20 minutes.
-3. **Groove — DONE:** Thread 3 v2 (bass-locked-to-kick, ghost notes), Thread 4c
-   (per-section mix/FX), Thread 4b (stems, MIDI + WAV bounce), the `render.py`
-   port.
+3. **Groove — DONE:** Thread 3 v2 (bass-locked-to-kick, ghost notes, per-hit
+   timing offset), Thread 4a (per-section pan/vol), Thread 4c (per-section
+   reverb/chorus), Thread 4b (stems, MIDI + WAV bounce), the `render.py` port.
 4. **The hook (next up):** Thread 2 v1–v2 (melody) — the biggest musical leap,
    and the last major unshipped thread. Has open design questions (see
    Thread 2) worth settling before starting.
 5. **Polish (smaller, can thread in anytime):** Thread 3 v3 (genre feel
-   presets — depends on Thread 3's remaining open question), pocket/
-   micro-timing, album batch rendering.
+   presets — depends on Thread 3's remaining open questions), per-voice SATB
+   micro-timing/early nudges, album batch rendering.
 
 Groove polish (Thread 3 v2+) threads in throughout.

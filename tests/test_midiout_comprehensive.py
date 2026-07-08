@@ -747,6 +747,44 @@ class TestDrumBlocks:
         midi_bytes = out.to_bytes()
         assert len(midi_bytes) > 0
 
+    def test_drums_block_timing_offset_delays_note_on(self):
+        """A positive timing_offset lays the hit back within its own slot."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=38, timing_offset=0.25)]  # a quarter of a beat late
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        note_ons = [m for m in out.tr_dr if m.type == "note_on"]
+        assert len(note_ons) == 1
+        assert note_ons[0].time == out.ticks(0.25)
+
+    def test_drums_block_timing_offset_clamped_to_slot(self):
+        """A timing_offset longer than the slot is clamped, not overflowed."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=38, timing_offset=10.0)]
+        out.drums_block(hits=pattern, beats=0.5, when_beats=0.0)
+        note_ons = [m for m in out.tr_dr if m.type == "note_on"]
+        assert note_ons[0].time == out.ticks(0.5)
+
+    def test_drums_block_negative_timing_offset_clamped_to_zero(self):
+        """Early nudges aren't supported (would cross into the prior slot);
+        a negative timing_offset is clamped to 0 (on-grid) rather than error."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=38, timing_offset=-0.2)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        note_ons = [m for m in out.tr_dr if m.type == "note_on"]
+        assert note_ons[0].time == 0
+
+    def test_drums_block_flam_trails_the_delayed_hit(self):
+        """flam is measured from the (possibly delayed) main hit, not the
+        slot start."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36, timing_offset=0.2, flam=0.05)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        # tick deltas in append order: main hit at 0.2 beats, then the flam
+        # grace note 0.05 beats after that (i.e. at 0.25 beats absolute).
+        note_on_deltas = [m.time for m in out.tr_dr if m.type == "note_on"]
+        assert note_on_deltas[0] == out.ticks(0.2)
+        assert note_on_deltas[0] + note_on_deltas[1] == out.ticks(0.25)
+
     def test_drums_block_flam_longer_than_beat(self):
         """drums_block clamps flam to beat duration."""
         out = MidiOut(bpm=120)

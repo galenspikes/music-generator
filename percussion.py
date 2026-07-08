@@ -48,6 +48,11 @@ class PercHit:
     vel_offset: int = 0
     probability: float = 1.0
     flam: float | None = None
+    # Micro-timing nudge in beats, delay-only (clamped to the hit's own slot
+    # duration in MidiOut.drums_block) — "laid back" feel, e.g. a snare that
+    # trails the grid slightly. Negative/early nudges would need to reach into
+    # the previous slot, which isn't supported.
+    timing_offset: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -205,6 +210,7 @@ def parse_single_token(tok: str,
         vel_offset = 0
         probability = 1.0
         flam = None
+        timing_offset = 0.0
         if i < rest_len and rest[i] == '[':
             end = rest.find(']', i)
             if end == -1:
@@ -258,6 +264,24 @@ def parse_single_token(tok: str,
                             raise ValueError(
                                 f"Flam offset must be >=0 in token '{tok}'")
                         flam = flam_val
+                    elif lower.startswith('to'):
+                        payload = part[2:]
+                        if payload.startswith(('=', '+', '-')):
+                            payload = payload[1:] if payload.startswith('=') else payload
+                        payload = payload.strip()
+                        if not payload:
+                            raise ValueError(
+                                f"Missing timing offset in modifier '{part}'")
+                        try:
+                            offset_val = float(payload)
+                        except ValueError as exc:
+                            raise ValueError(
+                                f"Bad timing offset '{part}' in token '{tok}'") from exc
+                        if lower.startswith('to-') and not lower.startswith('to-='):
+                            offset_val = -abs(offset_val)
+                        elif lower.startswith('to+') and not lower.startswith('to+='):
+                            offset_val = abs(offset_val)
+                        timing_offset = offset_val
                     else:
                         raise ValueError(
                             f"Unknown modifier '{part}' in token '{tok}'")
@@ -266,7 +290,8 @@ def parse_single_token(tok: str,
             PercHit(note=note_val,
                     vel_offset=int(vel_offset),
                     probability=probability,
-                    flam=flam))
+                    flam=flam,
+                    timing_offset=timing_offset))
     return (beats, hits)
 
 

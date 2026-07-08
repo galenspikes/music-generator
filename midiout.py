@@ -484,11 +484,14 @@ class MidiOut:
                 continue
             note = hit.note
             base = round(base_velocity(note) * vel_scale) + hit.vel_offset
-            vel = self._compute_drum_velocity(note, base, when_beats)
-            events.append((0.0, note, vel))
+            hit_offset = max(0.0, float(hit.timing_offset))
+            if beats > 0.0:
+                hit_offset = min(hit_offset, beats)
+            vel = self._compute_drum_velocity(note, base, when_beats + hit_offset)
+            events.append((hit_offset, note, vel))
 
             if hit.flam is not None:
-                flam_offset = max(0.0, float(hit.flam))
+                flam_offset = hit_offset + max(0.0, float(hit.flam))
                 if beats > 0.0:
                     flam_offset = min(flam_offset, max(0.0, beats))
                 flam_base = base - 14
