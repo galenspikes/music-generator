@@ -51,6 +51,7 @@ class MidiOut:
         self.active_ch: dict[str, set[int]] = {}
         self.voice_positions: dict[str, float] = {}
         self.active_dr: set[int] = set()
+        self.dr_position = 0.0
 
         tempo = bpm2tempo(self.bpm)
 
@@ -218,6 +219,39 @@ class MidiOut:
             Message('program_change', program=program, channel=channel,
                     time=0))
 
+    def control_change_at(self,
+                          voice: str,
+                          control: int,
+                          value: int,
+                          when_beats: float) -> None:
+        """Send a control-change (e.g. CC91 reverb send, CC93 chorus send) on
+        a voice's channel at a beat offset — the per-section mix/FX knob.
+        Requires split stems (per-voice channels), like `program_change_at`.
+        """
+        if voice not in self.chord_tracks:
+            return
+        track = self.chord_tracks[voice]
+        channel = self.chord_channels[voice]
+        self._seek_voice(voice, when_beats)
+        track.append(
+            Message('control_change', control=control,
+                    value=max(0, min(127, int(value))), channel=channel,
+                    time=0))
+
+    def drum_control_change_at(self,
+                               control: int,
+                               value: int,
+                               when_beats: float) -> None:
+        """Send a control-change on the drum channel at a beat offset (the
+        percussion side of `control_change_at`)."""
+        delta = when_beats - self.dr_position
+        if delta > 0:
+            self.advance_dr(delta)
+        self.tr_dr.append(
+            Message('control_change', control=control,
+                    value=max(0, min(127, int(value))), channel=DRUM_CH,
+                    time=0))
+
     def _seek_voice(self, voice: str, target_beats: float) -> None:
         current = self.voice_positions.get(voice, 0.0)
         delta = target_beats - current
@@ -239,6 +273,7 @@ class MidiOut:
 
     def advance_dr(self, beats: float) -> None:
         self.tr_dr.append(MetaMessage('text', text='', time=self.ticks(beats)))
+        self.dr_position += beats
 
     @staticmethod
     def _clamp_velocity(val: float) -> int:
@@ -509,6 +544,7 @@ class MidiOut:
                             channel=DRUM_CH,
                             time=0))
                 self.active_dr.discard(note)
+            self.dr_position = when_beats + beats
             return
 
         ordered_notes = sorted(active_notes)
@@ -530,6 +566,7 @@ class MidiOut:
                             channel=DRUM_CH,
                             time=0))
                 self.active_dr.discard(note)
+        self.dr_position = when_beats + beats
 
     def save(self, path: str | None = None) -> None:
         target = path or self.fname

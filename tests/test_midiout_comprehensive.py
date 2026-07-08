@@ -526,6 +526,43 @@ class TestProgramChange:
         midi_bytes = out.to_bytes()
         assert len(midi_bytes) > 0
 
+    def test_control_change_at_sends_cc_on_voice_channel(self):
+        """control_change_at sends CC91/93 on the target voice's channel."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.control_change_at("bass", control=91, value=64, when_beats=1.0)
+        channel = out.chord_channels["bass"]
+        ccs = [m for m in out.chord_tracks["bass"]
+              if m.type == "control_change" and m.control == 91]
+        assert len(ccs) == 1
+        assert ccs[0].value == 64
+        assert ccs[0].channel == channel
+
+    def test_control_change_at_clamps_value(self):
+        """control_change_at clamps out-of-range values into [0, 127]."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.control_change_at("bass", control=91, value=999, when_beats=0.0)
+        cc = next(m for m in out.chord_tracks["bass"]
+                  if m.type == "control_change" and m.control == 91)
+        assert cc.value == 127
+
+    def test_control_change_at_invalid_voice_is_safe(self):
+        """control_change_at on an unknown voice is a no-op, not an error."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.control_change_at("invalid", control=91, value=64, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drum_control_change_at_sends_cc_on_drum_channel(self):
+        """drum_control_change_at sends CC on the drum channel."""
+        from mtheory import DRUM_CH
+        out = MidiOut(bpm=120)
+        out.drum_control_change_at(control=93, value=32, when_beats=2.0)
+        ccs = [m for m in out.tr_dr
+              if m.type == "control_change" and m.control == 93]
+        assert len(ccs) == 1
+        assert ccs[0].value == 32
+        assert ccs[0].channel == DRUM_CH
+
     def test_set_voice_programs_dict(self):
         """set_voice_programs applies programs to voices."""
         out = MidiOut(split_stems=True, bpm=120)

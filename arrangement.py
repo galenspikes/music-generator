@@ -361,6 +361,16 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                     if voice in voices else default_prog)
             events.append(("program", start, 0.0, (voice, prog)))
 
+        # per-section mix/FX: reverb (CC91) / chorus (CC93) sends, per voice
+        # or "drums", for spatial dynamics without swapping soundfonts.
+        for target, fx in (sec.get("mix") or {}).items():
+            if not isinstance(fx, dict):
+                continue
+            if "reverb" in fx:
+                events.append(("cc", start, 0.0, (target, 91, int(fx["reverb"]))))
+            if "chorus" in fx:
+                events.append(("cc", start, 0.0, (target, 93, int(fx["chorus"]))))
+
         # harmony + bass (shared builder), offset onto the global timeline
         bass = sec["bass"]
         cp = sec["counterpoint"]
@@ -442,7 +452,7 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
 
         cursor += sec_beats
 
-    priority = {"tempo": 0, "program": 1, "voice": 2, "drum": 3}
+    priority = {"tempo": 0, "program": 1, "cc": 1, "voice": 2, "drum": 3}
     events.sort(key=lambda e: (e[1], priority.get(e[0], 9)))
     return events, cursor
 

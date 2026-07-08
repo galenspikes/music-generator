@@ -321,6 +321,53 @@ def test_length_seconds_respects_per_section_tempo():
     assert len(spec.sections) == 2  # one full pass + a trimmed loop
 
 
+
+# --- Thread 4c: per-section mix/FX (reverb/chorus CC) ----------------------
+
+def test_mix_emits_cc_events_per_voice_and_drums():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "mix": {"bass": {"reverb": 40}, "soprano": {"chorus": 20},
+                     "drums": {"reverb": 10, "chorus": 5}}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    cc_events = {tuple(payload) for k, _, _, payload in events if k == "cc"}
+    assert ("bass", 91, 40) in cc_events
+    assert ("soprano", 93, 20) in cc_events
+    assert ("drums", 91, 10) in cc_events
+    assert ("drums", 93, 5) in cc_events
+
+
+def test_mix_absent_emits_no_cc_events():
+    spec = A.build_spec(RAW)  # no 'mix' anywhere
+    events, _ = A.build_events(spec)
+    assert not any(k == "cc" for k, *_ in events)
+
+
+def test_render_events_dispatches_cc_to_midiout(monkeypatch):
+    import music_generator as mgen
+    midi = mgen.MidiOut(120, split_stems=True)
+    calls = []
+    monkeypatch.setattr(midi, "control_change_at",
+                        lambda voice, control, value, when: calls.append(
+                            ("voice", voice, control, value, when)))
+    monkeypatch.setattr(midi, "drum_control_change_at",
+                        lambda control, value, when: calls.append(
+                            ("drums", control, value, when)))
+    events = [
+        ("cc", 2.0, 0.0, ("bass", 91, 64)),
+        ("cc", 2.0, 0.0, ("drums", 93, 32)),
+    ]
+    mgen.render_events(midi, events)
+    assert ("voice", "bass", 91, 64, 2.0) in calls
+    assert ("drums", 93, 32, 2.0) in calls
+
+
 def test_transition_crash_skipped_on_last_section():
     raw = {
         "title": "t", "tempo": 120,

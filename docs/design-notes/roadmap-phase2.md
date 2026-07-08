@@ -175,9 +175,19 @@ mix/master externally. Two approaches:
   channel. Fewer files but fiddlier with FluidSynth.
 Recommendation: per-stem MIDI; pairs with the render port below.
 
-### 4c. Per-section FX via CC
+### 4c. Per-section FX via CC — SHIPPED
 CC91 (reverb send) / CC93 (chorus send) per channel/section for spatial
-dynamics without swapping soundfonts.
+dynamics without swapping soundfonts:
+```yaml
+sections:
+  - name: solo
+    mix: { soprano: {reverb: 90, chorus: 40}, drums: {reverb: 40} }
+```
+`mix` keys are voice names or `drums`; values are 0–127 sends. New
+`MidiOut.control_change_at`/`drum_control_change_at` (mirroring
+`program_change_at`) send the CC at the section's beat offset; `render_events`
+dispatches a new `"cc"` event kind to them. See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
 **Open questions:** stems as separate MIDI vs channel-mute render? expose pan/vol
 per section or song-global only in v1? bounce stems to WAV here, or just emit

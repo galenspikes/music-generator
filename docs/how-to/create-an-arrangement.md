@@ -176,6 +176,27 @@ trimmed (its length re-expressed in `bars`) to land exactly on target rather
 than overshooting by a whole extra pass. Combine with `form`/`blocks` to keep
 a repeating song structure readable at any length.
 
+## Mix / FX per section
+
+Send reverb (CC91) and chorus (CC93) per voice — or the whole drum kit — to
+push a section forward or back in the mix without swapping soundfonts:
+
+```yaml
+sections:
+  - name: verse
+    keys: "..."
+    mix: { bass: {reverb: 20} }
+  - name: solo
+    keys: "..."
+    mix: { soprano: {reverb: 90, chorus: 40}, drums: {reverb: 40} }
+```
+
+Keys under `mix` are voice names (`soprano`/`alto`/`tenor`/`bass`) or
+`drums`; values are `reverb`/`chorus` sends in the standard MIDI 0–127
+range. Requires split stems (the default) for the SATB voices, same as
+per-voice `instrument`/`voices`. A section without `mix` sends nothing (the
+soundfont's own default send levels apply, same as before this existed).
+
 ## The pattern
 
 The arrangement layer is where the *evolution* lives: keep `keys` similar across

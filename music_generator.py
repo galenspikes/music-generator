@@ -262,7 +262,8 @@ def ts_filename(stem: str) -> str:
 
 
 _EVENT_PRIORITY = {
-    "tempo": 0, "program": 1, "voice": 2, "chord": 3, "densechord": 3, "drum": 4,
+    "tempo": 0, "program": 1, "cc": 1, "voice": 2, "chord": 3, "densechord": 3,
+    "drum": 4,
 }
 
 
@@ -307,8 +308,11 @@ def render_events(midi: "MidiOut",
                   events: list,
                   intensity_at=None) -> tuple[float, float, float]:
     """Dispatch a time-sorted event stream onto a MidiOut. Handles every event
-    kind (tempo, program, voice, chord, densechord, drum). Returns the final
-    (chord_cursor, drum_cursor, voice_max) so the caller can flush to the end.
+    kind (tempo, program, cc, voice, chord, densechord, drum). Returns the
+    final (chord_cursor, drum_cursor, voice_max) so the caller can flush to
+    the end. A ``cc`` event is ``(voice_or_"drums", control, value)`` — a
+    control-change (e.g. CC91 reverb, CC93 chorus) at that voice's/the drum
+    channel's beat offset, the per-section mix/FX knob.
 
     Shared by the flat render, the arrangement renderer, and the fugue/process
     modes — one dispatch loop instead of several copies.
@@ -356,6 +360,12 @@ def render_events(midi: "MidiOut",
         elif kind == "program":
             voice, prog = payload
             midi.program_change_at(voice, prog, when)
+        elif kind == "cc":
+            voice, control, value = payload
+            if voice == "drums":
+                midi.drum_control_change_at(control, value, when)
+            else:
+                midi.control_change_at(voice, control, value, when)
     return t_ch, t_dr, voice_max
 
 
