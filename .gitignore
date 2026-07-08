@@ -42,3 +42,7 @@ docs/sources/
 # MkDocs local build output (docs are published by pages.yml)
 _site_docs/
 _public/
+
+# Preset/progression fixtures leaked by an interrupted test run (the API
+# tests clean up after themselves via try/finally, but a killed run can't)
+presets/**/test_*.json
