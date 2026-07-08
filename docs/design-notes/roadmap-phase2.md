@@ -45,15 +45,22 @@ Per-section `transition: {fill: 1bar, crash: true}`:
   the last section).
 Hard cut remains the default when `transition` is unset.
 
-### 1d. Dynamics arc
-Per-section intensity → base velocity + density:
+### 1d. Dynamics arc — SHIPPED
+Per-section `dynamics: {intensity}` → base velocity + density:
 ```yaml
 verse:  { dynamics: {intensity: 0.6} }
 chorus: { dynamics: {intensity: 1.0} }
 ```
-Map intensity → chord/bass velocity base (currently fixed at 78) and scale
-perc fill-rate. `build_harmony_events` / `play_voice_note` already take a `base`
-velocity — plumb it through per section. Optional global build curve later.
+`render_events` gained an `intensity_at(when_beats)` lookup (default: constant
+1.0, so the flat render path is unaffected) that scales the base velocity
+passed to `play_voice_note`/`chord_block`/`dense_block` and the new `vel_scale`
+on `MidiOut.drums_block`; `arrangement.intensity_lookup(spec)` builds it from
+each section's beat range without touching the RNG (so it can run alongside
+`build_events` on the same spec). Percussion density scales separately, in
+`build_events`, by multiplying each section's `perc.fill_rate` by its
+intensity. See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
+Optional global build curve (continuous rather than per-section step) is
+still open for a later pass.
 
 ### 1e. `seconds:` length target
 `length: {seconds: 1200}` → after one pass of the form, repeat/trim the whole

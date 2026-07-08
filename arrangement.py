@@ -10,7 +10,8 @@ section with a beat offset, and program/tempo changes are emitted at the
 boundaries. Sections default to a hard cut; a section can opt into a
 `transition` (drum fill into the cut, crash on the next downbeat). Voice
 leading (soprano line, bass register) carries across the cut so the harmony
-doesn't reset each section.
+doesn't reset each section. A section's `dynamics.intensity` scales its
+velocity and percussion density, for a dynamics arc across the piece.
 
 See docs/design-notes/arrangement-plan.md for the design.
 """
@@ -50,6 +51,10 @@ BASE_DEFAULTS: dict = {
     "mode": None,               # major/minor/dorian/...; None -> inferred
     "swing": 0.0,               # off-beat swing warp (0=straight, 0.5=triplet)
     "pan_spread": 0.0,          # stereo width of the SATB voices (0=centred)
+    # Dynamics arc: intensity scales chord/voice/drum velocity and perc
+    # density. 1.0 keeps the engine's plain defaults (velocity base 78,
+    # perc fill_rate as configured); <1 softer, >1 harder.
+    "dynamics": {"intensity": 1.0},
 }
 
 
@@ -350,12 +355,15 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                         events.append(
                             ("voice", start + when, dur, ("soprano", note)))
 
-        # percussion
+        # percussion — dynamics.intensity scales fill density (velocity is
+        # handled separately, at render time, via intensity_lookup)
         perc = sec.get("perc") or {}
+        intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
         main_pat = mg.parse_pattern(perc["main"]) if perc.get("main") else []
         intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
+        fill_rate = max(0.0, min(1.0, float(perc.get("fill_rate", 0.0)) * intensity))
         drum_tl = mg.build_drum_timeline_with_fills(
-            main_pat, intr, sec_beats, float(perc.get("fill_rate", 0.0)))
+            main_pat, intr, sec_beats, fill_rate)
 
         # transition: replace the section's tail with a fill, and/or crash
         # into the next section's downbeat (hard cut stays the default).
@@ -379,6 +387,32 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
     return events, cursor
 
 
+def intensity_lookup(spec: SongSpec):
+    """Return a `when_beats -> intensity` function from each section's
+    `dynamics.intensity` (see BASE_DEFAULTS), for `render_events`'s
+    `intensity_at`. Computed from section *lengths* only (chord count, not
+    the progression's randomly-picked content) so it can be called alongside
+    `build_events` on the same spec without perturbing the RNG stream.
+    """
+    spans: list[tuple[float, float]] = []
+    cursor = 0.0
+    for sec in spec.sections:
+        chord_len = mg.DUR_MAP[sec["chord_length"]]
+        seq_len = len(mg.key_roots("ostinato", sec["keys"]))
+        sec_beats = _section_beats(sec, seq_len, chord_len)
+        intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
+        spans.append((cursor + sec_beats, intensity))
+        cursor += sec_beats
+
+    def lookup(when: float) -> float:
+        for end, intensity in spans:
+            if when < end - 1e-9:
+                return intensity
+        return spans[-1][1] if spans else 1.0
+
+    return lookup
+
+
 def render(spec: SongSpec, out_path: str) -> str:
     """Render the arrangement to a MIDI file at out_path. Returns out_path."""
     events, total = build_events(spec)
@@ -390,7 +424,8 @@ def render(spec: SongSpec, out_path: str) -> str:
                       swing=spec.swing,
                       pan_spread=spec.pan_spread)
 
-    _t_ch, t_dr, _vmax = mg.render_events(midi, events)
+    _t_ch, t_dr, _vmax = mg.render_events(midi, events,
+                                          intensity_at=intensity_lookup(spec))
     midi.flush_to_end(total, t_dr, total)
     midi.save()
     return out_path

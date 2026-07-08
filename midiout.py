@@ -413,7 +413,8 @@ class MidiOut:
             vel_p: int = 102,
             vel_t: int = 100,
             choke_openhat: bool = False,
-            choke_after_beats: float = 0.06) -> None:
+            choke_after_beats: float = 0.06,
+            vel_scale: float = 1.0) -> None:
         if not hits:
             self.advance_dr(beats)
             return
@@ -445,7 +446,7 @@ class MidiOut:
             if random.random() > hit.probability:
                 continue
             note = hit.note
-            base = base_velocity(note) + hit.vel_offset
+            base = round(base_velocity(note) * vel_scale) + hit.vel_offset
             vel = self._compute_drum_velocity(note, base, when_beats)
             events.append((0.0, note, vel))
 

@@ -127,6 +127,30 @@ Voice leading also carries across the cut automatically: the soprano line and
 bass register continue from the end of one section into the start of the
 next, instead of every section re-centering its voicing from scratch.
 
+## Dynamics arc
+
+Give a section a `dynamics.intensity` to shape the piece's loudness/density
+over time — a quiet verse building into a loud chorus, say:
+
+```yaml
+sections:
+  - name: verse
+    keys: "..."
+    dynamics: { intensity: 0.6 }
+  - name: chorus
+    keys: "..."
+    dynamics: { intensity: 1.1 }
+```
+
+`intensity` defaults to `1.0` (the engine's plain defaults: chord/voice
+velocity base 78, percussion density as configured by `perc.fill_rate`).
+Below 1.0 softens both; above 1.0 pushes both harder. It scales:
+- **velocity** — chord, voice, and drum note-on velocities, at render time
+  (multiplies the base before the human/random velocity humanization runs).
+- **percussion density** — the section's `perc.fill_rate` (probability of a
+  fill motif vs. the main pattern), scaled down for a sparser feel or up for
+  a busier one.
+
 ## The pattern
 
 The arrangement layer is where the *evolution* lives: keep `keys` similar across

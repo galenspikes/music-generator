@@ -200,6 +200,81 @@ def test_transition_crash_added_at_next_section_downbeat():
     assert any(w == pytest.approx(4.0) for w, _ in crash_hits)
 
 
+
+# --- Thread 1d: dynamics arc (per-section intensity) ----------------------
+
+def test_intensity_lookup_matches_section_boundaries():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "dynamics": {"intensity": 0.6}},
+            {"name": "b", "bars": 1, "keys": "G::maj",
+             "dynamics": {"intensity": 1.2}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    lookup = A.intensity_lookup(spec)
+    assert lookup(0.0) == pytest.approx(0.6)
+    assert lookup(3.9) == pytest.approx(0.6)
+    assert lookup(4.0) == pytest.approx(1.2)   # section b starts here
+    assert lookup(7.9) == pytest.approx(1.2)
+    assert lookup(100.0) == pytest.approx(1.2)  # past the end: last section
+
+
+def test_intensity_lookup_defaults_to_one():
+    spec = A.build_spec(RAW)  # no 'dynamics' set anywhere
+    lookup = A.intensity_lookup(spec)
+    assert lookup(0.0) == pytest.approx(1.0)
+    assert lookup(10.0) == pytest.approx(1.0)
+
+
+def test_dynamics_scales_perc_fill_rate():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q",
+                     "perc": {"main": "qk,qk,qk,qk",
+                              "interrupters": ["ek,ek,ek,ek,ek,ek,ek,ek"],
+                              "fill_rate": 0.5}},
+        "sections": [
+            {"name": "quiet", "bars": 1, "keys": "C::maj",
+             "dynamics": {"intensity": 0.0}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    # intensity 0.0 * fill_rate 0.5 => no interrupter fills should fire, so
+    # every drum slot should be a plain quarter-note kick from the main
+    # pattern (4 beats of section / 1 beat per main-pattern slot = 4)
+    drum_events = [e for e in events if e[0] == "drum"]
+    assert len(drum_events) == 4
+
+
+def test_render_events_intensity_at_scales_velocity(tmp_path):
+    import music_generator as mgen
+    quiet_out = str(tmp_path / "quiet.mid")
+    loud_out = str(tmp_path / "loud.mid")
+
+    def make_events():
+        return [("chord", 0.0, 1.0, (60, 64, 67, 48))]
+
+    for out_path, factor in ((quiet_out, 0.4), (loud_out, 1.0)):
+        midi = mgen.MidiOut(120, out_path, vel_mode_chords="uniform",
+                            split_stems=True)
+        mgen.render_events(midi, make_events(), intensity_at=lambda w: factor)
+        midi.flush_to_end(1.0, 0.0, 1.0)
+        midi.save()
+
+    import mido
+    def max_velocity(path):
+        mid = mido.MidiFile(path)
+        return max((m.velocity for tr in mid.tracks for m in tr
+                    if m.type == "note_on"), default=0)
+
+    assert max_velocity(quiet_out) < max_velocity(loud_out)
+
+
 def test_transition_crash_skipped_on_last_section():
     raw = {
         "title": "t", "tempo": 120,

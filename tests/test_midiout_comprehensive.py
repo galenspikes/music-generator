@@ -447,6 +447,22 @@ class TestDrumPlayback:
         midi_bytes = out.to_bytes()
         assert len(midi_bytes) > 0
 
+    def test_drums_block_vel_scale_lowers_velocity(self):
+        """vel_scale multiplies the per-instrument base before humanization."""
+        quiet = MidiOut(bpm=120, vel_mode_drums="uniform")
+        loud = MidiOut(bpm=120, vel_mode_drums="uniform")
+        pattern = [PercHit(note=36)]
+        quiet.drums_block(pattern, beats=1.0, when_beats=0.0, vel_scale=0.4)
+        loud.drums_block(pattern, beats=1.0, when_beats=0.0, vel_scale=1.0)
+
+        def note_on_velocity(midi_out):
+            for msg in midi_out.tr_dr:
+                if msg.type == "note_on":
+                    return msg.velocity
+            return None
+
+        assert note_on_velocity(quiet) < note_on_velocity(loud)
+
 
 class TestVoiceAdvance:
     """Test advancing voice positions."""

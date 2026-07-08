@@ -304,13 +304,20 @@ def apply_swing(events: list, s: float) -> list:
 
 
 def render_events(midi: "MidiOut",
-                  events: list) -> tuple[float, float, float]:
+                  events: list,
+                  intensity_at=None) -> tuple[float, float, float]:
     """Dispatch a time-sorted event stream onto a MidiOut. Handles every event
     kind (tempo, program, voice, chord, densechord, drum). Returns the final
     (chord_cursor, drum_cursor, voice_max) so the caller can flush to the end.
 
     Shared by the flat render, the arrangement renderer, and the fugue/process
     modes — one dispatch loop instead of several copies.
+
+    `intensity_at(when_beats)` (default: constant 1.0) scales each event's
+    base velocity — chord/voice base 78 -> `78 * intensity`, dense-chord base
+    74 similarly, and drum hits via `MidiOut.drums_block`'s `vel_scale`. This
+    is how a section's `dynamics.intensity` reaches the actual note-on
+    velocities without every render path needing to know about dynamics.
     """
     events = apply_swing(events, getattr(midi, "swing", 0.0))
     t_ch = 0.0
@@ -318,9 +325,10 @@ def render_events(midi: "MidiOut",
     voice_max = 0.0
     for kind, when, dur, payload in sorted(
             events, key=lambda e: (e[1], _EVENT_PRIORITY.get(e[0], 9))):
+        intensity = intensity_at(when) if intensity_at else 1.0
         if kind == "voice":
             voice, note = payload
-            midi.play_voice_note(voice, note, when, dur)
+            midi.play_voice_note(voice, note, when, dur, base=round(78 * intensity))
             voice_max = max(voice_max, when + dur)
         elif kind == "chord":
             if when > t_ch:
@@ -329,19 +337,19 @@ def render_events(midi: "MidiOut",
             if when > t_dr:
                 midi.advance_dr(when - t_dr)
                 t_dr = when
-            midi.chord_block(payload, dur, when)
+            midi.chord_block(payload, dur, when, base=round(78 * intensity))
             t_ch += dur
         elif kind == "densechord":
             if when > t_ch:
                 midi.advance_ch(when - t_ch)
                 t_ch = when
-            midi.dense_block(payload, dur, when)
+            midi.dense_block(payload, dur, when, base=round(74 * intensity))
             t_ch += dur
         elif kind == "drum":
             if when > t_dr:
                 midi.advance_dr(when - t_dr)
                 t_dr = when
-            midi.drums_block(payload, dur, when)
+            midi.drums_block(payload, dur, when, vel_scale=intensity)
             t_dr += dur
         elif kind == "tempo":
             midi.set_tempo_at(payload, when)
