@@ -151,6 +151,31 @@ Below 1.0 softens both; above 1.0 pushes both harder. It scales:
   fill motif vs. the main pattern), scaled down for a sparser feel or up for
   a busier one.
 
+## Targeting a length
+
+Rather than sizing each section's `bars`/`repeat` by hand, give the song a
+target duration and let it loop the whole form to fit:
+
+```yaml
+title: Long Groove
+tempo: 120
+length: { seconds: 1200 }   # ~20 minutes
+
+sections:
+  - name: verse
+    keys: "..."
+  - name: chorus
+    keys: "..."
+```
+
+The full section sequence repeats (`verse`, `chorus`, `verse-loop2`,
+`chorus-loop2`, ...) until the arrangement's real-world duration — computed
+per section from its own tempo, since per-section tempo means beats-to-seconds
+isn't constant across the song — reaches the target. The final repeat is
+trimmed (its length re-expressed in `bars`) to land exactly on target rather
+than overshooting by a whole extra pass. Combine with `form`/`blocks` to keep
+a repeating song structure readable at any length.
+
 ## The pattern
 
 The arrangement layer is where the *evolution* lives: keep `keys` similar across

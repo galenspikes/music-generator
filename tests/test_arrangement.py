@@ -275,6 +275,52 @@ def test_render_events_intensity_at_scales_velocity(tmp_path):
     assert max_velocity(quiet_out) < max_velocity(loud_out)
 
 
+
+# --- Thread 1e: `length: {seconds}` target ---------------------------------
+
+def _spec_seconds(spec: A.SongSpec) -> float:
+    """Total real-world duration of a spec's sections, from beats + tempo."""
+    total = 0.0
+    for sec in spec.sections:
+        chord_len = mg.DUR_MAP[sec["chord_length"]]
+        seq_len = len(mg.key_roots("ostinato", sec["keys"]))
+        beats = A._section_beats(sec, seq_len, chord_len)
+        total += beats * 60.0 / sec["tempo"]
+    return total
+
+
+def test_length_seconds_loops_and_trims_to_target():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "length": {"seconds": 10.0},
+        "sections": [
+            {"name": "a", "bars": 2, "keys": "C::maj"},   # 8 beats @120bpm = 4s
+            {"name": "b", "bars": 2, "keys": "G::maj"},   # 8 beats @120bpm = 4s
+        ],
+    }
+    spec = A.build_spec(raw)
+    assert _spec_seconds(spec) == pytest.approx(10.0)
+    # a, b, then a-loop2 trimmed to exactly the remaining 2 seconds
+    names = [s["name"] for s in spec.sections]
+    assert names == ["a", "b", "a-loop2"]
+    assert spec.sections[-1]["bars"] == pytest.approx(1.0)  # 2s @120bpm = 4 beats = 1 bar
+
+
+def test_length_seconds_respects_per_section_tempo():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "length": {"seconds": 8.0},
+        "sections": [
+            {"name": "slow", "bars": 1, "tempo": 60, "keys": "C::maj"},  # 4 beats @60 = 4s
+        ],
+    }
+    spec = A.build_spec(raw)
+    assert _spec_seconds(spec) == pytest.approx(8.0)
+    assert len(spec.sections) == 2  # one full pass + a trimmed loop
+
+
 def test_transition_crash_skipped_on_last_section():
     raw = {
         "title": "t", "tempo": 120,

@@ -62,14 +62,20 @@ intensity. See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 Optional global build curve (continuous rather than per-section step) is
 still open for a later pass.
 
-### 1e. `seconds:` length target
-`length: {seconds: 1200}` → after one pass of the form, repeat/trim the whole
-form to hit the target. (Per-section tempo means beats→seconds varies, so
-compute each section's seconds from its tempo and accumulate.)
+### 1e. `seconds:` length target — SHIPPED
+`length: {seconds: 1200}` loops the whole (already-expanded) section sequence,
+computing each repeat's real-world duration from its own tempo (beats * 60 /
+tempo, since per-section tempo means beats→seconds isn't constant across the
+song) and accumulating until the target is reached; the final repeat is
+trimmed (re-expressed in `bars`) to land exactly on target instead of
+overshooting by a whole pass. `arrangement._extend_to_length` does the
+looping in `build_spec`, using only each section's beat *count* (via
+`key_roots`, which has no randomness) so it doesn't perturb the chord RNG.
+See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-**Open questions:** fill source (auto from interrupters vs a dedicated fill
-field)? intensity as one scalar vs explicit velocity/density? seconds-target =
-loop whole form vs extend the last/outro section?
+**Resolved:** loop-whole-form (not extend-the-last-section) is what shipped —
+simpler to reason about and keeps the song's dynamics arc (1d) intact across
+repeats.
 
 **Effort:** 1a small, 1b/1d medium, 1c/1e medium. **Risk:** low–medium.
 

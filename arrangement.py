@@ -118,6 +118,57 @@ def _expand_form(raw: dict) -> list[dict]:
     return sections
 
 
+def _extend_to_length(sections: list[dict], target_seconds: float) -> list[dict]:
+    """Loop the full section sequence (respecting each section's tempo, so
+    beats->seconds varies per section) until `target_seconds` is reached,
+    trimming the final repeat to land exactly on target.
+
+    Uses only each section's beat *count* (via `_section_beats`, itself fed
+    by the RNG-free `key_roots`), so it's safe to call once during
+    `build_spec` without perturbing the chord-progression RNG stream.
+    """
+    if not sections or target_seconds <= 0:
+        return sections
+
+    out: list[dict] = []
+    elapsed = 0.0
+    loop_idx = 0
+    while elapsed < target_seconds:
+        progressed = False
+        for sec in sections:
+            remaining = target_seconds - elapsed
+            if remaining <= 1e-9:
+                break
+            chord_len = mg.DUR_MAP[sec["chord_length"]]
+            seq_len = len(mg.key_roots("ostinato", sec["keys"]))
+            sec_beats = _section_beats(sec, seq_len, chord_len)
+            tempo = float(sec["tempo"])
+            sec_seconds = sec_beats * 60.0 / tempo if tempo > 0 else 0.0
+
+            new_sec = copy.deepcopy(sec)
+            if loop_idx > 0:
+                new_sec["name"] = f"{sec['name']}-loop{loop_idx + 1}"
+
+            if sec_seconds <= remaining + 1e-9:
+                out.append(new_sec)
+                elapsed += sec_seconds
+                progressed = progressed or sec_seconds > 1e-9
+            else:
+                needed_beats = max(0.0, remaining * tempo / 60.0)
+                if needed_beats <= 1e-6:
+                    break
+                new_sec["bars"] = needed_beats / BEATS_PER_BAR
+                new_sec.pop("repeat", None)
+                out.append(new_sec)
+                elapsed = target_seconds
+                progressed = True
+                break
+        loop_idx += 1
+        if not progressed:
+            break  # every section is zero-length at this tempo; avoid spinning
+    return out
+
+
 def build_spec(raw: dict,
                vel_mode_chords: str = "human",
                vel_mode_drums: str = "human",
@@ -133,6 +184,11 @@ def build_spec(raw: dict,
     A song may define sections directly (``sections: [...]``) or via a DRY
     ``blocks`` + ``form`` pair (define each section once, sequence by name;
     see :func:`_expand_form`). ``form`` wins if both are present.
+
+    A top-level ``length: {seconds: N}`` loops the whole section sequence
+    (once fully resolved) until the arrangement reaches that real-world
+    duration, trimming the final repeat to land exactly on target (see
+    :func:`_extend_to_length`).
     """
     if not isinstance(raw, dict):
         raise ValueError("Song file must be a mapping at the top level.")
@@ -174,6 +230,10 @@ def build_spec(raw: dict,
         if merged.get("bars") is None and merged.get("repeat") is None:
             merged["repeat"] = 1  # default: one pass through the chart
         sections.append(merged)
+
+    target_seconds = (raw.get("length") or {}).get("seconds")
+    if target_seconds:
+        sections = _extend_to_length(sections, float(target_seconds))
 
     return SongSpec(
         title=str(raw.get("title", "untitled")),
