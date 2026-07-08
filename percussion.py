@@ -9,7 +9,7 @@ which assembles a :class:`PercPlan` from CLI args. Depends only on
 """
 import json
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from mtheory import DUR_MAP, LIB_DIR
@@ -38,6 +38,8 @@ __all__ = [
     "KICK_NOTES",
     "kick_onsets",
     "add_ghost_notes",
+    "apply_pocket",
+    "parse_pocket_spec",
 ]
 
 
@@ -468,6 +470,54 @@ def kick_onsets(drum_tl: list[tuple[float, float, list[PercHit]]],
     """
     return [when for when, _dur, hits in drum_tl
             if any(h.note in kick_notes for h in hits)]
+
+
+def parse_pocket_spec(spec: str,
+                      drum_map: dict[str, int] | None = None) -> dict[int, float]:
+    """Parse a pocket spec like ``"c:0.03,d:0.02"`` into {midi_note: beats}.
+
+    Each entry is <drum letter>:<delay in beats>; the delay is applied by
+    :func:`apply_pocket`. Raises ValueError on unknown letters or bad numbers.
+    """
+    drum_map = drum_map or get_drum_map()
+    out: dict[int, float] = {}
+    for part in (p.strip() for p in (spec or "").split(",") if p.strip()):
+        if ":" not in part:
+            raise ValueError(f"Pocket entry must be letter:beats, got '{part}'")
+        letter, raw = (s.strip() for s in part.split(":", 1))
+        if letter.lower() not in drum_map:
+            raise ValueError(f"Unknown drum letter '{letter}' in pocket spec")
+        try:
+            beats = float(raw)
+        except ValueError as exc:
+            raise ValueError(f"Bad pocket delay '{raw}' for '{letter}'") from exc
+        if beats < 0.0:
+            raise ValueError(f"Pocket delay must be >=0 for '{letter}' "
+                             "(early nudges aren't supported)")
+        out[drum_map[letter.lower()]] = beats
+    return out
+
+
+def apply_pocket(drum_tl: list[tuple[float, float, list[PercHit]]],
+                 offsets: dict[int, float]
+                 ) -> list[tuple[float, float, list[PercHit]]]:
+    """Lay selected drums back in the pocket: set ``timing_offset`` on every
+    hit whose note is in ``offsets`` ({midi_note: delay_beats}) — e.g. delay
+    all snares by 0.03 beats without editing the pattern's tokens. Hits that
+    already carry an explicit ``[to..]`` offset keep it (the authored token
+    wins over the blanket transform). A no-op for empty ``offsets``.
+    """
+    if not offsets or not drum_tl:
+        return drum_tl
+    out: list[tuple[float, float, list[PercHit]]] = []
+    for when, dur, hits in drum_tl:
+        new_hits = [
+            replace(h, timing_offset=offsets[h.note])
+            if h.note in offsets and h.timing_offset == 0.0 else h
+            for h in hits
+        ]
+        out.append((when, dur, new_hits))
+    return out
 
 
 def add_ghost_notes(

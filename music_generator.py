@@ -44,6 +44,7 @@ from percussion import (  # noqa: F401
     build_drum_timeline_with_fills, build_drum_timeline_from_main,
     parse_chord_interrupters, set_active_drum_map,
     get_drum_map, add_ghost_notes, kick_onsets,
+    apply_pocket, parse_pocket_spec,
 )
 from tokens import key_roots  # noqa: F401
 from voicing import BASS_STYLES  # noqa: F401
@@ -442,6 +443,8 @@ def song_overrides_from_args(args, include) -> dict:
         perc["ghost_rate"] = float(args.perc_ghost_rate)
     if include("perc_ghost_note", "--perc-ghost-note"):
         perc["ghost_note"] = args.perc_ghost_note
+    if getattr(args, "perc_pocket", None) and include("perc_pocket", "--perc-pocket"):
+        perc["pocket"] = args.perc_pocket
     if perc:
         ov["perc"] = perc
     if args.voice_instrument:
@@ -527,6 +530,8 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
         ghost_note = get_drum_map().get(args.perc_ghost_note.lower(), 38)
         drum_tl = add_ghost_notes(drum_tl, rate=args.perc_ghost_rate,
                                   note=ghost_note)
+    if getattr(args, "perc_pocket", None):
+        drum_tl = apply_pocket(drum_tl, parse_pocket_spec(args.perc_pocket))
 
     bass_kick_times = kick_onsets(drum_tl) if args.bass_lock_kick else None
 
@@ -759,6 +764,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=str,
         default="c",
         help="Drum-map letter for the ghost note (default 'c' = snare).")
+    ap.add_argument(
+        "--perc-pocket",
+        type=str,
+        default=None,
+        help="Lay drums back in the pocket: 'letter:beats[,letter:beats...]' "
+        "delays every hit of those drums, e.g. 'c:0.03' for a laid-back "
+        "snare. Delay-only; applied after the pattern is built.")
     ap.add_argument(
         "--perc-fill-rate",
         type=float,

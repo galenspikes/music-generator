@@ -24,6 +24,7 @@ import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import feel as feelmod
 import lead as leadgen
 import melody as mel
 import music_generator as mg
@@ -44,9 +45,10 @@ BASE_DEFAULTS: dict = {
     "chords": ["triads", "sevenths"],   # families for bare roots (colon tokens ignore)
     "chords_order": "roundrobin",
     # ghost_rate: probability of filling an empty drum slot with a low-velocity
-    # ghost hit (ghost_note: a drum-map letter, default 'c' = snare)
+    # ghost hit (ghost_note: a drum-map letter, default 'c' = snare);
+    # pocket: {letter: delay_beats} lays those drums back, e.g. {c: 0.03}
     "perc": {"main": "qb,qc,qb,qc", "interrupters": [], "fill_rate": 0.0,
-             "ghost_rate": 0.0, "ghost_note": "c"},
+             "ghost_rate": 0.0, "ghost_note": "c", "pocket": {}},
     "counterpoint": {"step": 0.25, "suspension_prob": 0.0,
                      "anticipation_prob": 0.0},
     # A real tune on top (scale-degree grammar). When set on a section it plays
@@ -61,6 +63,9 @@ BASE_DEFAULTS: dict = {
     "mode": None,               # major/minor/dorian/...; None -> inferred
     "swing": 0.0,               # off-beat swing warp (0=straight, 0.5=triplet)
     "pan_spread": 0.0,          # stereo width of the SATB voices (0=centred)
+    # Named groove preset (see feel.FEEL_PRESETS): expands to swing/ghost/
+    # pocket/bass-lock values between these defaults and explicit settings.
+    "feel": None,
     # Dynamics arc: intensity scales chord/voice/drum velocity and perc
     # density. 1.0 keeps the engine's plain defaults (velocity base 78,
     # perc fill_rate as configured); <1 softer, >1 harder.
@@ -210,7 +215,14 @@ def build_spec(raw: dict,
             "'blocks').")
 
     global_tempo = int(raw.get("tempo", BASE_DEFAULTS["tempo"]))
-    defaults = _deep_merge(BASE_DEFAULTS, raw.get("defaults"))
+    # A song-level feel expands *between* the engine defaults and the user's
+    # explicit defaults, so naming a feel never overrides written-out values.
+    user_defaults = raw.get("defaults") or {}
+    base_defaults = BASE_DEFAULTS
+    if user_defaults.get("feel"):
+        base_defaults = _deep_merge(
+            BASE_DEFAULTS, feelmod.expand_feel(user_defaults["feel"]))
+    defaults = _deep_merge(base_defaults, user_defaults)
     if overrides:
         defaults = _deep_merge(defaults, overrides)
     # Restore YAML tempo only when not explicitly overridden by the caller.
@@ -227,7 +239,13 @@ def build_spec(raw: dict,
     for i, sec in enumerate(sections_raw):
         if not isinstance(sec, dict):
             raise ValueError(f"Section #{i + 1} must be a mapping.")
-        merged = _deep_merge(defaults, sec)
+        # Same precedence per section: defaults < section feel < explicit
+        # section values. (A per-section feel's swing is ignored — swing is
+        # song-global, read from defaults at SongSpec build time.)
+        sec_base = defaults
+        if sec.get("feel"):
+            sec_base = _deep_merge(defaults, feelmod.expand_feel(sec["feel"]))
+        merged = _deep_merge(sec_base, sec)
         if tempo_scale != 1.0 and "tempo" in sec:
             merged["tempo"] = max(40, round(sec["tempo"] * tempo_scale))
         merged.setdefault("name", f"section{i + 1}")
@@ -266,6 +284,26 @@ def load_spec(path: str,
     import yaml
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     return build_spec(raw, vel_mode_chords, vel_mode_drums, overrides)
+
+
+def _pocket_offsets(cfg) -> dict[int, float]:
+    """Normalize a section's `perc.pocket` to {midi_note: delay_beats}.
+
+    Accepts the YAML mapping form ({c: 0.03}) or the CLI spec string
+    ("c:0.03,d:0.02" — how --perc-pocket arrives via song overrides)."""
+    if isinstance(cfg, str):
+        return mg.parse_pocket_spec(cfg)
+    drum_map = mg.get_drum_map()
+    out: dict[int, float] = {}
+    for letter, beats in dict(cfg).items():
+        key = str(letter).lower()
+        if key not in drum_map:
+            raise ValueError(f"Unknown drum letter '{letter}' in perc.pocket")
+        val = float(beats)
+        if val < 0.0:
+            raise ValueError(f"perc.pocket delay must be >=0 for '{letter}'")
+        out[drum_map[key]] = val
+    return out
 
 
 def _parse_transition_fill(val) -> float:
@@ -415,6 +453,9 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                 str(perc.get("ghost_note", "c")).lower(), 38)
             drum_tl = mg.add_ghost_notes(drum_tl, rate=ghost_rate,
                                          note=ghost_note)
+        pocket_cfg = perc.get("pocket")
+        if pocket_cfg:
+            drum_tl = mg.apply_pocket(drum_tl, _pocket_offsets(pocket_cfg))
 
         # transition: replace the section's tail with a fill, and/or crash
         # into the next section's downbeat (hard cut stays the default).

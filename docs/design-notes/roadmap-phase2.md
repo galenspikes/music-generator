@@ -162,13 +162,22 @@ ear-tuning.
 ### Phasing
 - **v1:** swing + laid-back snare + accent-on-1 (contained, immediately audible).
 - **v2 — SHIPPED:** bass-locked-to-kick + ghost notes + per-hit timing offset.
-- **v3:** per-genre feel presets.
+- **v3 — SHIPPED:** per-genre feel presets. `feel: tight|laidback|swing|funk`
+  (song-level in `defaults`, or per-section) expands to a bundle of the raw
+  knobs — `swing`, `perc.ghost_rate`, `perc.pocket`, `bass.lock_kick` — via
+  the leaf module `feel.py`, applied between the engine defaults and the
+  user's explicit values (explicit always wins). The enabling piece was
+  `perc.pocket` / `--perc-pocket "c:0.03"` (`percussion.apply_pocket`), a
+  blanket per-drum delay so a preset can lay the snare back without editing
+  pattern tokens; authored `[to..]` modifiers beat the blanket.
 
-**Open questions:** swing global vs per-section? expose raw timing offsets or
-ship genre "feel" presets?
+**Resolved:** raw offsets *and* presets — the raw knobs shipped first (v2),
+presets are pure bundles of them, so anything a feel does can be reproduced
+or overridden knob-by-knob. *Still open:* per-section swing (swing remains
+song-global, so a per-section feel's swing component is ignored — documented).
 
-**Effort:** v1 small–medium. **Risk:** low (transforms are localized), but feel
-needs ear-tuning.
+**Effort:** was v1 small–medium; done through v3. **Risk:** preset values may
+want ear-tuning over time — they're one table in `feel.py`.
 
 ---
 
@@ -273,8 +282,8 @@ doubles as a showcase and a learning aid.
 4. **The hook — DONE (v1+v2):** Thread 2 (motif-based lead on its own 5th
    channel, developed across the changes). v3 (phrase arcs, tension/release)
    remains.
-5. **Polish (smaller, can thread in anytime):** Thread 2 v3, Thread 3 v3
-   (genre feel presets — depends on Thread 3's remaining open questions),
-   per-voice SATB micro-timing/early nudges, album batch rendering.
+5. **Polish (smaller, can thread in anytime):** Thread 2 v3 (phrase arcs),
+   per-section swing, per-voice SATB micro-timing/early nudges, album batch
+   rendering. (Thread 3 v3 feel presets — DONE.)
 
 Groove polish (Thread 3 v2+) threads in throughout.

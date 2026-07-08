@@ -34,6 +34,7 @@ usage: music_generator.py [-h] [--song SONG] [--keys KEYS] [--random-roots]
                           [--perc-fill-curve PERC_FILL_CURVE]
                           [--perc-ghost-rate PERC_GHOST_RATE]
                           [--perc-ghost-note PERC_GHOST_NOTE]
+                          [--perc-pocket PERC_POCKET]
                           [--perc-fill-rate PERC_FILL_RATE]
                           [--velocity-mode-chords {uniform,random,human}]
                           [--velocity-mode-drums {uniform,random,human}]
@@ -129,6 +130,11 @@ options:
   --perc-ghost-note PERC_GHOST_NOTE
                         Drum-map letter for the ghost note (default 'c' =
                         snare).
+  --perc-pocket PERC_POCKET
+                        Lay drums back in the pocket:
+                        'letter:beats[,letter:beats...]' delays every hit of
+                        those drums, e.g. 'c:0.03' for a laid-back snare.
+                        Delay-only; applied after the pattern is built.
   --perc-fill-rate PERC_FILL_RATE
                         0–1. Probability a *percussion* interrupter replaces
                         the main pattern. Default=0.20.

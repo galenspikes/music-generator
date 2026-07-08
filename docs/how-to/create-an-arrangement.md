@@ -264,8 +264,39 @@ sections:
   picks which drum-map letter (default `c` = snare). `0` (default) is a
   no-op.
 
-Both are also available on the flat `--keys` CLI path: `--bass-lock-kick`,
-`--perc-ghost-rate`, `--perc-ghost-note`.
+A third knob, `perc.pocket`, lays chosen drums back behind the grid without
+editing the pattern's tokens — `pocket: {c: 0.03}` delays every snare hit by
+0.03 beats (~15 ms at 120 bpm). Delay-only; a hit whose token carries its own
+`[to..]` modifier keeps the authored value.
+
+All three are also available on the flat `--keys` CLI path:
+`--bass-lock-kick`, `--perc-ghost-rate`, `--perc-ghost-note`,
+`--perc-pocket "c:0.03"`.
+
+## Feel presets
+
+Instead of tuning swing/ghosts/pocket/bass-lock individually, name a *feel*
+— at song level (in `defaults`) or per section:
+
+```yaml
+defaults:
+  feel: laidback        # tight | laidback | swing | funk
+
+sections:
+  - name: verse
+    keys: "..."
+  - name: solo
+    keys: "..."
+    feel: funk          # this section grooves harder
+```
+
+A feel is nothing but a bundle of the raw knobs (`swing`,
+`perc.ghost_rate`, `perc.pocket`, `bass.lock_kick` — see `feel.py` for the
+exact values), applied *between* the engine defaults and your explicit
+settings: anything you write out yourself always wins over the preset. One
+caveat: swing is song-global, so a per-section `feel`'s swing amount is
+ignored — put the feel in `defaults` (or set `swing` there) when you want
+its swing.
 
 ## The pattern
 

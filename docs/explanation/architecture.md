@@ -68,6 +68,10 @@ Key entry points:
 - **`lead.py`** → mtheory + melody. The lead/hook generator: states a motif
   (authored in the scale-degree grammar, or generated) and develops it across
   the section's chords onto a dedicated 5th channel (`lead:` in `songs/*.yml`).
+- **`feel.py`** → (leaf, no deps). Genre feel presets: named bundles of the
+  groove knobs (swing, ghost notes, pocket, kick-locked bass) that
+  `arrangement.build_spec` expands between engine defaults and explicit values
+  (`feel:` in `songs/*.yml`).
 - **`arrangement.py`** → core. The arrangement layer: a *song* is global settings
   plus an ordered list of *sections*, each rendered through the core and
   concatenated into one evolving piece. Driven by YAML song files (`songs/*.yml`).
