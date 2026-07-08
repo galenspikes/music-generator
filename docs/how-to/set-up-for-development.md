@@ -34,7 +34,7 @@ Run `make help` to list every target.
 
 ## 3. Conventions worth knowing
 
-- **The token DSL is the crown jewel.** Never change a parser without running the
+- **Parser changes require test verification.** Never change a parser without running the
   token tests (`tests/test_tokens.py`), and update
   [../reference/token-grammar.md](../reference/token-grammar.md) if the grammar
   changes.

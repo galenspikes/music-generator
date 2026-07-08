@@ -36,7 +36,7 @@ Five invariants, drawn from the design conversations:
 
 - **Unified duration vocabulary** — `DUR_MAP` ([music_generator.py:1181](https://github.com/galenspikes/music-generator/blob/main/music_generator.py))
   is shared by chord length, percussion, and melody. The *duration* half of M1 is done.
-- **The token DSL** — literal, composable, well-tested (the crown jewel).
+- **The token DSL** — literal, composable, well-tested.
 - **Typed, in-process API** — `generate(spec) -> GenerationResult` returns MIDI bytes
   + track info + warnings; no stdout scraping.
 - **A real deviation primitive** — interrupters + `fill_rate` ([ADR-0006](../explanation/decisions/0006-interrupters.md)).

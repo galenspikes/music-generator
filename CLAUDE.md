@@ -32,6 +32,6 @@ the map. Key entry points:
 
 ## Conventions
 - Commit/push only when asked; one logical change per commit; keep tests green.
-- The token DSL is the crown jewel — never edit a parser without running the token
-  tests, and update `docs/reference/token-grammar.md` if the grammar changes.
+- Never edit a parser without running the token tests, and update
+  `docs/reference/token-grammar.md` if the grammar changes.
 - Big binaries (SoundFonts) and generated output are never committed.

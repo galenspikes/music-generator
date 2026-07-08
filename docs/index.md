@@ -33,6 +33,5 @@ kept deliberately separate so each page does exactly one job:
 
 ---
 
-*The crown jewel of this project is the token DSL. Never change a parser without
-running the token tests; update [reference/token-grammar.md](reference/token-grammar.md)
-if the grammar changes.*
+*Never change a parser without running the token tests; update
+[reference/token-grammar.md](reference/token-grammar.md) if the grammar changes.*
