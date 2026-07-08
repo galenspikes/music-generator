@@ -180,11 +180,14 @@ importable into a DAW. Wired to `--stems` (flat CLI path) and
 `arrangement.render(spec, out, stems=True)` (song path). See
 [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-**Still open: WAV bounce.** This ships the "per-stem MIDI" half of the
-original two options; rendering each stem MIDI to its own WAV still needs the
-`render.py` port below (FluidSynth orchestration) to do the bouncing.
-Channel-mute rendering (the other original option) is superseded — per-stem
-MIDI is simpler and was the doc's own recommendation.
+**WAV bounce — SHIPPED.** `render.py --stems` (forwards `--stems` to the
+generator, then finds the sibling stem MIDI files `write_stems` produced via
+`find_stem_midis` and bounces each through the same FluidSynth pipeline as
+the main WAV) — raw, with no independent `--normalize`/`--boost-db`, since
+loudness-matching each stem independently would destroy the relative balance
+between them. See [render-audio.md](../how-to/render-audio.md). Channel-mute
+rendering (the original doc's other option) is superseded — per-stem MIDI is
+simpler and was the doc's own recommendation.
 
 ### 4c. Per-section FX via CC — SHIPPED
 CC91 (reverb send) / CC93 (chorus send) per channel/section for spatial
@@ -200,21 +203,23 @@ sections:
 dispatches a new `"cc"` event kind to them. See
 [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-**Open questions:** stems as separate MIDI vs channel-mute render? expose pan/vol
-per section or song-global only in v1? bounce stems to WAV here, or just emit
-MIDI stems and mix entirely in the DAW?
+**Resolved:** stems as separate MIDI (not channel-mute), bounced to WAV in
+`render.py` (not left as MIDI-only) — both per-stem MIDI and the WAV bounce
+shipped, see 4b above. Pan/vol per section (beyond the song-global
+`pan_spread`) is still open — `mix` currently only carries `reverb`/`chorus`.
 
-**Effort:** 4a small, 4b medium (needs render orchestration), 4c small.
-**Risk:** low.
+**Effort:** 4a small, 4b medium (needs render orchestration) — done, 4c small
+— done. **Risk:** low.
 
 ---
 
-## Cross-cutting enabler — port `play_music` → Python `render.py`
+## Cross-cutting enabler — port `play_music` → Python `render.py` — SHIPPED
 
 Threads 4b (stems), 4c (per-section FX), and album batch-rendering all get much
 easier in Python than in the shell wrapper (which already cost us 3 bug fixes).
-A `render.py` that does generate → FluidSynth → ffmpeg, with stem and batch
-support, is the natural home. Worth doing before/with Thread 4.
+`render.py` does generate → FluidSynth → ffmpeg (with `--stems` bounce support,
+above); `play_music` is now a thin back-compat shim over it. Album batch
+rendering is still open.
 
 ---
 
@@ -242,11 +247,17 @@ doubles as a showcase and a learning aid.
 ---
 
 ## Suggested sequencing toward the EP
-1. **Quick wins:** Thread 4a (pan/volume) + Thread 3 v1 (swing/feel) — immediate
-   audible upgrade to everything.
-2. **Composition:** Thread 1a (form refs) → 1b (continuity) → 1c/1d
-   (transitions, dynamics) — songs that hold together over 20 minutes.
-3. **The hook:** Thread 2 v1–v2 (melody) — the biggest musical leap.
-4. **Release:** `render.py` port → Thread 4b (stems) — finish in a DAW.
+1. **Quick wins — DONE:** Thread 4a (pan/volume) + Thread 3 v1 (swing/feel).
+2. **Composition — DONE:** Thread 1a–1e (form refs, continuity, transitions,
+   dynamics, length target) — songs that hold together over 20 minutes.
+3. **Groove — DONE:** Thread 3 v2 (bass-locked-to-kick, ghost notes), Thread 4c
+   (per-section mix/FX), Thread 4b (stems, MIDI + WAV bounce), the `render.py`
+   port.
+4. **The hook (next up):** Thread 2 v1–v2 (melody) — the biggest musical leap,
+   and the last major unshipped thread. Has open design questions (see
+   Thread 2) worth settling before starting.
+5. **Polish (smaller, can thread in anytime):** Thread 3 v3 (genre feel
+   presets — depends on Thread 3's remaining open question), pocket/
+   micro-timing, per-section pan/vol, album batch rendering.
 
 Groove polish (Thread 3 v2+) threads in throughout.

@@ -114,3 +114,43 @@ def test_run_generator_returns_midi_path(slug):
     assert midi.endswith(".mid")
     assert Path(midi).exists()
     assert glob.glob(str(mg.MIDI_DIR / slug / "*.mid"))
+
+
+# ---- stem WAV bounce (Thread 4b follow-up) ----
+
+def test_find_stem_midis_empty_without_stems(tmp_path):
+    midi = tmp_path / "song.mid"
+    midi.write_text("")
+    assert render.find_stem_midis(str(midi)) == {}
+
+
+def test_find_stem_midis_finds_siblings(tmp_path):
+    midi = tmp_path / "song.mid"
+    midi.write_text("")
+    for name in ("soprano", "bass", "drums"):
+        (tmp_path / f"song_{name}.mid").write_text("")
+    found = render.find_stem_midis(str(midi))
+    assert set(found) == {"soprano", "bass", "drums"}
+    assert found["bass"] == str(tmp_path / "song_bass.mid")
+
+
+def test_run_generator_with_stems_writes_sibling_midis(slug):
+    midi = render.run_generator(
+        ["--keys", "C::maj,F::maj", "--stems", "--seconds", "4",
+         "--seed", "1", "--no-play", "--out", slug])
+    found = render.find_stem_midis(midi)
+    assert set(found) == set(render.STEM_NAMES)
+    for path in found.values():
+        assert Path(path).exists()
+
+
+def test_build_parser_stems_flag_defaults_false():
+    parser = render.build_parser(None, "audio")
+    args = parser.parse_args([])
+    assert args.stems is False
+
+
+def test_build_parser_stems_flag_parses():
+    parser = render.build_parser(None, "audio")
+    args, _ = parser.parse_known_args(["--stems"])
+    assert args.stems is True

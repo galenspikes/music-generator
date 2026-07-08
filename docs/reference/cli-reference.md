@@ -17,8 +17,8 @@ usage: music_generator.py [-h] [--song SONG] [--keys KEYS] [--random-roots]
                           [--instrument INSTRUMENT]
                           [--voice-instrument VOICE=NAME]
                           [--bass-style {follow,none,root,octaves,fifths,walking,arp}]
-                          [--bass-step BASS_STEP] [--bpm BPM]
-                          [--chord-length {w,h,q,e,s,t}]
+                          [--bass-step BASS_STEP] [--bass-lock-kick]
+                          [--bpm BPM] [--chord-length {w,h,q,e,s,t}]
                           [--chord-interrupters [CHORD_INTERRUPTERS ...]]
                           [--satb-style {block,static,counterpoint,arpeggio}]
                           [--voicing {satb,dense}]
@@ -32,6 +32,8 @@ usage: music_generator.py [-h] [--song SONG] [--keys KEYS] [--random-roots]
                           [--perc-interrupter-keys [PERC_INTR_KEYS ...]]
                           [--perc-stages [PERC_STAGES ...]]
                           [--perc-fill-curve PERC_FILL_CURVE]
+                          [--perc-ghost-rate PERC_GHOST_RATE]
+                          [--perc-ghost-note PERC_GHOST_NOTE]
                           [--perc-fill-rate PERC_FILL_RATE]
                           [--velocity-mode-chords {uniform,random,human}]
                           [--velocity-mode-drums {uniform,random,human}]
@@ -39,7 +41,7 @@ usage: music_generator.py [-h] [--song SONG] [--keys KEYS] [--random-roots]
                           [--seconds SECONDS] [--out OUT] [--seed SEED]
                           [--sf2 SF2] [--no-play] [--split-stems]
                           [--no-split-stems] [--swing SWING]
-                          [--pan-spread PAN_SPREAD]
+                          [--pan-spread PAN_SPREAD] [--stems]
 
 Harmony + Percussion generator (independent parts, SATB, interrupters).
 
@@ -79,6 +81,10 @@ options:
   --bass-step BASS_STEP
                         Subdivision (in beats) for the bass line when --bass-
                         style is not 'follow' (0.5 = eighths, 1.0 = quarters).
+  --bass-lock-kick      Lock the independent bass line's timing to the drum
+                        pattern's kick hits instead of the even --bass-step
+                        subdivision (pitch pattern is unchanged). Requires
+                        --bass-style other than 'follow'/'none'.
   --bpm BPM
   --chord-length {w,h,q,e,s,t}
   --chord-interrupters [CHORD_INTERRUPTERS ...]
@@ -116,6 +122,13 @@ options:
   --perc-fill-curve PERC_FILL_CURVE
                         Linear fill-rate ramp 'start:end' (0-1) applied across
                         perc stages.
+  --perc-ghost-rate PERC_GHOST_RATE
+                        0-1. Probability of filling an empty drum slot with a
+                        low-velocity ghost note (default: snare). Default=0.0
+                        (off).
+  --perc-ghost-note PERC_GHOST_NOTE
+                        Drum-map letter for the ghost note (default 'c' =
+                        snare).
   --perc-fill-rate PERC_FILL_RATE
                         0–1. Probability a *percussion* interrupter replaces
                         the main pattern. Default=0.20.
@@ -141,6 +154,9 @@ options:
                         0–1. Stereo width of the SATB voices across the field
                         (0=centred/mono, 1=widest). Needs split stems.
                         Default=0.0.
+  --stems               Also write each voice + drums as its own standalone
+                        MIDI file alongside the main output, for mixing
+                        externally. Needs split stems (the default).
 ```
 
 ## `render.py` — generate + render audio
@@ -152,7 +168,7 @@ consumed here; everything else is forwarded to `music_generator.py`.
 usage: render.py [-h] [--sf2 SF2] [--list-soundfonts] [--fx FX]
                  [--chorus-super] [--normalize] [--boost-db BOOST_DB]
                  [--boost-normalize BOOST_AFTER_NORM] [--no-play] [--save-wav]
-                 [--output-dir OUTPUT_DIR] [--keep-temporary]
+                 [--output-dir OUTPUT_DIR] [--keep-temporary] [--stems]
 
 Generate MIDI and optionally render/normalize audio.
 
@@ -171,4 +187,10 @@ options:
   --save-wav
   --output-dir OUTPUT_DIR
   --keep-temporary
+  --stems               Also bounce each voice + drums stem MIDI (forwards
+                        --stems to the generator) to its own raw WAV alongside
+                        the main one, for external mixing. Stems are not
+                        independently normalized/boosted — that would destroy
+                        the relative balance between them. Needs --sf2 and
+                        --save-wav.
 ```
