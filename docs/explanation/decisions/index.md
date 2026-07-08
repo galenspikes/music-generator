@@ -17,6 +17,8 @@ Use **[0000-template.md](0000-template.md)** as the starting point.
 | [0004](0004-shared-operator-algebra.md) | One shared operator algebra (`*N`, `[...]*N`) across sub-languages | Accepted |
 | [0005](0005-scale-degree-melody.md) | Scale degrees (not absolute pitches) for melody | Accepted |
 | [0006](0006-interrupters.md) | Interrupters as probabilistic pattern substitution | Accepted |
+| [0007](0007-no-progression-generation.md) | No progression generation — voice leading is the engine's intelligence | Accepted |
+| [0008](0008-sets-as-substrate-names-as-surface.md) | Pitch-class sets as substrate, named recipes as surface | Accepted |
 
 ## A note on evidence
 
@@ -27,6 +29,9 @@ Each ADR separates **what the artifacts show** from **what is reconstructed**:
   memo weighing three options).
 - **0003, 0004** have **no surviving design record** — the rationale is explicitly
   reconstructed from the design's structure, and each says so.
+- **0007, 0008** draw on *dated, first-person* design direction from the
+  2026-07-08 external review session, recorded as paraphrase (no verbatim
+  quotes); 0008's composability argument is reconstructed and says so.
 
 Every ADR also states the **prior art** honestly (Harte for 0001, the live-coding
 lineage for 0003/0006, etc.). Do not cite an ADR's reconstructed rationale as if it
