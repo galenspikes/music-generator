@@ -203,6 +203,34 @@ range. Requires split stems (the default) for the SATB voices, same as
 per-voice `instrument`/`voices`. A section without `mix` sends nothing (the
 soundfont's own default send levels apply, same as before this existed).
 
+## Groove: bass locked to the kick, and ghost notes
+
+Two knobs make a section feel more like a real rhythm section:
+
+```yaml
+sections:
+  - name: groove
+    keys: "..."
+    bass: { style: root, lock_kick: true }
+    perc: { main: "qb,eg,qc,eg", ghost_rate: 0.15, ghost_note: c }
+```
+
+- **`bass.lock_kick`** times an independent bass line's onsets exactly to
+  this section's kick-drum hits, instead of the even `bass.step`
+  subdivision — the pitch pattern (`root`/`octaves`/`fifths`/`walking`/`arp`)
+  is unchanged, just re-timed. Needs a `bass.style` other than `follow`/
+  `none`. Falls back to the step subdivision for any chord slot with no
+  kick in its span, so the bass never goes silent — this means a very short
+  `chord_length` (many slots) with a sparse kick pattern will show the lock
+  in fewer places than a longer `chord_length`.
+- **`perc.ghost_rate`** fills empty (rest) slots in the drum pattern with a
+  low-velocity ghost hit at that probability per slot — `perc.ghost_note`
+  picks which drum-map letter (default `c` = snare). `0` (default) is a
+  no-op.
+
+Both are also available on the flat `--keys` CLI path: `--bass-lock-kick`,
+`--perc-ghost-rate`, `--perc-ghost-note`.
+
 ## The pattern
 
 The arrangement layer is where the *evolution* lives: keep `keys` similar across

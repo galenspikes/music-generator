@@ -35,6 +35,9 @@ __all__ = [
     "build_drum_timeline_stages",
     "parse_chord_interrupters",
     "build_perc_from_args",
+    "KICK_NOTES",
+    "kick_onsets",
+    "add_ghost_notes",
 ]
 
 
@@ -423,6 +426,43 @@ def build_drum_timeline_stages(
             build_drum_segment(pos, remainder, fallback_main, fallback_intr,
                                base_fill_rate))
 
+    return out
+
+
+# Acoustic Bass Drum / Bass Drum 1 — the default drum map's "a"/"b" (see
+# FALLBACK_DRUM_MAP). The anchor notes for a bass line "locked to the kick".
+KICK_NOTES = (35, 36)
+
+
+def kick_onsets(drum_tl: list[tuple[float, float, list[PercHit]]],
+                kick_notes: tuple[int, ...] = KICK_NOTES) -> list[float]:
+    """Onset times (beats) of kick-drum hits in a drum timeline.
+
+    The anchor points for a bass line "locked to the kick" — see
+    :func:`voicing.build_bass_line`'s ``kick_times``.
+    """
+    return [when for when, _dur, hits in drum_tl
+            if any(h.note in kick_notes for h in hits)]
+
+
+def add_ghost_notes(
+        drum_tl: list[tuple[float, float, list[PercHit]]],
+        rate: float = 0.0,
+        note: int = 38,
+        vel_offset: int = -40
+        ) -> list[tuple[float, float, list[PercHit]]]:
+    """Fill empty (rest) slots in a drum timeline with a low-velocity ghost
+    hit, independently at probability ``rate`` per empty slot. Slots that
+    already have a hit are left untouched. A no-op at ``rate<=0``.
+    """
+    if rate <= 0.0 or not drum_tl:
+        return drum_tl
+    out = []
+    for when, dur, hits in drum_tl:
+        if not hits and random.random() < rate:
+            out.append((when, dur, [PercHit(note=note, vel_offset=vel_offset)]))
+        else:
+            out.append((when, dur, hits))
     return out
 
 

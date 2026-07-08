@@ -326,10 +326,91 @@ def _octave_partner(note: int, lo: int, hi: int) -> int:
     return note
 
 
+def _bass_pitch_for_style(style: str, k: int, steps: int, root: int,
+                          nxt: int, color: list[int], lo: int,
+                          hi: int) -> int:
+    """Pick the bass note at step `k` of `steps` for a chord (shared by the
+    fixed-subdivision and kick-locked timing paths in `build_bass_line`)."""
+    if style == "root":
+        return root
+    if style == "octaves":
+        return root if k % 2 == 0 else _octave_partner(root, lo, hi)
+    if style == "fifths":
+        fifth = _bass_note_for_pc((root + 7) % 12, root + 7, lo, hi)
+        return root if k % 2 == 0 else fifth
+    if style == "arp":
+        ladder = [root] + color
+        return ladder[k % len(ladder)]
+    if style == "walking":
+        if k == 0:
+            return root
+        if k == steps - 1 and nxt != root:
+            # chromatic approach into the next chord's bass
+            direction = 1 if nxt > root else -1
+            return clamp_to_range(nxt - direction, lo, hi)
+        if color:
+            return color[(k - 1) % len(color)]
+        return root
+    return root
+
+
+def _color_tones(pcs: list[int], root: int, lo: int, hi: int) -> list[int]:
+    """Non-root chord tones, voiced near the root register (for walk/arp)."""
+    color = [
+        _bass_note_for_pc(pc, root + 5, lo, hi) for pc in pcs
+        if pc != root % 12
+    ]
+    color.sort()
+    return color
+
+
+def _bass_line_locked_to_kick(
+        chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
+        style: str,
+        kick_times: list[float]) -> list[tuple[float, float, int]]:
+    """Bass onsets exactly on the drum pattern's kick hits, instead of an
+    even subdivision — the pitch pattern (root/octaves/fifths/walking/arp)
+    still comes from `style`, indexed by kick number within each chord."""
+    lo, hi = BASS_RANGE
+    n = len(chord_tl)
+    total_end = chord_tl[-1][0] + chord_tl[-1][1]
+    times = sorted(t for t in kick_times if 0.0 <= t < total_end)
+    if not times:
+        return []
+
+    groups: list[list[float]] = [[] for _ in chord_tl]
+    slot = 0
+    for t in times:
+        while slot + 1 < n and t >= chord_tl[slot][0] + chord_tl[slot][1]:
+            slot += 1
+        groups[slot].append(t)
+
+    out: list[tuple[float, float, int]] = []
+    for i, (when, dur, notes) in enumerate(chord_tl):
+        group = groups[i]
+        if not group or dur <= 0.0:
+            continue
+        slot_end = when + dur
+        root = notes[3]
+        pcs = sorted({x % 12 for x in notes})
+        nxt = chord_tl[(i + 1) % n][2][3] if n > 1 else root
+        color = _color_tones(pcs, root, lo, hi)
+        steps = len(group)
+        for k, t in enumerate(group):
+            note = _bass_pitch_for_style(style, k, steps, root, nxt, color,
+                                         lo, hi)
+            end = group[k + 1] if k + 1 < steps else slot_end
+            d = max(0.0, end - t)
+            if d > 0:
+                out.append((t, d, note))
+    return out
+
+
 def build_bass_line(
         chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
         style: str = "root",
         step: float = 0.5,
+        kick_times: list[float] | None = None,
 ) -> list[tuple[float, float, int]]:
     """Generate an independent bass line from the realized chord timeline.
 
@@ -337,16 +418,31 @@ def build_bass_line(
     octaves, alternate root/fifth, walk, or arpeggiate. Honors the realized
     bass note (so slash/pedal basses are respected). Returns
     ``[(when_beats, dur_beats, midi_note)]`` for the bass voice.
+
+    `kick_times` (onset beats of the drum pattern's kick hits, see
+    :func:`percussion.kick_onsets`) locks the bass's *timing* to the kick
+    instead of the even `step` subdivision — the pitch pattern for `style`
+    is unchanged, just re-indexed by kick number. Falls back to the
+    step-based timing for any chord with no kick hits in its span.
     """
     if not chord_tl or style in ("follow", "none", None):
         return []
 
     lo, hi = BASS_RANGE
-    out: list[tuple[float, float, int]] = []
     n = len(chord_tl)
 
+    if kick_times:
+        locked = _bass_line_locked_to_kick(chord_tl, style, kick_times)
+        covered = {i for i, (when, dur, _n) in enumerate(chord_tl)
+                  if any(when <= t < when + dur for t in kick_times)}
+    else:
+        locked = []
+        covered = set()
+
+    out: list[tuple[float, float, int]] = list(locked)
+
     for i, (when, dur, notes) in enumerate(chord_tl):
-        if dur <= 0.0:
+        if dur <= 0.0 or i in covered:
             continue
         root = notes[3]  # realized bass note (pedal-aware)
         pcs = sorted({x % 12 for x in notes})
@@ -354,41 +450,15 @@ def build_bass_line(
 
         steps = max(1, int(round(dur / step))) if step > 0 else 1
         slen = dur / steps
-
-        # non-root chord tones, voiced near the root register (for walk/arp)
-        color = [
-            _bass_note_for_pc(pc, root + 5, lo, hi) for pc in pcs
-            if pc != root % 12
-        ]
-        color.sort()
+        color = _color_tones(pcs, root, lo, hi)
 
         for k in range(steps):
             t = when + k * slen
-            if style == "root":
-                note = root
-            elif style == "octaves":
-                note = root if k % 2 == 0 else _octave_partner(root, lo, hi)
-            elif style == "fifths":
-                fifth = _bass_note_for_pc((root + 7) % 12, root + 7, lo, hi)
-                note = root if k % 2 == 0 else fifth
-            elif style == "arp":
-                ladder = [root] + color
-                note = ladder[k % len(ladder)]
-            elif style == "walking":
-                if k == 0:
-                    note = root
-                elif k == steps - 1 and nxt != root:
-                    # chromatic approach into the next chord's bass
-                    direction = 1 if nxt > root else -1
-                    note = clamp_to_range(nxt - direction, lo, hi)
-                elif color:
-                    note = color[(k - 1) % len(color)]
-                else:
-                    note = root
-            else:
-                note = root
+            note = _bass_pitch_for_style(style, k, steps, root, nxt, color,
+                                         lo, hi)
             out.append((t, slen, note))
 
+    out.sort(key=lambda item: item[0])
     return out
 
 

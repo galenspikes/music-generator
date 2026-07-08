@@ -131,21 +131,27 @@ and the MidiOut 5th-voice change touches core.
   `defaults: { swing: ... }`. *Still open: per-section swing.*
 - **Pocket / micro-timing:** small per-voice timing offsets — bass slightly
   ahead, snare laid back. Per-voice `timing_offset` in ms/ticks.
-- **Bass locked to kick:** a bass style (or flag) that places bass onsets on the
-  kick hits of the active drum pattern (bass generator reads the perc grid).
-- **Ghost notes (drums):** auto-inject low-velocity snare/hat ghosts; the token
-  DSL already supports `[vel-N]`/`[prob]`, so this is partly an auto-humanize.
+- **Bass locked to kick — SHIPPED:** `bass.lock_kick: true` (arrangement) /
+  `--bass-lock-kick` (flat CLI) times the independent bass line's onsets to
+  this section's kick-drum hits (`percussion.kick_onsets`) instead of the even
+  `bass_step` subdivision — resolved as **a modifier on existing styles**
+  (orthogonal to the pitch pattern), not a new `--bass-style`. Falls back to
+  the step subdivision per-chord for any slot with no kick in its span (see
+  `voicing.build_bass_line`'s `kick_times`), so the bass never goes silent.
+- **Ghost notes (drums) — SHIPPED:** `perc.ghost_rate`/`perc.ghost_note`
+  (arrangement) / `--perc-ghost-rate`/`--perc-ghost-note` (flat CLI) fill empty
+  drum-pattern slots with a low-velocity hit at that probability
+  (`percussion.add_ghost_notes`).
 - **Better humanization:** accent beat 1, velocity curves, tighter/looser feel
   per section.
 
 ### Phasing
 - **v1:** swing + laid-back snare + accent-on-1 (contained, immediately audible).
-- **v2:** bass-locked-to-kick + ghost notes.
+- **v2 — SHIPPED:** bass-locked-to-kick + ghost notes.
 - **v3:** per-genre feel presets.
 
 **Open questions:** swing global vs per-section? expose raw timing offsets or
-ship genre "feel" presets? bass-kick lock as a `--bass-style` vs a modifier on
-existing styles?
+ship genre "feel" presets?
 
 **Effort:** v1 small–medium. **Risk:** low (transforms are localized), but feel
 needs ear-tuning.

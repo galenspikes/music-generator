@@ -43,6 +43,7 @@ from percussion import (  # noqa: F401
     build_perc_from_args, build_drum_timeline_stages,
     build_drum_timeline_with_fills, build_drum_timeline_from_main,
     parse_chord_interrupters, set_active_drum_map,
+    get_drum_map, add_ghost_notes, kick_onsets,
 )
 from tokens import key_roots  # noqa: F401
 from voicing import BASS_STYLES  # noqa: F401
@@ -426,6 +427,8 @@ def song_overrides_from_args(args, include) -> dict:
         bass["style"] = args.bass_style
     if include("bass_step", "--bass-step"):
         bass["step"] = float(args.bass_step)
+    if include("bass_lock_kick", "--bass-lock-kick"):
+        bass["lock_kick"] = bool(args.bass_lock_kick)
     if bass:
         ov["bass"] = bass
     perc: dict = {}
@@ -435,6 +438,10 @@ def song_overrides_from_args(args, include) -> dict:
         perc["main"] = ""  # explicit silence (gap-analysis I1)
     elif args.perc_main is not None and include("perc_main", "--perc-main"):
         perc["main"] = args.perc_main
+    if include("perc_ghost_rate", "--perc-ghost-rate"):
+        perc["ghost_rate"] = float(args.perc_ghost_rate)
+    if include("perc_ghost_note", "--perc-ghost-note"):
+        perc["ghost_note"] = args.perc_ghost_note
     if perc:
         ov["perc"] = perc
     if args.voice_instrument:
@@ -516,6 +523,13 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
         when + dur for (when, dur, _n) in chord_tl)
     drum_tl = truncate_timeline_to(drum_tl, ch_end)
 
+    if args.perc_ghost_rate > 0.0:
+        ghost_note = get_drum_map().get(args.perc_ghost_note.lower(), 38)
+        drum_tl = add_ghost_notes(drum_tl, rate=args.perc_ghost_rate,
+                                  note=ghost_note)
+
+    bass_kick_times = kick_onsets(drum_tl) if args.bass_lock_kick else None
+
     midi = MidiOut(args.bpm, None, tpb=tpb,
                    vel_mode_chords=args.velocity_mode_chords,
                    vel_mode_drums=args.velocity_mode_drums,
@@ -558,6 +572,7 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
             satb_style=args.satb_style,
             bass_style=args.bass_style,
             bass_step=args.bass_step,
+            bass_kick_times=bass_kick_times,
             counterpoint_step=args.counterpoint_step,
             counterpoint_suspension_prob=args.counterpoint_suspension_prob,
             counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
@@ -658,6 +673,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="Subdivision (in beats) for the bass line when --bass-style is not "
         "'follow' (0.5 = eighths, 1.0 = quarters).")
+    ap.add_argument(
+        "--bass-lock-kick",
+        action="store_true",
+        help="Lock the independent bass line's timing to the drum pattern's "
+        "kick hits instead of the even --bass-step subdivision (pitch pattern "
+        "is unchanged). Requires --bass-style other than 'follow'/'none'.")
     ap.add_argument("--bpm", type=int, default=120)
     ap.add_argument("--chord-length",
                     dest="chord_len",
@@ -727,6 +748,17 @@ def build_parser() -> argparse.ArgumentParser:
                     type=str,
                     default=None,
                     help="Linear fill-rate ramp 'start:end' (0-1) applied across perc stages.")
+    ap.add_argument(
+        "--perc-ghost-rate",
+        type=float,
+        default=0.0,
+        help="0-1. Probability of filling an empty drum slot with a "
+        "low-velocity ghost note (default: snare). Default=0.0 (off).")
+    ap.add_argument(
+        "--perc-ghost-note",
+        type=str,
+        default="c",
+        help="Drum-map letter for the ghost note (default 'c' = snare).")
     ap.add_argument(
         "--perc-fill-rate",
         type=float,

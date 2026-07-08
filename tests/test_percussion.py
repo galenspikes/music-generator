@@ -54,3 +54,38 @@ def test_drum_segment_offsets_by_start_beats():
 
 def test_drum_segment_zero_duration_is_empty():
     assert M.build_drum_segment(0.0, 0.0, MAIN, None, 0.0) == []
+
+
+# --- Thread 3 v2: kick onsets + ghost notes --------------------------------
+
+def test_kick_onsets_returns_only_kick_hit_times():
+    tl = M.build_drum_timeline_from_main(MAIN, beats_total=4.0)
+    assert M.kick_onsets(tl) == [0.0, 2.0]  # MAIN alternates kick/snare
+
+
+def test_kick_onsets_empty_when_no_kicks():
+    snares_only = [(1.0, [SNARE])]
+    tl = M.build_drum_timeline_from_main(snares_only, beats_total=2.0)
+    assert M.kick_onsets(tl) == []
+
+
+def test_add_ghost_notes_zero_rate_is_noop():
+    tl = M.build_drum_timeline_from_main(MAIN, beats_total=2.0)
+    assert M.add_ghost_notes(tl, rate=0.0) == tl
+
+
+def test_add_ghost_notes_only_fills_empty_slots(monkeypatch):
+    rests_and_hits = [(1.0, [KICK]), (1.0, [])]
+    tl = M.build_drum_timeline_from_main(rests_and_hits, beats_total=2.0)
+    monkeypatch.setattr(M.random, "random", lambda: 0.0)  # always fill
+    out = M.add_ghost_notes(tl, rate=1.0, note=38, vel_offset=-40)
+    assert out[0][2] == [KICK]  # untouched: already had a hit
+    assert out[1][2] == [M.PercHit(note=38, vel_offset=-40)]  # filled
+
+
+def test_add_ghost_notes_respects_rate(monkeypatch):
+    rests = [(1.0, [])]
+    tl = M.build_drum_timeline_from_main(rests, beats_total=1.0)
+    monkeypatch.setattr(M.random, "random", lambda: 0.99)  # above rate
+    out = M.add_ghost_notes(tl, rate=0.5, note=38)
+    assert out[0][2] == []  # not filled: roll missed the rate

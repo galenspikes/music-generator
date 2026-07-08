@@ -34,13 +34,18 @@ BEATS_PER_BAR = 4.0  # v1 assumes 4/4 for `bars`-based section lengths
 BASE_DEFAULTS: dict = {
     "instrument": "piano",
     "voices": {},                       # voice name -> instrument
-    "bass": {"style": "follow", "step": 0.5},
+    # lock_kick: True times the independent bass line to the drum pattern's
+    # kick hits instead of the even 'step' subdivision (needs style != follow/none)
+    "bass": {"style": "follow", "step": 0.5, "lock_kick": False},
     "satb": "block",                    # block | static | arpeggio | counterpoint
     "chord_length": "h",
     "tempo": 120,
     "chords": ["triads", "sevenths"],   # families for bare roots (colon tokens ignore)
     "chords_order": "roundrobin",
-    "perc": {"main": "qb,qc,qb,qc", "interrupters": [], "fill_rate": 0.0},
+    # ghost_rate: probability of filling an empty drum slot with a low-velocity
+    # ghost hit (ghost_note: a drum-map letter, default 'c' = snare)
+    "perc": {"main": "qb,qc,qb,qc", "interrupters": [], "fill_rate": 0.0,
+             "ghost_rate": 0.0, "ghost_note": "c"},
     "counterpoint": {"step": 0.25, "suspension_prob": 0.0,
                      "anticipation_prob": 0.0},
     # A real tune on top (scale-degree grammar). When set on a section it plays
@@ -371,14 +376,51 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
             if "chorus" in fx:
                 events.append(("cc", start, 0.0, (target, 93, int(fx["chorus"]))))
 
+        # percussion — built before harmony/bass so a kick-locked bass line
+        # (bass.lock_kick) can read this section's kick-hit onsets.
+        # dynamics.intensity scales fill density (velocity is handled
+        # separately, at render time, via intensity_lookup).
+        perc = sec.get("perc") or {}
+        intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
+        main_pat = mg.parse_pattern(perc["main"]) if perc.get("main") else []
+        intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
+        fill_rate = max(0.0, min(1.0, float(perc.get("fill_rate", 0.0)) * intensity))
+        drum_tl = mg.build_drum_timeline_with_fills(
+            main_pat, intr, sec_beats, fill_rate)
+
+        ghost_rate = float(perc.get("ghost_rate", 0.0))
+        if ghost_rate > 0.0:
+            ghost_note = mg.get_drum_map().get(
+                str(perc.get("ghost_note", "c")).lower(), 38)
+            drum_tl = mg.add_ghost_notes(drum_tl, rate=ghost_rate,
+                                         note=ghost_note)
+
+        # transition: replace the section's tail with a fill, and/or crash
+        # into the next section's downbeat (hard cut stays the default).
+        transition = sec.get("transition") or {}
+        is_last = sec_idx == len(spec.sections) - 1
+        fill_spec = transition.get("fill")
+        if fill_spec and main_pat:
+            drum_tl = _apply_transition_fill(drum_tl, sec_beats, fill_spec,
+                                             main_pat, intr)
+        for when, dur, hits in drum_tl:
+            events.append(("drum", when + start, dur, hits))
+        if transition.get("crash") and not is_last:
+            crash_note = mg.get_drum_map().get("j", 49)
+            events.append(("drum", start + sec_beats, 0.0,
+                          [mg.PercHit(note=crash_note)]))
+
         # harmony + bass (shared builder), offset onto the global timeline
         bass = sec["bass"]
         cp = sec["counterpoint"]
+        bass_kick_times = (mg.kick_onsets(drum_tl)
+                           if bass.get("lock_kick") else None)
         h_events, _ = mg.build_harmony_events(
             chord_tl,
             satb_style=sec["satb"],
             bass_style=bass.get("style", "follow"),
             bass_step=float(bass.get("step", 0.5)),
+            bass_kick_times=bass_kick_times,
             counterpoint_step=float(cp.get("step", 0.25)),
             counterpoint_suspension_prob=float(cp.get("suspension_prob", 0.0)),
             counterpoint_anticipation_prob=float(cp.get("anticipation_prob", 0.0)),
@@ -424,31 +466,6 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                     if dur > 0:
                         events.append(
                             ("voice", start + when, dur, ("soprano", note)))
-
-        # percussion — dynamics.intensity scales fill density (velocity is
-        # handled separately, at render time, via intensity_lookup)
-        perc = sec.get("perc") or {}
-        intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
-        main_pat = mg.parse_pattern(perc["main"]) if perc.get("main") else []
-        intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
-        fill_rate = max(0.0, min(1.0, float(perc.get("fill_rate", 0.0)) * intensity))
-        drum_tl = mg.build_drum_timeline_with_fills(
-            main_pat, intr, sec_beats, fill_rate)
-
-        # transition: replace the section's tail with a fill, and/or crash
-        # into the next section's downbeat (hard cut stays the default).
-        transition = sec.get("transition") or {}
-        is_last = sec_idx == len(spec.sections) - 1
-        fill_spec = transition.get("fill")
-        if fill_spec and main_pat:
-            drum_tl = _apply_transition_fill(drum_tl, sec_beats, fill_spec,
-                                             main_pat, intr)
-        for when, dur, hits in drum_tl:
-            events.append(("drum", when + start, dur, hits))
-        if transition.get("crash") and not is_last:
-            crash_note = mg.get_drum_map().get("j", 49)
-            events.append(("drum", start + sec_beats, 0.0,
-                          [mg.PercHit(note=crash_note)]))
 
         cursor += sec_beats
 

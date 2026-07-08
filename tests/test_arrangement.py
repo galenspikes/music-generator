@@ -376,6 +376,74 @@ def test_render_events_dispatches_cc_to_midiout(monkeypatch):
     assert ("drums", 93, 32, 2.0) in calls
 
 
+
+# --- Thread 3 v2: bass locked to kick + ghost notes ------------------------
+
+def test_bass_lock_kick_aligns_bass_onsets_to_kick_hits():
+    raw = {
+        "title": "t", "tempo": 120,
+        # chord_length "w" keeps the whole bar as one chord slot, so both
+        # kicks land in the same slot and the lock isn't muddied by the
+        # per-slot coverage fallback (see build_bass_line's kick_times).
+        "defaults": {"chord_length": "w",
+                     "perc": {"main": "qb,qc,qb,qc"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "bass": {"style": "root", "step": 0.25, "lock_kick": True}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    bass_whens = sorted(w for k, w, _, payload in events
+                        if k == "voice" and payload[0] == "bass")
+    # "qb,qc,qb,qc" puts kicks on beats 0 and 2 (quarter-note pattern)
+    assert bass_whens == [0.0, 2.0]
+
+
+def test_bass_without_lock_kick_uses_even_step():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q",
+                     "perc": {"main": "qb,qc,qb,qc"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "bass": {"style": "root", "step": 1.0, "lock_kick": False}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    bass_whens = sorted(w for k, w, _, payload in events
+                        if k == "voice" and payload[0] == "bass")
+    assert bass_whens == [0.0, 1.0, 2.0, 3.0]
+
+
+def test_perc_ghost_rate_fills_empty_slots():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q",
+                     "perc": {"main": "qb,qr,qb,qr",
+                              "ghost_rate": 1.0, "ghost_note": "c"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj"},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    drum_hits = [h for k, _, _, h in events if k == "drum"]
+    snare_note = mg.get_drum_map()["c"]
+    ghost_hits = [h for hits in drum_hits for h in hits
+                 if h.note == snare_note and h.vel_offset < 0]
+    assert len(ghost_hits) == 2  # both rests filled at rate=1.0
+
+
+def test_perc_ghost_rate_zero_is_default_noop():
+    spec = A.build_spec(RAW)  # no ghost_rate anywhere
+    events, _ = A.build_events(spec)
+    for k, _, _, h in events:
+        if k == "drum":
+            assert all(hit.vel_offset >= 0 for hit in h)
+
+
 def test_transition_crash_skipped_on_last_section():
     raw = {
         "title": "t", "tempo": 120,
