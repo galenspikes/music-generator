@@ -184,8 +184,9 @@ a repeating song structure readable at any length.
 
 ## Mix / FX per section
 
-Send reverb (CC91) and chorus (CC93) per voice — or the whole drum kit — to
-push a section forward or back in the mix without swapping soundfonts:
+Set volume (CC7), pan (CC10), reverb send (CC91), and chorus send (CC93) per
+voice — or the whole drum kit — to push a section forward or back in the mix,
+widen/narrow it, or add space, all without swapping soundfonts:
 
 ```yaml
 sections:
@@ -194,14 +195,18 @@ sections:
     mix: { bass: {reverb: 20} }
   - name: solo
     keys: "..."
-    mix: { soprano: {reverb: 90, chorus: 40}, drums: {reverb: 40} }
+    mix: { soprano: {vol: 110, pan: 90, reverb: 90, chorus: 40},
+           bass: {vol: 100, pan: 30},
+           drums: {reverb: 40} }
 ```
 
 Keys under `mix` are voice names (`soprano`/`alto`/`tenor`/`bass`) or
-`drums`; values are `reverb`/`chorus` sends in the standard MIDI 0–127
-range. Requires split stems (the default) for the SATB voices, same as
-per-voice `instrument`/`voices`. A section without `mix` sends nothing (the
-soundfont's own default send levels apply, same as before this existed).
+`drums`; values are `vol`/`pan`/`reverb`/`chorus` in the standard MIDI 0–127
+range (pan: 0=hard left, 64=centre, 127=hard right). Requires split stems
+(the default) for the SATB voices, same as per-voice `instrument`/`voices`.
+A section without `mix` sends nothing (whatever came before — the
+soundfont's defaults, or the song-global `pan_spread` — carries through
+unchanged).
 
 ## Groove: bass locked to the kick, and ghost notes
 

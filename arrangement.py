@@ -366,15 +366,16 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                     if voice in voices else default_prog)
             events.append(("program", start, 0.0, (voice, prog)))
 
-        # per-section mix/FX: reverb (CC91) / chorus (CC93) sends, per voice
-        # or "drums", for spatial dynamics without swapping soundfonts.
+        # per-section mix/FX: volume (CC7), pan (CC10), reverb (CC91), chorus
+        # (CC93), per voice or "drums" — spatial/level dynamics without
+        # swapping soundfonts or re-authoring the whole song's pan_spread.
+        mix_ccs = {"vol": 7, "pan": 10, "reverb": 91, "chorus": 93}
         for target, fx in (sec.get("mix") or {}).items():
             if not isinstance(fx, dict):
                 continue
-            if "reverb" in fx:
-                events.append(("cc", start, 0.0, (target, 91, int(fx["reverb"]))))
-            if "chorus" in fx:
-                events.append(("cc", start, 0.0, (target, 93, int(fx["chorus"]))))
+            for key, control in mix_ccs.items():
+                if key in fx:
+                    events.append(("cc", start, 0.0, (target, control, int(fx[key]))))
 
         # percussion — built before harmony/bass so a kick-locked bass line
         # (bass.lock_kick) can read this section's kick-hit onsets.

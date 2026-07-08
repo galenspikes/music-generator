@@ -162,15 +162,18 @@ needs ear-tuning.
 
 **Goal:** make renders sit right, and enable finishing in a DAW.
 
-### 4a. Per-voice pan / volume — *pan SHIPPED*
-CC7 (volume) already goes out per voice channel at init. **Pan is now live:**
+### 4a. Per-voice pan / volume — SHIPPED
+CC7 (volume) already goes out per voice channel at init. Song-global pan:
 `--pan-spread 0..1` emits CC10 per SATB voice from `VOICE_PAN_POS`
-(soprano/bass widest, alto/tenor inside; 0 = mono/centred). Songs set it under
-`defaults: { pan_spread: ... }`. *Still open: explicit per-voice pan/vol values
-and per-section mixes, e.g.*
+(soprano/bass widest, alto/tenor inside; 0 = mono/centred), set under
+`defaults: { pan_spread: ... }`. **Explicit per-section pan/vol — SHIPPED:**
+`mix.vol`/`mix.pan` (alongside `mix.reverb`/`mix.chorus` from 4c) send raw
+CC7/CC10 per voice or "drums" at a section boundary, e.g.
 ```yaml
 mix: { bass: {vol: 105, pan: 64}, soprano: {pan: 84}, drums: {vol: 110} }
 ```
+reusing the same `"cc"` event dispatch built for 4c. See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
 ### 4b. Stems export — *the "actually releasable" feature* — MIDI SHIPPED
 Voices are already on separate channels/tracks. `MidiOut.write_stems(base_path)`
@@ -205,8 +208,8 @@ dispatches a new `"cc"` event kind to them. See
 
 **Resolved:** stems as separate MIDI (not channel-mute), bounced to WAV in
 `render.py` (not left as MIDI-only) — both per-stem MIDI and the WAV bounce
-shipped, see 4b above. Pan/vol per section (beyond the song-global
-`pan_spread`) is still open — `mix` currently only carries `reverb`/`chorus`.
+shipped, see 4b above. Pan/vol per section also shipped — `mix.vol`/`mix.pan`
+join `mix.reverb`/`mix.chorus`, see 4a above.
 
 **Effort:** 4a small, 4b medium (needs render orchestration) — done, 4c small
 — done. **Risk:** low.
@@ -258,6 +261,6 @@ doubles as a showcase and a learning aid.
    Thread 2) worth settling before starting.
 5. **Polish (smaller, can thread in anytime):** Thread 3 v3 (genre feel
    presets — depends on Thread 3's remaining open question), pocket/
-   micro-timing, per-section pan/vol, album batch rendering.
+   micro-timing, album batch rendering.
 
 Groove polish (Thread 3 v2+) threads in throughout.

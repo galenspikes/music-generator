@@ -357,6 +357,26 @@ def test_mix_absent_emits_no_cc_events():
     assert not any(k == "cc" for k, *_ in events)
 
 
+def test_mix_vol_and_pan_emit_cc7_and_cc10():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "mix": {"bass": {"vol": 105, "pan": 64},
+                     "soprano": {"pan": 84},
+                     "drums": {"vol": 110}}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    cc_events = {tuple(payload) for k, _, _, payload in events if k == "cc"}
+    assert ("bass", 7, 105) in cc_events
+    assert ("bass", 10, 64) in cc_events
+    assert ("soprano", 10, 84) in cc_events
+    assert ("drums", 7, 110) in cc_events
+
+
 def test_render_events_dispatches_cc_to_midiout(monkeypatch):
     import music_generator as mgen
     midi = mgen.MidiOut(120, split_stems=True)
