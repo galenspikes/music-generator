@@ -125,6 +125,26 @@ class TestParsePercussionTokens:
         assert hits[0].probability == pytest.approx(0.8)
         assert hits[0].flam == pytest.approx(0.125)
 
+    def test_parse_single_token_with_timing_offset(self):
+        """Parse drum with a timing-offset modifier 'qc[to0.05]' (laid back)."""
+        beats, hits = parse_single_token('qc[to0.05]')
+        assert hits[0].timing_offset == pytest.approx(0.05)
+
+    def test_parse_single_token_timing_offset_explicit_plus(self):
+        beats, hits = parse_single_token('qc[to+0.05]')
+        assert hits[0].timing_offset == pytest.approx(0.05)
+
+    def test_parse_single_token_timing_offset_negative_rejected_as_early(self):
+        # 'to-N' means "N beats early" in spirit, but early nudges aren't
+        # supported (would need to reach into the previous slot) — the sign
+        # still parses; MidiOut.drums_block clamps it to 0 at render time.
+        beats, hits = parse_single_token('qc[to-0.05]')
+        assert hits[0].timing_offset == pytest.approx(-0.05)
+
+    def test_parse_single_token_bad_timing_offset_errors(self):
+        with pytest.raises(ValueError):
+            parse_single_token('qc[tobogus]')
+
     def test_parse_single_token_eighth_note(self):
         """Parse eighth note token 'eb' (eighth kick)."""
         beats, hits = parse_single_token('eb')

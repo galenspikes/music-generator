@@ -33,6 +33,7 @@ You also need a SoundFont (`.sf2`). `SoundFonts/` is gitignored — supply your 
 | `--boost-db N` / `--boost-normalize N` | volume boost (after normalize) |
 | `--no-play` | skip playback |
 | `--output-dir DIR` | WAV output directory |
+| `--stems` | also bounce each voice + drums to its own WAV (needs `--save-wav`) |
 
 ## Where output lands
 
@@ -42,8 +43,24 @@ gitignored.
 ## Tips
 - For a polished master: `--normalize` (consistent loudness) then a small
   `--boost-db` if needed.
-- Stems: the engine splits stems by default (`--split-stems`), enabling per-voice
-  instruments and external mixing.
+
+## Stems for external mixing
+
+The engine splits stems by default (`--split-stems`), putting each voice on
+its own MIDI channel. Add `--stems` to also bounce each one to its own WAV,
+directly importable into a DAW:
+
+```bash
+./play_music --save-wav --stems --sf2 SoundFonts/arachno.sf2 \
+  --keys "C::maj9, A::min11" --seconds 60 --out my_take
+```
+
+This writes `my_take.wav` (the full mix) plus `my_take_soprano.wav`,
+`my_take_alto.wav`, `my_take_tenor.wav`, `my_take_bass.wav`, and
+`my_take_drums.wav` alongside it. Stems are raw FluidSynth renders —
+`--normalize`/`--boost-db` only apply to the main mix, since independently
+loudness-matching each stem would destroy the relative balance between them
+(the whole point of exporting stems). Works with `--song` arrangements too.
 
 ## See also
 [CLI reference](../reference/cli-reference.md) · [architecture — render pipeline](../explanation/architecture.md)

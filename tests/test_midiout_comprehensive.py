@@ -3,6 +3,7 @@
 Tests MIDI event writing, humanization, voice scheduling, and stem splitting.
 """
 
+import os
 import random
 
 import mido
@@ -227,6 +228,99 @@ class TestMidiFileGeneration:
         assert midi_path.stat().st_size > 0
 
 
+class TestLeadVoice:
+    """Test the optional 5th 'lead' voice (Thread 2)."""
+
+    def test_with_lead_registers_lead_track_on_lead_channel(self):
+        from mtheory import LEAD_CH
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        assert "lead" in out.chord_tracks
+        assert out.chord_channels["lead"] == LEAD_CH
+        # SATB channels are untouched
+        assert [out.chord_channels[v] for v in
+                ("soprano", "alto", "tenor", "bass")] == [0, 1, 2, 3]
+
+    def test_without_lead_no_lead_track(self):
+        out = MidiOut(bpm=120, split_stems=True)
+        assert "lead" not in out.chord_tracks
+
+    def test_with_lead_requires_split_stems(self):
+        out = MidiOut(bpm=120, split_stems=False, with_lead=True)
+        assert "lead" not in out.chord_tracks
+
+    def test_play_voice_note_on_lead(self):
+        from mtheory import LEAD_CH
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        out.play_voice_note("lead", 72, 0.0, 1.0)
+        note_ons = [m for m in out.chord_tracks["lead"]
+                    if m.type == "note_on" and m.velocity > 0]
+        assert len(note_ons) == 1
+        assert note_ons[0].channel == LEAD_CH
+
+    def test_program_and_cc_work_on_lead(self):
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        out.program_change_at("lead", program=65, when_beats=0.0)
+        out.control_change_at("lead", control=91, value=50, when_beats=0.0)
+        msgs = list(out.chord_tracks["lead"])
+        assert any(m.type == "program_change" and m.program == 65 for m in msgs)
+        assert any(m.type == "control_change" and m.control == 91
+                   and m.value == 50 for m in msgs)
+
+    def test_write_stems_includes_lead(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=True, with_lead=True)
+        out.play_voice_note("lead", 72, 0.0, 1.0)
+        out.flush_to_end(1.0, 0.0, 1.0)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+        paths = out.write_stems(base)
+        assert len(paths) == 6  # SATB + lead + drums
+        assert any(p.endswith("_lead.mid") for p in paths)
+
+
+class TestWriteStems:
+    """Test per-stem MIDI export (Thread 4b)."""
+
+    def test_write_stems_writes_one_file_per_voice_and_drums(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=True)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.play_voice_note("bass", 48, 0.0, 1.0)
+        out.drums_block([PercHit(note=36)], beats=1.0, when_beats=0.0)
+        out.flush_to_end(1.0, 1.0, 1.0)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+
+        paths = out.write_stems(base)
+        assert len(paths) == 5  # soprano, alto, tenor, bass, drums
+        names = {p.split("_")[-1] for p in paths}
+        assert names == {"soprano.mid", "alto.mid", "tenor.mid", "bass.mid",
+                         "drums.mid"}
+        for path in paths:
+            assert os.path.exists(path)
+            stem_mid = mido.MidiFile(path)
+            assert len(stem_mid.tracks) == 2  # tempo map + the one voice track
+
+    def test_write_stems_soprano_only_has_soprano_notes(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=True)
+        out.play_voice_note("soprano", 72, 0.0, 1.0)
+        out.play_voice_note("bass", 48, 0.0, 1.0)
+        out.flush_to_end(1.0, 0.0, 1.0)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+
+        paths = out.write_stems(base)
+        soprano_path = next(p for p in paths if p.endswith("_soprano.mid"))
+        stem_mid = mido.MidiFile(soprano_path)
+        notes_on = {m.note for tr in stem_mid.tracks for m in tr
+                   if m.type == "note_on" and m.velocity > 0}
+        assert notes_on == {72}
+
+    def test_write_stems_no_op_without_split_stems(self, tmp_path):
+        out = MidiOut(bpm=120, split_stems=False)
+        base = str(tmp_path / "song.mid")
+        out.save(base)
+        assert out.write_stems(base) == []
+
+
 class TestProgramChanges:
     """Test instrument program changes."""
 
@@ -447,6 +541,22 @@ class TestDrumPlayback:
         midi_bytes = out.to_bytes()
         assert len(midi_bytes) > 0
 
+    def test_drums_block_vel_scale_lowers_velocity(self):
+        """vel_scale multiplies the per-instrument base before humanization."""
+        quiet = MidiOut(bpm=120, vel_mode_drums="uniform")
+        loud = MidiOut(bpm=120, vel_mode_drums="uniform")
+        pattern = [PercHit(note=36)]
+        quiet.drums_block(pattern, beats=1.0, when_beats=0.0, vel_scale=0.4)
+        loud.drums_block(pattern, beats=1.0, when_beats=0.0, vel_scale=1.0)
+
+        def note_on_velocity(midi_out):
+            for msg in midi_out.tr_dr:
+                if msg.type == "note_on":
+                    return msg.velocity
+            return None
+
+        assert note_on_velocity(quiet) < note_on_velocity(loud)
+
 
 class TestVoiceAdvance:
     """Test advancing voice positions."""
@@ -509,6 +619,43 @@ class TestProgramChange:
                               bank_msb=1, bank_lsb=2)
         midi_bytes = out.to_bytes()
         assert len(midi_bytes) > 0
+
+    def test_control_change_at_sends_cc_on_voice_channel(self):
+        """control_change_at sends CC91/93 on the target voice's channel."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.control_change_at("bass", control=91, value=64, when_beats=1.0)
+        channel = out.chord_channels["bass"]
+        ccs = [m for m in out.chord_tracks["bass"]
+              if m.type == "control_change" and m.control == 91]
+        assert len(ccs) == 1
+        assert ccs[0].value == 64
+        assert ccs[0].channel == channel
+
+    def test_control_change_at_clamps_value(self):
+        """control_change_at clamps out-of-range values into [0, 127]."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.control_change_at("bass", control=91, value=999, when_beats=0.0)
+        cc = next(m for m in out.chord_tracks["bass"]
+                  if m.type == "control_change" and m.control == 91)
+        assert cc.value == 127
+
+    def test_control_change_at_invalid_voice_is_safe(self):
+        """control_change_at on an unknown voice is a no-op, not an error."""
+        out = MidiOut(split_stems=True, bpm=120)
+        out.control_change_at("invalid", control=91, value=64, when_beats=0.0)
+        midi_bytes = out.to_bytes()
+        assert len(midi_bytes) > 0
+
+    def test_drum_control_change_at_sends_cc_on_drum_channel(self):
+        """drum_control_change_at sends CC on the drum channel."""
+        from mtheory import DRUM_CH
+        out = MidiOut(bpm=120)
+        out.drum_control_change_at(control=93, value=32, when_beats=2.0)
+        ccs = [m for m in out.tr_dr
+              if m.type == "control_change" and m.control == 93]
+        assert len(ccs) == 1
+        assert ccs[0].value == 32
+        assert ccs[0].channel == DRUM_CH
 
     def test_set_voice_programs_dict(self):
         """set_voice_programs applies programs to voices."""
@@ -648,6 +795,44 @@ class TestDrumBlocks:
         out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
         midi_bytes = out.to_bytes()
         assert len(midi_bytes) > 0
+
+    def test_drums_block_timing_offset_delays_note_on(self):
+        """A positive timing_offset lays the hit back within its own slot."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=38, timing_offset=0.25)]  # a quarter of a beat late
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        note_ons = [m for m in out.tr_dr if m.type == "note_on"]
+        assert len(note_ons) == 1
+        assert note_ons[0].time == out.ticks(0.25)
+
+    def test_drums_block_timing_offset_clamped_to_slot(self):
+        """A timing_offset longer than the slot is clamped, not overflowed."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=38, timing_offset=10.0)]
+        out.drums_block(hits=pattern, beats=0.5, when_beats=0.0)
+        note_ons = [m for m in out.tr_dr if m.type == "note_on"]
+        assert note_ons[0].time == out.ticks(0.5)
+
+    def test_drums_block_negative_timing_offset_clamped_to_zero(self):
+        """Early nudges aren't supported (would cross into the prior slot);
+        a negative timing_offset is clamped to 0 (on-grid) rather than error."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=38, timing_offset=-0.2)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        note_ons = [m for m in out.tr_dr if m.type == "note_on"]
+        assert note_ons[0].time == 0
+
+    def test_drums_block_flam_trails_the_delayed_hit(self):
+        """flam is measured from the (possibly delayed) main hit, not the
+        slot start."""
+        out = MidiOut(bpm=120)
+        pattern = [PercHit(note=36, timing_offset=0.2, flam=0.05)]
+        out.drums_block(hits=pattern, beats=1.0, when_beats=0.0)
+        # tick deltas in append order: main hit at 0.2 beats, then the flam
+        # grace note 0.05 beats after that (i.e. at 0.25 beats absolute).
+        note_on_deltas = [m.time for m in out.tr_dr if m.type == "note_on"]
+        assert note_on_deltas[0] == out.ticks(0.2)
+        assert note_on_deltas[0] + note_on_deltas[1] == out.ticks(0.25)
 
     def test_drums_block_flam_longer_than_beat(self):
         """drums_block clamps flam to beat duration."""

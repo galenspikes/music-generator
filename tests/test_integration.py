@@ -135,6 +135,19 @@ def test_render_with_pan_spread(slug):
     _assert_valid_midi(slug)
 
 
+def test_render_with_stems_writes_stem_files(slug):
+    """Test per-stem MIDI export alongside the main render."""
+    _run(["--keys", "C::maj,F::maj",
+          "--stems", "--seconds", "3", "--seed", "2",
+          "--no-play", "--out", slug])
+    _assert_valid_midi(slug)
+    stem_names = {"soprano", "alto", "tenor", "bass", "drums"}
+    files = {p.split("/")[-1] for p in glob.glob(str(OUT / slug / "*.mid"))}
+    for name in stem_names:
+        assert any(f.endswith(f"_{name}.mid") for f in files), \
+            f"missing {name} stem, got {files}"
+
+
 def test_render_different_instruments(slug):
     """Test rendering with different instruments."""
     for instrument in ["piano", "strings", "guitar"]:

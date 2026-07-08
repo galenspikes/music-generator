@@ -1,8 +1,9 @@
 # Roadmap — toward an EP of generative grooves
 
-Planning doc (not yet implemented). North star: produce release-quality,
-long-form grooves from charts, finished in a DAW. Four threads, each with a
-concrete design. Cross-cutting enabler called out at the end.
+Planning doc; some threads are now shipped (marked inline). North star: produce
+release-quality, long-form grooves from charts, finished in a DAW. Four
+threads, each with a concrete design. Cross-cutting enabler called out at the
+end.
 
 Current foundation: per-voice channels (split stems), per-voice instruments,
 independent bass generator, arrangement layer Phase 1 (YAML sections, per-section
@@ -16,89 +17,110 @@ tempo/instruments, `build_harmony_events`, `MidiOut.set_tempo_at` /
 **Goal:** sections that connect musically, breathe dynamically, and can be
 arranged into real song forms without copy-paste.
 
-### 1a. Form references (DRY song structure) — *do first, pure loader change*
-Define sections once, sequence by name.
+### 1a. Form references (DRY song structure) — SHIPPED
+Define sections once, sequence by name:
 ```yaml
 blocks:
-  verse:  { repeat: 2, keys: "...", bass: {style: root} }
-  chorus: { repeat: 2, keys: "...", bass: {style: octaves}, voices: {soprano: saw} }
-form: [intro, verse, chorus, verse, chorus, solo, chorus, outro]
+  verse:  { keys: "...", bass: {style: root} }
+  chorus: { keys: "...", bass: {style: octaves}, voices: {soprano: saw} }
+form: [verse, chorus, verse, chorus]
 ```
-`build_spec` expands `form` → the flat `sections` list (with optional inline
-overrides per reference). No engine change. High value, low risk.
+`build_spec` expands `form` → the flat `sections` list, with optional inline
+`{block_name: overrides}` per occurrence (e.g. a louder second chorus).
+`form`/`blocks` and plain `sections` are both supported; `form` wins if both
+are present. See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-### 1b. Cross-section continuity — *fixes the one rough edge in Phase 1*
-Today each section starts voicing fresh. Thread state across boundaries:
-- `build_chord_timeline` gains optional `prev_sop` in / final-sop out (default
-  None keeps the flat path identical).
-- bass register cursor carried between sections.
-- `arrange()` passes the trailing state of section N into section N+1.
+### 1b. Cross-section continuity — SHIPPED
+Each section no longer starts voicing fresh: `arrangement.build_events` threads
+the soprano lead-in and bass register anchor from the end of section N into
+the start of section N+1 via `build_chord_timeline(..., prev_sop=, bass_anchor=)`
+/ `realize_SATB(..., bass_anchor=)` (both default to the old behavior, so the
+flat single-render path is unaffected).
 
-### 1c. Transitions / fills at boundaries
+### 1c. Transitions / fills at boundaries — SHIPPED
 Per-section `transition: {fill: 1bar, crash: true}`:
-- replace the last N beats of the section's drum timeline with a fill (reuse
-  `build_drum_segment` at high fill-rate, or a named fill pattern),
-- add a crash (`j`) on the next section's downbeat.
-Hard cut remains the default.
+- `fill` replaces the last N bars of the section's drum timeline with a fill
+  drawn from `perc.interrupters` (falls back to the main pattern),
+- `crash` adds a crash-cymbal hit on the next section's downbeat (skipped on
+  the last section).
+Hard cut remains the default when `transition` is unset.
 
-### 1d. Dynamics arc
-Per-section intensity → base velocity + density:
+### 1d. Dynamics arc — SHIPPED
+Per-section `dynamics: {intensity}` → base velocity + density:
 ```yaml
 verse:  { dynamics: {intensity: 0.6} }
 chorus: { dynamics: {intensity: 1.0} }
 ```
-Map intensity → chord/bass velocity base (currently fixed at 78) and scale
-perc fill-rate. `build_harmony_events` / `play_voice_note` already take a `base`
-velocity — plumb it through per section. Optional global build curve later.
+`render_events` gained an `intensity_at(when_beats)` lookup (default: constant
+1.0, so the flat render path is unaffected) that scales the base velocity
+passed to `play_voice_note`/`chord_block`/`dense_block` and the new `vel_scale`
+on `MidiOut.drums_block`; `arrangement.intensity_lookup(spec)` builds it from
+each section's beat range without touching the RNG (so it can run alongside
+`build_events` on the same spec). Percussion density scales separately, in
+`build_events`, by multiplying each section's `perc.fill_rate` by its
+intensity. See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
+Optional global build curve (continuous rather than per-section step) is
+still open for a later pass.
 
-### 1e. `seconds:` length target
-`length: {seconds: 1200}` → after one pass of the form, repeat/trim the whole
-form to hit the target. (Per-section tempo means beats→seconds varies, so
-compute each section's seconds from its tempo and accumulate.)
+### 1e. `seconds:` length target — SHIPPED
+`length: {seconds: 1200}` loops the whole (already-expanded) section sequence,
+computing each repeat's real-world duration from its own tempo (beats * 60 /
+tempo, since per-section tempo means beats→seconds isn't constant across the
+song) and accumulating until the target is reached; the final repeat is
+trimmed (re-expressed in `bars`) to land exactly on target instead of
+overshooting by a whole pass. `arrangement._extend_to_length` does the
+looping in `build_spec`, using only each section's beat *count* (via
+`key_roots`, which has no randomness) so it doesn't perturb the chord RNG.
+See [create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-**Open questions:** fill source (auto from interrupters vs a dedicated fill
-field)? intensity as one scalar vs explicit velocity/density? seconds-target =
-loop whole form vs extend the last/outro section?
+**Resolved:** loop-whole-form (not extend-the-last-section) is what shipped —
+simpler to reason about and keeps the song's dynamics arc (1d) intact across
+repeats.
 
 **Effort:** 1a small, 1b/1d medium, 1c/1e medium. **Risk:** low–medium.
 
 ---
 
-## Thread 2 — Melody / lead generator (the hook)
+## Thread 2 — Melody / lead generator (the hook) — v1+v2 SHIPPED
 
-**Goal:** a monophonic, motif-based lead — the part a listener hums. Today the
-"lead" is just the SATB soprano; this is a dedicated generator.
+**Goal:** a monophonic, motif-based lead — the part a listener hums. Distinct
+from the SATB soprano (harmony) and from `melody` (a literal authored tune).
 
-### Design
-- **Where it lives:** a 5th voice on its own channel (ch 4). Requires extending
-  `MidiOut` beyond the 4 SATB voices (optional `lead` track/channel + program).
-- **Pitch material:** per chord (from `chord_tl`) derive chord tones + a scale
-  (chord-tone set, optionally widened to a mode). Strong beats favor chord
-  tones; weak beats allow steps/passing tones; leaps resolve.
-- **Rhythm:** draw from a small rhythm-cell pool (the percussion token grammar
-  could even describe lead rhythms), with rests — silence is what makes a hook.
-- **Phrasing/development:** state a motif, then develop it — repeat, transpose
-  to fit the next chord, invert, sequence; antecedent/consequent over a 4/8-bar
-  phrase; call-and-response (phrase, rest, answer).
+### What shipped (`lead.py` + per-section `lead:` in the arrangement)
+- **Where it lives — resolved: true 5th voice.** `MidiOut(with_lead=True)`
+  registers a "lead" entry in `chord_tracks` on `LEAD_CH` (channel 4), so
+  per-voice notes, `program_change_at`, mix CCs, intensity scaling, and
+  `write_stems` (a lead stem) all work on it with no other core changes.
+  Full SATB keeps playing underneath.
+- **Pitch material — resolved: hybrid.** Degrees resolve against the section
+  `key`/`mode` (explicit or inferred) on a fixed octave line transposed once
+  into the register, so authored/generated intervals sound exactly as
+  written; strong-beat onsets snap to the nearest tone of the chord
+  underneath; the final note cadences on a chord tone.
+- **Motif — resolved: both.** `lead.motif` (scale-degree grammar) is
+  developed as authored; without it, `generate_motif` draws a rhythm cell
+  from a density-tiered pool and walks a stepwise contour (leaps resolve by
+  step, ends on a stable degree). Seed-reproducible.
+- **Development (v2):** phrase-per-bar call-and-response plan — statement,
+  response (silent with probability `rests`), restatement diatonically
+  transposed to fit the current chord, then inversion or sequence.
 
-### Surface
+### Surface (as shipped)
 ```yaml
-lead: { instrument: sax, style: motif, density: 0.5, register: high, rests: 0.4 }
+lead: { instrument: sax, motif: "q1 e2 e3 q5 hr", density: 0.5,
+        register: high, rests: 0.3 }
 ```
-Per-section (lead only in chorus/solo), like other section knobs.
+Per-section, like other knobs; `mix: { lead: {...} }` targets it. See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-### Phasing
-- **v1:** chord-tone motif with rests + repetition fit to each chord (sounds
-  intentional, not noodly).
-- **v2:** motif development (transpose/invert/sequence) + call-and-response.
-- **v3:** scale-aware passing tones, proper phrase arcs, tension/release.
+### Still open (v3)
+Proper phrase arcs and tension/release curves; scale-aware passing-tone
+insertion beyond what the motif itself carries; a `style` knob if more than
+the motif engine ever exists. The `style: motif` field from the original
+sketch was dropped — with one engine it was dead config.
 
-**Open questions:** scale source — derive from chord, or declare key/mode per
-section? Lead as a true 5th channel vs repurposing soprano when active? Degree
-of randomness vs a stated, developed motif?
-
-**Effort:** large (most ambitious). **Risk:** medium — biggest musical payoff,
-and the MidiOut 5th-voice change touches core.
+**Effort:** was large; v3 remainder medium. **Risk of v3:** medium — mostly
+ear-tuning.
 
 ---
 
@@ -112,26 +134,50 @@ and the MidiOut 5th-voice change touches core.
   eighths, 0.5 = triplet swing). It reads `MidiOut.swing`, so it applies to
   every render path (flat, arrangement, fugue, process); songs set it under
   `defaults: { swing: ... }`. *Still open: per-section swing.*
-- **Pocket / micro-timing:** small per-voice timing offsets — bass slightly
-  ahead, snare laid back. Per-voice `timing_offset` in ms/ticks.
-- **Bass locked to kick:** a bass style (or flag) that places bass onsets on the
-  kick hits of the active drum pattern (bass generator reads the perc grid).
-- **Ghost notes (drums):** auto-inject low-velocity snare/hat ghosts; the token
-  DSL already supports `[vel-N]`/`[prob]`, so this is partly an auto-humanize.
+- **Pocket / micro-timing — PARTIALLY SHIPPED (drums, delay-only):** the
+  percussion token DSL gained a `[to+N]`/`[toN]` per-hit modifier
+  (`PercHit.timing_offset`, applied in `MidiOut.drums_block`) that lays a hit
+  back N beats within its own slot — "snare laid back" from this idea.
+  Resolved as **raw timing offsets** (not a preset), matching how `vel`/
+  `flam`/`prob` already work as composable per-hit modifiers. *Still open:*
+  early/ahead-of-the-beat nudges (would need to reach into the previous
+  slot — a bigger change than a per-hit clamp) and per-voice SATB offsets
+  ("bass slightly ahead" — riskier: shifting a sustained note's start without
+  also handling overlap with the previous note needs more care than a
+  discrete drum hit).
+- **Bass locked to kick — SHIPPED:** `bass.lock_kick: true` (arrangement) /
+  `--bass-lock-kick` (flat CLI) times the independent bass line's onsets to
+  this section's kick-drum hits (`percussion.kick_onsets`) instead of the even
+  `bass_step` subdivision — resolved as **a modifier on existing styles**
+  (orthogonal to the pitch pattern), not a new `--bass-style`. Falls back to
+  the step subdivision per-chord for any slot with no kick in its span (see
+  `voicing.build_bass_line`'s `kick_times`), so the bass never goes silent.
+- **Ghost notes (drums) — SHIPPED:** `perc.ghost_rate`/`perc.ghost_note`
+  (arrangement) / `--perc-ghost-rate`/`--perc-ghost-note` (flat CLI) fill empty
+  drum-pattern slots with a low-velocity hit at that probability
+  (`percussion.add_ghost_notes`).
 - **Better humanization:** accent beat 1, velocity curves, tighter/looser feel
   per section.
 
 ### Phasing
 - **v1:** swing + laid-back snare + accent-on-1 (contained, immediately audible).
-- **v2:** bass-locked-to-kick + ghost notes.
-- **v3:** per-genre feel presets.
+- **v2 — SHIPPED:** bass-locked-to-kick + ghost notes + per-hit timing offset.
+- **v3 — SHIPPED:** per-genre feel presets. `feel: tight|laidback|swing|funk`
+  (song-level in `defaults`, or per-section) expands to a bundle of the raw
+  knobs — `swing`, `perc.ghost_rate`, `perc.pocket`, `bass.lock_kick` — via
+  the leaf module `feel.py`, applied between the engine defaults and the
+  user's explicit values (explicit always wins). The enabling piece was
+  `perc.pocket` / `--perc-pocket "c:0.03"` (`percussion.apply_pocket`), a
+  blanket per-drum delay so a preset can lay the snare back without editing
+  pattern tokens; authored `[to..]` modifiers beat the blanket.
 
-**Open questions:** swing global vs per-section? expose raw timing offsets or
-ship genre "feel" presets? bass-kick lock as a `--bass-style` vs a modifier on
-existing styles?
+**Resolved:** raw offsets *and* presets — the raw knobs shipped first (v2),
+presets are pure bundles of them, so anything a feel does can be reproduced
+or overridden knob-by-knob. *Still open:* per-section swing (swing remains
+song-global, so a per-section feel's swing component is ignored — documented).
 
-**Effort:** v1 small–medium. **Risk:** low (transforms are localized), but feel
-needs ear-tuning.
+**Effort:** was v1 small–medium; done through v3. **Risk:** preset values may
+want ear-tuning over time — they're one table in `feel.py`.
 
 ---
 
@@ -139,44 +185,67 @@ needs ear-tuning.
 
 **Goal:** make renders sit right, and enable finishing in a DAW.
 
-### 4a. Per-voice pan / volume — *pan SHIPPED*
-CC7 (volume) already goes out per voice channel at init. **Pan is now live:**
+### 4a. Per-voice pan / volume — SHIPPED
+CC7 (volume) already goes out per voice channel at init. Song-global pan:
 `--pan-spread 0..1` emits CC10 per SATB voice from `VOICE_PAN_POS`
-(soprano/bass widest, alto/tenor inside; 0 = mono/centred). Songs set it under
-`defaults: { pan_spread: ... }`. *Still open: explicit per-voice pan/vol values
-and per-section mixes, e.g.*
+(soprano/bass widest, alto/tenor inside; 0 = mono/centred), set under
+`defaults: { pan_spread: ... }`. **Explicit per-section pan/vol — SHIPPED:**
+`mix.vol`/`mix.pan` (alongside `mix.reverb`/`mix.chorus` from 4c) send raw
+CC7/CC10 per voice or "drums" at a section boundary, e.g.
 ```yaml
 mix: { bass: {vol: 105, pan: 64}, soprano: {pan: 84}, drums: {vol: 110} }
 ```
+reusing the same `"cc"` event dispatch built for 4c. See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-### 4b. Stems export — *the "actually releasable" feature*
-Voices are already on separate channels/tracks. Render **per-stem WAVs** so you
-mix/master externally. Two approaches:
-- **Per-stem MIDI** (simple, DAW-friendly): write one MIDI per voice + drums;
-  render each to WAV. Also directly importable into Logic/Ableton.
-- **Channel-mute rendering:** one MIDI, render N times muting all but one
-  channel. Fewer files but fiddlier with FluidSynth.
-Recommendation: per-stem MIDI; pairs with the render port below.
+### 4b. Stems export — *the "actually releasable" feature* — MIDI SHIPPED
+Voices are already on separate channels/tracks. `MidiOut.write_stems(base_path)`
+writes one standalone MIDI file per voice + drums (`song.mid` ->
+`song_soprano.mid`, `song_bass.mid`, ..., `song_drums.mid`) — directly
+importable into a DAW. Wired to `--stems` (flat CLI path) and
+`arrangement.render(spec, out, stems=True)` (song path). See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-### 4c. Per-section FX via CC
+**WAV bounce — SHIPPED.** `render.py --stems` (forwards `--stems` to the
+generator, then finds the sibling stem MIDI files `write_stems` produced via
+`find_stem_midis` and bounces each through the same FluidSynth pipeline as
+the main WAV) — raw, with no independent `--normalize`/`--boost-db`, since
+loudness-matching each stem independently would destroy the relative balance
+between them. See [render-audio.md](../how-to/render-audio.md). Channel-mute
+rendering (the original doc's other option) is superseded — per-stem MIDI is
+simpler and was the doc's own recommendation.
+
+### 4c. Per-section FX via CC — SHIPPED
 CC91 (reverb send) / CC93 (chorus send) per channel/section for spatial
-dynamics without swapping soundfonts.
+dynamics without swapping soundfonts:
+```yaml
+sections:
+  - name: solo
+    mix: { soprano: {reverb: 90, chorus: 40}, drums: {reverb: 40} }
+```
+`mix` keys are voice names or `drums`; values are 0–127 sends. New
+`MidiOut.control_change_at`/`drum_control_change_at` (mirroring
+`program_change_at`) send the CC at the section's beat offset; `render_events`
+dispatches a new `"cc"` event kind to them. See
+[create-an-arrangement.md](../how-to/create-an-arrangement.md).
 
-**Open questions:** stems as separate MIDI vs channel-mute render? expose pan/vol
-per section or song-global only in v1? bounce stems to WAV here, or just emit
-MIDI stems and mix entirely in the DAW?
+**Resolved:** stems as separate MIDI (not channel-mute), bounced to WAV in
+`render.py` (not left as MIDI-only) — both per-stem MIDI and the WAV bounce
+shipped, see 4b above. Pan/vol per section also shipped — `mix.vol`/`mix.pan`
+join `mix.reverb`/`mix.chorus`, see 4a above.
 
-**Effort:** 4a small, 4b medium (needs render orchestration), 4c small.
-**Risk:** low.
+**Effort:** 4a small, 4b medium (needs render orchestration) — done, 4c small
+— done. **Risk:** low.
 
 ---
 
-## Cross-cutting enabler — port `play_music` → Python `render.py`
+## Cross-cutting enabler — port `play_music` → Python `render.py` — SHIPPED
 
 Threads 4b (stems), 4c (per-section FX), and album batch-rendering all get much
 easier in Python than in the shell wrapper (which already cost us 3 bug fixes).
-A `render.py` that does generate → FluidSynth → ffmpeg, with stem and batch
-support, is the natural home. Worth doing before/with Thread 4.
+`render.py` does generate → FluidSynth → ffmpeg (with `--stems` bounce support,
+above); `play_music` is now a thin back-compat shim over it. Album batch
+rendering is still open.
 
 ---
 
@@ -204,11 +273,17 @@ doubles as a showcase and a learning aid.
 ---
 
 ## Suggested sequencing toward the EP
-1. **Quick wins:** Thread 4a (pan/volume) + Thread 3 v1 (swing/feel) — immediate
-   audible upgrade to everything.
-2. **Composition:** Thread 1a (form refs) → 1b (continuity) → 1c/1d
-   (transitions, dynamics) — songs that hold together over 20 minutes.
-3. **The hook:** Thread 2 v1–v2 (melody) — the biggest musical leap.
-4. **Release:** `render.py` port → Thread 4b (stems) — finish in a DAW.
+1. **Quick wins — DONE:** Thread 4a (pan/volume) + Thread 3 v1 (swing/feel).
+2. **Composition — DONE:** Thread 1a–1e (form refs, continuity, transitions,
+   dynamics, length target) — songs that hold together over 20 minutes.
+3. **Groove — DONE:** Thread 3 v2 (bass-locked-to-kick, ghost notes, per-hit
+   timing offset), Thread 4a (per-section pan/vol), Thread 4c (per-section
+   reverb/chorus), Thread 4b (stems, MIDI + WAV bounce), the `render.py` port.
+4. **The hook — DONE (v1+v2):** Thread 2 (motif-based lead on its own 5th
+   channel, developed across the changes). v3 (phrase arcs, tension/release)
+   remains.
+5. **Polish (smaller, can thread in anytime):** Thread 2 v3 (phrase arcs),
+   per-section swing, per-voice SATB micro-timing/early nudges, album batch
+   rendering. (Thread 3 v3 feel presets — DONE.)
 
 Groove polish (Thread 3 v2+) threads in throughout.

@@ -338,6 +338,8 @@ def build_chord_timeline(
         interrupters: list[list[tuple[float, str]]] | None = None,
         chord_fill_rate: float = 0.0,  # <-- add this
         static: bool = False,
+        prev_sop: int | None = None,
+        bass_anchor: int = 43,
 ) -> list[tuple[float, float, tuple[int, int, int, int]]]:
     """
     Returns [(when_beats, dur_beats, (s,a,t,b))].
@@ -349,10 +351,14 @@ def build_chord_timeline(
     consecutive (root, pcs, bass) reuse the exact previous (s,a,t,b) instead of
     re-voicing through `realize_SATB` (whose anti-stagnation logic would
     otherwise wobble the soprano between two chord tones every hit).
+
+    `prev_sop`/`bass_anchor` seed the voice-leading state (the soprano note
+    and bass register to lead from for the very first chord); pass the
+    previous section's final (soprano, bass) to keep the arrangement's voices
+    continuous across a section boundary instead of resetting each section.
     """
     out: list[tuple[float, float, tuple[int, int, int, int]]] = []
     pos = 0.0
-    prev_sop: int | None = None
     prev_chord_key: tuple | None = None
     prev_voicing: tuple[int, int, int, int] | None = None
     i = 0
@@ -382,9 +388,11 @@ def build_chord_timeline(
                     sop, alto, tenor, bass = realize_SATB(prev_sop,
                                                           root_pc,
                                                           pcs,
-                                                          bass_pc=bass_pc)
+                                                          bass_pc=bass_pc,
+                                                          bass_anchor=bass_anchor)
                 out.append((pos, dur, (sop, alto, tenor, bass)))
                 prev_sop = sop
+                bass_anchor = bass
                 prev_chord_key = chord_key
                 prev_voicing = (sop, alto, tenor, bass)
             pos += dur
@@ -432,6 +440,7 @@ def build_harmony_events(
         satb_style: str,
         bass_style: str = "follow",
         bass_step: float = 0.5,
+        bass_kick_times: list[float] | None = None,
         counterpoint_step: float = 0.25,
         counterpoint_suspension_prob: float = 0.0,
         counterpoint_anticipation_prob: float = 0.0,
@@ -444,6 +453,12 @@ def build_harmony_events(
     Shared by the flat single-render path and the arrangement orchestrator.
     `when_offset` shifts every event in time so a section can be placed on a
     global timeline. Returns ``(events, end_beats)``.
+
+    `bass_kick_times` (kick-hit onsets from the section's own drum timeline,
+    in the same beat coordinates as `chord_tl` — see
+    :func:`percussion.kick_onsets`) locks the independent bass line's timing
+    to the kick instead of the even `bass_step` subdivision; see
+    :func:`voicing.build_bass_line`.
     """
     events: list[tuple[str, float, float, object]] = []
     voice_max = when_offset
@@ -492,7 +507,9 @@ def build_harmony_events(
             e for e in events if not (e[0] == "voice" and e[3][0] == "bass")
         ]
         if bass_style != "none":
-            for when, dur, note in build_bass_line(chord_tl, bass_style, bass_step):
+            bass_line = build_bass_line(chord_tl, bass_style, bass_step,
+                                        kick_times=bass_kick_times)
+            for when, dur, note in bass_line:
                 events.append(("voice", when + when_offset, dur, ("bass", note)))
                 voice_max = max(voice_max, when + when_offset + dur)
 

@@ -610,11 +610,14 @@ class TestPresetManagement:
         spec = {"keys": "C::maj7", "seconds": "2", "bpm": "120"}
         name = "test_preset_xyz"
 
-        api.save_preset(name, spec, title="Test Preset")
-        loaded = api.load_preset(name)
+        try:
+            api.save_preset(name, spec, title="Test Preset")
+            loaded = api.load_preset(name)
 
-        assert loaded is not None
-        assert isinstance(loaded, dict)
+            assert loaded is not None
+            assert isinstance(loaded, dict)
+        finally:
+            api.delete_preset(name)
 
     def test_delete_preset(self):
         """Can delete a preset."""
@@ -639,10 +642,14 @@ class TestPresetManagement:
         spec = {"keys": "G::maj7"}
         name = "test_desc_xyz"
 
-        api.save_preset(name, spec, title="Title", description="Test description")
-        loaded = api.load_preset(name)
+        try:
+            api.save_preset(name, spec, title="Title",
+                            description="Test description")
+            loaded = api.load_preset(name)
 
-        assert loaded is not None
+            assert loaded is not None
+        finally:
+            api.delete_preset(name)
 
 
 class TestProgressionManagement:
@@ -666,10 +673,13 @@ class TestProgressionManagement:
         keys_spec = "C::maj, F::maj, G::maj"
         name = "test_prog_xyz"
 
-        api.save_progression(name, keys_spec, title="Test Progression")
-        loaded = api.load_progression(name)
+        try:
+            api.save_progression(name, keys_spec, title="Test Progression")
+            loaded = api.load_progression(name)
 
-        assert loaded is not None
+            assert loaded is not None
+        finally:
+            api.delete_progression(name)
 
     def test_delete_progression(self):
         """Can delete a progression."""

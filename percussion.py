@@ -9,7 +9,7 @@ which assembles a :class:`PercPlan` from CLI args. Depends only on
 """
 import json
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from mtheory import DUR_MAP, LIB_DIR
@@ -35,6 +35,11 @@ __all__ = [
     "build_drum_timeline_stages",
     "parse_chord_interrupters",
     "build_perc_from_args",
+    "KICK_NOTES",
+    "kick_onsets",
+    "add_ghost_notes",
+    "apply_pocket",
+    "parse_pocket_spec",
 ]
 
 
@@ -45,6 +50,11 @@ class PercHit:
     vel_offset: int = 0
     probability: float = 1.0
     flam: float | None = None
+    # Micro-timing nudge in beats, delay-only (clamped to the hit's own slot
+    # duration in MidiOut.drums_block) — "laid back" feel, e.g. a snare that
+    # trails the grid slightly. Negative/early nudges would need to reach into
+    # the previous slot, which isn't supported.
+    timing_offset: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -202,6 +212,7 @@ def parse_single_token(tok: str,
         vel_offset = 0
         probability = 1.0
         flam = None
+        timing_offset = 0.0
         if i < rest_len and rest[i] == '[':
             end = rest.find(']', i)
             if end == -1:
@@ -255,6 +266,24 @@ def parse_single_token(tok: str,
                             raise ValueError(
                                 f"Flam offset must be >=0 in token '{tok}'")
                         flam = flam_val
+                    elif lower.startswith('to'):
+                        payload = part[2:]
+                        if payload.startswith(('=', '+', '-')):
+                            payload = payload[1:] if payload.startswith('=') else payload
+                        payload = payload.strip()
+                        if not payload:
+                            raise ValueError(
+                                f"Missing timing offset in modifier '{part}'")
+                        try:
+                            offset_val = float(payload)
+                        except ValueError as exc:
+                            raise ValueError(
+                                f"Bad timing offset '{part}' in token '{tok}'") from exc
+                        if lower.startswith('to-') and not lower.startswith('to-='):
+                            offset_val = -abs(offset_val)
+                        elif lower.startswith('to+') and not lower.startswith('to+='):
+                            offset_val = abs(offset_val)
+                        timing_offset = offset_val
                     else:
                         raise ValueError(
                             f"Unknown modifier '{part}' in token '{tok}'")
@@ -263,7 +292,8 @@ def parse_single_token(tok: str,
             PercHit(note=note_val,
                     vel_offset=int(vel_offset),
                     probability=probability,
-                    flam=flam))
+                    flam=flam,
+                    timing_offset=timing_offset))
     return (beats, hits)
 
 
@@ -423,6 +453,91 @@ def build_drum_timeline_stages(
             build_drum_segment(pos, remainder, fallback_main, fallback_intr,
                                base_fill_rate))
 
+    return out
+
+
+# Acoustic Bass Drum / Bass Drum 1 — the default drum map's "a"/"b" (see
+# FALLBACK_DRUM_MAP). The anchor notes for a bass line "locked to the kick".
+KICK_NOTES = (35, 36)
+
+
+def kick_onsets(drum_tl: list[tuple[float, float, list[PercHit]]],
+                kick_notes: tuple[int, ...] = KICK_NOTES) -> list[float]:
+    """Onset times (beats) of kick-drum hits in a drum timeline.
+
+    The anchor points for a bass line "locked to the kick" — see
+    :func:`voicing.build_bass_line`'s ``kick_times``.
+    """
+    return [when for when, _dur, hits in drum_tl
+            if any(h.note in kick_notes for h in hits)]
+
+
+def parse_pocket_spec(spec: str,
+                      drum_map: dict[str, int] | None = None) -> dict[int, float]:
+    """Parse a pocket spec like ``"c:0.03,d:0.02"`` into {midi_note: beats}.
+
+    Each entry is <drum letter>:<delay in beats>; the delay is applied by
+    :func:`apply_pocket`. Raises ValueError on unknown letters or bad numbers.
+    """
+    drum_map = drum_map or get_drum_map()
+    out: dict[int, float] = {}
+    for part in (p.strip() for p in (spec or "").split(",") if p.strip()):
+        if ":" not in part:
+            raise ValueError(f"Pocket entry must be letter:beats, got '{part}'")
+        letter, raw = (s.strip() for s in part.split(":", 1))
+        if letter.lower() not in drum_map:
+            raise ValueError(f"Unknown drum letter '{letter}' in pocket spec")
+        try:
+            beats = float(raw)
+        except ValueError as exc:
+            raise ValueError(f"Bad pocket delay '{raw}' for '{letter}'") from exc
+        if beats < 0.0:
+            raise ValueError(f"Pocket delay must be >=0 for '{letter}' "
+                             "(early nudges aren't supported)")
+        out[drum_map[letter.lower()]] = beats
+    return out
+
+
+def apply_pocket(drum_tl: list[tuple[float, float, list[PercHit]]],
+                 offsets: dict[int, float]
+                 ) -> list[tuple[float, float, list[PercHit]]]:
+    """Lay selected drums back in the pocket: set ``timing_offset`` on every
+    hit whose note is in ``offsets`` ({midi_note: delay_beats}) — e.g. delay
+    all snares by 0.03 beats without editing the pattern's tokens. Hits that
+    already carry an explicit ``[to..]`` offset keep it (the authored token
+    wins over the blanket transform). A no-op for empty ``offsets``.
+    """
+    if not offsets or not drum_tl:
+        return drum_tl
+    out: list[tuple[float, float, list[PercHit]]] = []
+    for when, dur, hits in drum_tl:
+        new_hits = [
+            replace(h, timing_offset=offsets[h.note])
+            if h.note in offsets and h.timing_offset == 0.0 else h
+            for h in hits
+        ]
+        out.append((when, dur, new_hits))
+    return out
+
+
+def add_ghost_notes(
+        drum_tl: list[tuple[float, float, list[PercHit]]],
+        rate: float = 0.0,
+        note: int = 38,
+        vel_offset: int = -40
+        ) -> list[tuple[float, float, list[PercHit]]]:
+    """Fill empty (rest) slots in a drum timeline with a low-velocity ghost
+    hit, independently at probability ``rate`` per empty slot. Slots that
+    already have a hit are left untouched. A no-op at ``rate<=0``.
+    """
+    if rate <= 0.0 or not drum_tl:
+        return drum_tl
+    out = []
+    for when, dur, hits in drum_tl:
+        if not hits and random.random() < rate:
+            out.append((when, dur, [PercHit(note=note, vel_offset=vel_offset)]))
+        else:
+            out.append((when, dur, hits))
     return out
 
 

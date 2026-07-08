@@ -7,7 +7,11 @@ overrides the song-level `defaults` and contributes its own chords,
 instrumentation, bass, percussion density, tempo, and length. Sections are laid
 end-to-end on a single timeline; the existing engine builders are reused per
 section with a beat offset, and program/tempo changes are emitted at the
-boundaries (hard cuts in v1 — transitions/fills come later).
+boundaries. Sections default to a hard cut; a section can opt into a
+`transition` (drum fill into the cut, crash on the next downbeat). Voice
+leading (soprano line, bass register) carries across the cut so the harmony
+doesn't reset each section. A section's `dynamics.intensity` scales its
+velocity and percussion density, for a dynamics arc across the piece.
 
 See docs/design-notes/arrangement-plan.md for the design.
 """
@@ -16,9 +20,12 @@ from __future__ import annotations
 
 import copy
 import math
+import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import feel as feelmod
+import lead as leadgen
 import melody as mel
 import music_generator as mg
 
@@ -29,23 +36,40 @@ BEATS_PER_BAR = 4.0  # v1 assumes 4/4 for `bars`-based section lengths
 BASE_DEFAULTS: dict = {
     "instrument": "piano",
     "voices": {},                       # voice name -> instrument
-    "bass": {"style": "follow", "step": 0.5},
+    # lock_kick: True times the independent bass line to the drum pattern's
+    # kick hits instead of the even 'step' subdivision (needs style != follow/none)
+    "bass": {"style": "follow", "step": 0.5, "lock_kick": False},
     "satb": "block",                    # block | static | arpeggio | counterpoint
     "chord_length": "h",
     "tempo": 120,
     "chords": ["triads", "sevenths"],   # families for bare roots (colon tokens ignore)
     "chords_order": "roundrobin",
-    "perc": {"main": "qb,qc,qb,qc", "interrupters": [], "fill_rate": 0.0},
+    # ghost_rate: probability of filling an empty drum slot with a low-velocity
+    # ghost hit (ghost_note: a drum-map letter, default 'c' = snare);
+    # pocket: {letter: delay_beats} lays those drums back, e.g. {c: 0.03}
+    "perc": {"main": "qb,qc,qb,qc", "interrupters": [], "fill_rate": 0.0,
+             "ghost_rate": 0.0, "ghost_note": "c", "pocket": {}},
     "counterpoint": {"step": 0.25, "suspension_prob": 0.0,
                      "anticipation_prob": 0.0},
     # A real tune on top (scale-degree grammar). When set on a section it plays
     # on the soprano channel and replaces the SATB soprano for that section.
     "melody": None,
+    # Lead/hook generator (roadmap Thread 2): a motif-based line on its own
+    # 5th channel, with full SATB still playing underneath. Dict of
+    # {instrument, motif, density, rests, register}; None = no lead.
+    "lead": None,
     "melody_relative": "key",   # "key" (degrees vs the section scale) | "chord"
     "key": None,                # tonic name (e.g. "C", "Eb"); None -> inferred
     "mode": None,               # major/minor/dorian/...; None -> inferred
     "swing": 0.0,               # off-beat swing warp (0=straight, 0.5=triplet)
     "pan_spread": 0.0,          # stereo width of the SATB voices (0=centred)
+    # Named groove preset (see feel.FEEL_PRESETS): expands to swing/ghost/
+    # pocket/bass-lock values between these defaults and explicit settings.
+    "feel": None,
+    # Dynamics arc: intensity scales chord/voice/drum velocity and perc
+    # density. 1.0 keeps the engine's plain defaults (velocity base 78,
+    # perc fill_rate as configured); <1 softer, >1 harder.
+    "dynamics": {"intensity": 1.0},
 }
 
 
@@ -69,6 +93,96 @@ class SongSpec:
     sections: list[dict] = field(default_factory=list)
     swing: float = 0.0
     pan_spread: float = 0.0
+    with_lead: bool = False  # any section carries a lead -> MidiOut 5th voice
+
+
+def _expand_form(raw: dict) -> list[dict]:
+    """Expand a DRY `blocks` + `form` song into a flat sections list.
+
+    ``blocks`` names reusable section configs; ``form`` sequences them by
+    name (optionally with a ``{block_name: overrides}`` entry to tweak one
+    occurrence, e.g. a louder second chorus). Returns a new list of section
+    dicts, each carrying a default ``name`` (the block name, disambiguated
+    with a ``-2``, ``-3``, ... suffix on repeat occurrences).
+    """
+    form = raw.get("form")
+    blocks = raw.get("blocks") or {}
+    if not blocks:
+        raise ValueError("Song file has 'form' but no 'blocks' to reference.")
+    counts: dict[str, int] = {}
+    sections: list[dict] = []
+    for i, entry in enumerate(form):
+        if isinstance(entry, str):
+            block_name, entry_override = entry, None
+        elif isinstance(entry, dict) and len(entry) == 1:
+            block_name, entry_override = next(iter(entry.items()))
+        else:
+            raise ValueError(
+                f"Form entry #{i + 1} must be a block name or a "
+                "{block_name: overrides} mapping.")
+        if block_name not in blocks:
+            raise ValueError(f"Form references unknown block '{block_name}'.")
+        sec = copy.deepcopy(blocks[block_name])
+        if entry_override:
+            sec = _deep_merge(sec, entry_override)
+        counts[block_name] = counts.get(block_name, 0) + 1
+        sec.setdefault(
+            "name",
+            block_name if counts[block_name] == 1
+            else f"{block_name}-{counts[block_name]}")
+        sections.append(sec)
+    return sections
+
+
+def _extend_to_length(sections: list[dict], target_seconds: float) -> list[dict]:
+    """Loop the full section sequence (respecting each section's tempo, so
+    beats->seconds varies per section) until `target_seconds` is reached,
+    trimming the final repeat to land exactly on target.
+
+    Uses only each section's beat *count* (via `_section_beats`, itself fed
+    by the RNG-free `key_roots`), so it's safe to call once during
+    `build_spec` without perturbing the chord-progression RNG stream.
+    """
+    if not sections or target_seconds <= 0:
+        return sections
+
+    out: list[dict] = []
+    elapsed = 0.0
+    loop_idx = 0
+    while elapsed < target_seconds:
+        progressed = False
+        for sec in sections:
+            remaining = target_seconds - elapsed
+            if remaining <= 1e-9:
+                break
+            chord_len = mg.DUR_MAP[sec["chord_length"]]
+            seq_len = len(mg.key_roots("ostinato", sec["keys"]))
+            sec_beats = _section_beats(sec, seq_len, chord_len)
+            tempo = float(sec["tempo"])
+            sec_seconds = sec_beats * 60.0 / tempo if tempo > 0 else 0.0
+
+            new_sec = copy.deepcopy(sec)
+            if loop_idx > 0:
+                new_sec["name"] = f"{sec['name']}-loop{loop_idx + 1}"
+
+            if sec_seconds <= remaining + 1e-9:
+                out.append(new_sec)
+                elapsed += sec_seconds
+                progressed = progressed or sec_seconds > 1e-9
+            else:
+                needed_beats = max(0.0, remaining * tempo / 60.0)
+                if needed_beats <= 1e-6:
+                    break
+                new_sec["bars"] = needed_beats / BEATS_PER_BAR
+                new_sec.pop("repeat", None)
+                out.append(new_sec)
+                elapsed = target_seconds
+                progressed = True
+                break
+        loop_idx += 1
+        if not progressed:
+            break  # every section is zero-length at this tempo; avoid spinning
+    return out
 
 
 def build_spec(raw: dict,
@@ -82,15 +196,33 @@ def build_spec(raw: dict,
     per-section explicit values — so a section that hard-codes
     ``instrument: saw`` keeps its saw even when the caller overrides the
     default instrument.
+
+    A song may define sections directly (``sections: [...]``) or via a DRY
+    ``blocks`` + ``form`` pair (define each section once, sequence by name;
+    see :func:`_expand_form`). ``form`` wins if both are present.
+
+    A top-level ``length: {seconds: N}`` loops the whole section sequence
+    (once fully resolved) until the arrangement reaches that real-world
+    duration, trimming the final repeat to land exactly on target (see
+    :func:`_extend_to_length`).
     """
     if not isinstance(raw, dict):
         raise ValueError("Song file must be a mapping at the top level.")
-    sections_raw = raw.get("sections")
+    sections_raw = _expand_form(raw) if raw.get("form") else raw.get("sections")
     if not sections_raw:
-        raise ValueError("Song file needs a non-empty 'sections' list.")
+        raise ValueError(
+            "Song file needs a non-empty 'sections' list (or 'form' + "
+            "'blocks').")
 
     global_tempo = int(raw.get("tempo", BASE_DEFAULTS["tempo"]))
-    defaults = _deep_merge(BASE_DEFAULTS, raw.get("defaults"))
+    # A song-level feel expands *between* the engine defaults and the user's
+    # explicit defaults, so naming a feel never overrides written-out values.
+    user_defaults = raw.get("defaults") or {}
+    base_defaults = BASE_DEFAULTS
+    if user_defaults.get("feel"):
+        base_defaults = _deep_merge(
+            BASE_DEFAULTS, feelmod.expand_feel(user_defaults["feel"]))
+    defaults = _deep_merge(base_defaults, user_defaults)
     if overrides:
         defaults = _deep_merge(defaults, overrides)
     # Restore YAML tempo only when not explicitly overridden by the caller.
@@ -107,7 +239,13 @@ def build_spec(raw: dict,
     for i, sec in enumerate(sections_raw):
         if not isinstance(sec, dict):
             raise ValueError(f"Section #{i + 1} must be a mapping.")
-        merged = _deep_merge(defaults, sec)
+        # Same precedence per section: defaults < section feel < explicit
+        # section values. (A per-section feel's swing is ignored — swing is
+        # song-global, read from defaults at SongSpec build time.)
+        sec_base = defaults
+        if sec.get("feel"):
+            sec_base = _deep_merge(defaults, feelmod.expand_feel(sec["feel"]))
+        merged = _deep_merge(sec_base, sec)
         if tempo_scale != 1.0 and "tempo" in sec:
             merged["tempo"] = max(40, round(sec["tempo"] * tempo_scale))
         merged.setdefault("name", f"section{i + 1}")
@@ -122,6 +260,10 @@ def build_spec(raw: dict,
             merged["repeat"] = 1  # default: one pass through the chart
         sections.append(merged)
 
+    target_seconds = (raw.get("length") or {}).get("seconds")
+    if target_seconds:
+        sections = _extend_to_length(sections, float(target_seconds))
+
     return SongSpec(
         title=str(raw.get("title", "untitled")),
         tempo=defaults["tempo"],
@@ -131,6 +273,7 @@ def build_spec(raw: dict,
         sections=sections,
         swing=float(defaults.get("swing", 0.0) or 0.0),
         pan_spread=float(defaults.get("pan_spread", 0.0) or 0.0),
+        with_lead=any(isinstance(s.get("lead"), dict) for s in sections),
     )
 
 
@@ -141,6 +284,61 @@ def load_spec(path: str,
     import yaml
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     return build_spec(raw, vel_mode_chords, vel_mode_drums, overrides)
+
+
+def _pocket_offsets(cfg) -> dict[int, float]:
+    """Normalize a section's `perc.pocket` to {midi_note: delay_beats}.
+
+    Accepts the YAML mapping form ({c: 0.03}) or the CLI spec string
+    ("c:0.03,d:0.02" — how --perc-pocket arrives via song overrides)."""
+    if isinstance(cfg, str):
+        return mg.parse_pocket_spec(cfg)
+    drum_map = mg.get_drum_map()
+    out: dict[int, float] = {}
+    for letter, beats in dict(cfg).items():
+        key = str(letter).lower()
+        if key not in drum_map:
+            raise ValueError(f"Unknown drum letter '{letter}' in perc.pocket")
+        val = float(beats)
+        if val < 0.0:
+            raise ValueError(f"perc.pocket delay must be >=0 for '{letter}'")
+        out[drum_map[key]] = val
+    return out
+
+
+def _parse_transition_fill(val) -> float:
+    """Fill length in beats, from a bar count (`1`, `1.5`) or a `"1bar"`/
+    `"2bars"` string."""
+    if isinstance(val, (int, float)):
+        return float(val) * BEATS_PER_BAR
+    s = str(val).strip().lower()
+    if s.endswith("bars"):
+        s = s[:-4]
+    elif s.endswith("bar"):
+        s = s[:-3]
+    return float(s.strip()) * BEATS_PER_BAR
+
+
+def _apply_transition_fill(drum_tl: list[tuple[float, float, list]],
+                           sec_beats: float,
+                           fill_spec,
+                           main_pat: list,
+                           intr_pats: list[list] | None
+                           ) -> list[tuple[float, float, list]]:
+    """Replace the last `fill_spec` beats of a section's drum timeline with a
+    fill motif (an interrupter pattern played back-to-back, or the main
+    pattern if no interrupters are configured)."""
+    fill_beats = min(_parse_transition_fill(fill_spec), sec_beats)
+    if fill_beats <= 0.0:
+        return drum_tl
+    cut = sec_beats - fill_beats
+    kept = [(w, d, h) for (w, d, h) in drum_tl if w < cut]
+    if kept and kept[-1][0] + kept[-1][1] > cut:
+        w, d, h = kept[-1]
+        kept[-1] = (w, cut - w, h)
+    fill_pat = random.choice(intr_pats) if intr_pats else main_pat
+    fill_tl = mg.build_drum_segment(cut, fill_beats, fill_pat, None, 0.0)
+    return kept + fill_tl
 
 
 def _section_beats(sec: dict, seq_len: int, chord_len: float) -> float:
@@ -177,6 +375,19 @@ def _chord_root_spans(seq: list, chord_len: float,
     return spans
 
 
+def _chord_spans(seq: list, chord_len: float,
+                 sec_beats: float) -> list[tuple[float, float, object]]:
+    """Full ChordDef per chord slot (the lead generator needs the chord's
+    pitch classes for strong-beat snapping, not just its root)."""
+    spans: list[tuple[float, float, object]] = []
+    pos, i = 0.0, 0
+    while pos < sec_beats and seq:
+        spans.append((pos, min(pos + chord_len, sec_beats), seq[i % len(seq)]))
+        pos += chord_len
+        i += 1
+    return spans
+
+
 def build_events(spec: SongSpec) -> tuple[list, float]:
     """Build the full, time-sorted event stream for the arrangement.
 
@@ -186,8 +397,10 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
     """
     events: list = []
     cursor = 0.0
+    prev_sop: int | None = None
+    bass_anchor = 43
 
-    for sec in spec.sections:
+    for sec_idx, sec in enumerate(spec.sections):
         start = cursor
         chord_len = mg.DUR_MAP[sec["chord_length"]]
         roots = mg.key_roots("ostinato", sec["keys"])
@@ -195,7 +408,12 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                                    max_chords=len(roots))
         sec_beats = _section_beats(sec, len(seq), chord_len)
         chord_tl = mg.build_chord_timeline(seq, sec_beats, chord_len,
-                                           static=(sec["satb"] == "static"))
+                                           static=(sec["satb"] == "static"),
+                                           prev_sop=prev_sop,
+                                           bass_anchor=bass_anchor)
+        if chord_tl:
+            prev_sop = chord_tl[-1][2][0]
+            bass_anchor = chord_tl[-1][2][3]
 
         # tempo + per-voice programs at the boundary
         events.append(("tempo", start, 0.0, int(sec["tempo"])))
@@ -206,14 +424,65 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                     if voice in voices else default_prog)
             events.append(("program", start, 0.0, (voice, prog)))
 
+        # per-section mix/FX: volume (CC7), pan (CC10), reverb (CC91), chorus
+        # (CC93), per voice or "drums" — spatial/level dynamics without
+        # swapping soundfonts or re-authoring the whole song's pan_spread.
+        mix_ccs = {"vol": 7, "pan": 10, "reverb": 91, "chorus": 93}
+        for target, fx in (sec.get("mix") or {}).items():
+            if not isinstance(fx, dict):
+                continue
+            for key, control in mix_ccs.items():
+                if key in fx:
+                    events.append(("cc", start, 0.0, (target, control, int(fx[key]))))
+
+        # percussion — built before harmony/bass so a kick-locked bass line
+        # (bass.lock_kick) can read this section's kick-hit onsets.
+        # dynamics.intensity scales fill density (velocity is handled
+        # separately, at render time, via intensity_lookup).
+        perc = sec.get("perc") or {}
+        intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
+        main_pat = mg.parse_pattern(perc["main"]) if perc.get("main") else []
+        intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
+        fill_rate = max(0.0, min(1.0, float(perc.get("fill_rate", 0.0)) * intensity))
+        drum_tl = mg.build_drum_timeline_with_fills(
+            main_pat, intr, sec_beats, fill_rate)
+
+        ghost_rate = float(perc.get("ghost_rate", 0.0))
+        if ghost_rate > 0.0:
+            ghost_note = mg.get_drum_map().get(
+                str(perc.get("ghost_note", "c")).lower(), 38)
+            drum_tl = mg.add_ghost_notes(drum_tl, rate=ghost_rate,
+                                         note=ghost_note)
+        pocket_cfg = perc.get("pocket")
+        if pocket_cfg:
+            drum_tl = mg.apply_pocket(drum_tl, _pocket_offsets(pocket_cfg))
+
+        # transition: replace the section's tail with a fill, and/or crash
+        # into the next section's downbeat (hard cut stays the default).
+        transition = sec.get("transition") or {}
+        is_last = sec_idx == len(spec.sections) - 1
+        fill_spec = transition.get("fill")
+        if fill_spec and main_pat:
+            drum_tl = _apply_transition_fill(drum_tl, sec_beats, fill_spec,
+                                             main_pat, intr)
+        for when, dur, hits in drum_tl:
+            events.append(("drum", when + start, dur, hits))
+        if transition.get("crash") and not is_last:
+            crash_note = mg.get_drum_map().get("j", 49)
+            events.append(("drum", start + sec_beats, 0.0,
+                          [mg.PercHit(note=crash_note)]))
+
         # harmony + bass (shared builder), offset onto the global timeline
         bass = sec["bass"]
         cp = sec["counterpoint"]
+        bass_kick_times = (mg.kick_onsets(drum_tl)
+                           if bass.get("lock_kick") else None)
         h_events, _ = mg.build_harmony_events(
             chord_tl,
             satb_style=sec["satb"],
             bass_style=bass.get("style", "follow"),
             bass_step=float(bass.get("step", 0.5)),
+            bass_kick_times=bass_kick_times,
             counterpoint_step=float(cp.get("step", 0.25)),
             counterpoint_suspension_prob=float(cp.get("suspension_prob", 0.0)),
             counterpoint_anticipation_prob=float(cp.get("anticipation_prob", 0.0)),
@@ -260,24 +529,63 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                         events.append(
                             ("voice", start + when, dur, ("soprano", note)))
 
-        # percussion
-        perc = sec.get("perc") or {}
-        main_pat = mg.parse_pattern(perc["main"]) if perc.get("main") else []
-        intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
-        drum_tl = mg.build_drum_timeline_with_fills(
-            main_pat, intr, sec_beats, float(perc.get("fill_rate", 0.0)))
-        for when, dur, hits in drum_tl:
-            events.append(("drum", when + start, dur, hits))
+        # lead: motif-based hook on its own channel (full SATB underneath)
+        lead_cfg = sec.get("lead")
+        if isinstance(lead_cfg, dict):
+            key_pc, mode = _section_key(sec, seq)
+            lead_events = leadgen.build_lead_events(
+                _chord_spans(seq, chord_len, sec_beats),
+                key_pc, mode,
+                motif_text=lead_cfg.get("motif"),
+                density=float(lead_cfg.get("density", 0.5)),
+                rests=float(lead_cfg.get("rests", 0.3)),
+                register=str(lead_cfg.get("register", "high")))
+            lead_prog = mg.resolve_instrument(
+                str(lead_cfg.get("instrument", "sax")))
+            events.append(("program", start, 0.0, ("lead", lead_prog)))
+            for when, dur, note in lead_events:
+                events.append(("voice", start + when, dur, ("lead", note)))
 
         cursor += sec_beats
 
-    priority = {"tempo": 0, "program": 1, "voice": 2, "drum": 3}
+    priority = {"tempo": 0, "program": 1, "cc": 1, "voice": 2, "drum": 3}
     events.sort(key=lambda e: (e[1], priority.get(e[0], 9)))
     return events, cursor
 
 
-def render(spec: SongSpec, out_path: str) -> str:
-    """Render the arrangement to a MIDI file at out_path. Returns out_path."""
+def intensity_lookup(spec: SongSpec):
+    """Return a `when_beats -> intensity` function from each section's
+    `dynamics.intensity` (see BASE_DEFAULTS), for `render_events`'s
+    `intensity_at`. Computed from section *lengths* only (chord count, not
+    the progression's randomly-picked content) so it can be called alongside
+    `build_events` on the same spec without perturbing the RNG stream.
+    """
+    spans: list[tuple[float, float]] = []
+    cursor = 0.0
+    for sec in spec.sections:
+        chord_len = mg.DUR_MAP[sec["chord_length"]]
+        seq_len = len(mg.key_roots("ostinato", sec["keys"]))
+        sec_beats = _section_beats(sec, seq_len, chord_len)
+        intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
+        spans.append((cursor + sec_beats, intensity))
+        cursor += sec_beats
+
+    def lookup(when: float) -> float:
+        for end, intensity in spans:
+            if when < end - 1e-9:
+                return intensity
+        return spans[-1][1] if spans else 1.0
+
+    return lookup
+
+
+def render(spec: SongSpec, out_path: str, stems: bool = False) -> str:
+    """Render the arrangement to a MIDI file at out_path. Returns out_path.
+
+    `stems=True` also writes each voice + drums as its own standalone MIDI
+    file alongside `out_path` (see `MidiOut.write_stems`), for mixing/
+    mastering externally.
+    """
     events, total = build_events(spec)
 
     midi = mg.MidiOut(spec.tempo, out_path,
@@ -285,9 +593,13 @@ def render(spec: SongSpec, out_path: str) -> str:
                       vel_mode_drums=spec.vel_mode_drums,
                       split_stems=True,
                       swing=spec.swing,
-                      pan_spread=spec.pan_spread)
+                      pan_spread=spec.pan_spread,
+                      with_lead=spec.with_lead)
 
-    _t_ch, t_dr, _vmax = mg.render_events(midi, events)
+    _t_ch, t_dr, _vmax = mg.render_events(midi, events,
+                                          intensity_at=intensity_lookup(spec))
     midi.flush_to_end(total, t_dr, total)
     midi.save()
+    if stems:
+        midi.write_stems(out_path)
     return out_path

@@ -5,11 +5,13 @@ timeline (optionally split into per-voice stems), apply velocity humanisation,
 and save a Type-1 MIDI file. Depends on :mod:`mtheory` (channels, voice order)
 and :mod:`percussion` (:class:`PercHit`).
 """
+import copy
+import os
 import random
 
 from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
 
-from mtheory import CHORD_CH, DRUM_CH, VOICE_ORDER
+from mtheory import CHORD_CH, DRUM_CH, LEAD_CH, VOICE_ORDER
 from percussion import PercHit
 
 __all__ = ["MidiOut"]
@@ -33,13 +35,19 @@ class MidiOut:
                  vel_mode_drums: str = "uniform",
                  split_stems: bool = False,
                  swing: float = 0.0,
-                 pan_spread: float = 0.0) -> None:
+                 pan_spread: float = 0.0,
+                 with_lead: bool = False) -> None:
         self.bpm = bpm
         self.fname = fname
         self.tpb = tpb
         self.vel_mode_chords = (vel_mode_chords or "uniform").lower()
         self.vel_mode_drums = (vel_mode_drums or "uniform").lower()
         self.split_stems = bool(split_stems)
+        # Optional 5th melodic voice ("lead") on its own channel (LEAD_CH),
+        # registered in chord_tracks like the SATB voices so per-voice notes,
+        # program changes, mix CCs, and stems all work on it unchanged.
+        # Needs split stems (a merged ensemble has no per-voice channels).
+        self.with_lead = bool(with_lead) and self.split_stems
         # Off-beat swing warp applied in render_events (0 = straight eighths).
         self.swing = max(0.0, min(0.75, float(swing or 0.0)))
         # Stereo spread of the SATB voices (0 = mono/centred, 1 = widest).
@@ -51,12 +59,16 @@ class MidiOut:
         self.active_ch: dict[str, set[int]] = {}
         self.voice_positions: dict[str, float] = {}
         self.active_dr: set[int] = set()
+        self.dr_position = 0.0
 
         tempo = bpm2tempo(self.bpm)
 
         if self.split_stems:
-            for idx, voice in enumerate(self.STEM_VOICES):
-                channel = idx
+            voice_channels = [(voice, idx)
+                              for idx, voice in enumerate(self.STEM_VOICES)]
+            if self.with_lead:
+                voice_channels.append(("lead", LEAD_CH))
+            for voice, channel in voice_channels:
                 track = MidiTrack()
                 self.mid.tracks.append(track)
                 self.chord_tracks[voice] = track
@@ -218,6 +230,39 @@ class MidiOut:
             Message('program_change', program=program, channel=channel,
                     time=0))
 
+    def control_change_at(self,
+                          voice: str,
+                          control: int,
+                          value: int,
+                          when_beats: float) -> None:
+        """Send a control-change (e.g. CC91 reverb send, CC93 chorus send) on
+        a voice's channel at a beat offset — the per-section mix/FX knob.
+        Requires split stems (per-voice channels), like `program_change_at`.
+        """
+        if voice not in self.chord_tracks:
+            return
+        track = self.chord_tracks[voice]
+        channel = self.chord_channels[voice]
+        self._seek_voice(voice, when_beats)
+        track.append(
+            Message('control_change', control=control,
+                    value=max(0, min(127, int(value))), channel=channel,
+                    time=0))
+
+    def drum_control_change_at(self,
+                               control: int,
+                               value: int,
+                               when_beats: float) -> None:
+        """Send a control-change on the drum channel at a beat offset (the
+        percussion side of `control_change_at`)."""
+        delta = when_beats - self.dr_position
+        if delta > 0:
+            self.advance_dr(delta)
+        self.tr_dr.append(
+            Message('control_change', control=control,
+                    value=max(0, min(127, int(value))), channel=DRUM_CH,
+                    time=0))
+
     def _seek_voice(self, voice: str, target_beats: float) -> None:
         current = self.voice_positions.get(voice, 0.0)
         delta = target_beats - current
@@ -239,6 +284,7 @@ class MidiOut:
 
     def advance_dr(self, beats: float) -> None:
         self.tr_dr.append(MetaMessage('text', text='', time=self.ticks(beats)))
+        self.dr_position += beats
 
     @staticmethod
     def _clamp_velocity(val: float) -> int:
@@ -413,7 +459,8 @@ class MidiOut:
             vel_p: int = 102,
             vel_t: int = 100,
             choke_openhat: bool = False,
-            choke_after_beats: float = 0.06) -> None:
+            choke_after_beats: float = 0.06,
+            vel_scale: float = 1.0) -> None:
         if not hits:
             self.advance_dr(beats)
             return
@@ -445,12 +492,15 @@ class MidiOut:
             if random.random() > hit.probability:
                 continue
             note = hit.note
-            base = base_velocity(note) + hit.vel_offset
-            vel = self._compute_drum_velocity(note, base, when_beats)
-            events.append((0.0, note, vel))
+            base = round(base_velocity(note) * vel_scale) + hit.vel_offset
+            hit_offset = max(0.0, float(hit.timing_offset))
+            if beats > 0.0:
+                hit_offset = min(hit_offset, beats)
+            vel = self._compute_drum_velocity(note, base, when_beats + hit_offset)
+            events.append((hit_offset, note, vel))
 
             if hit.flam is not None:
-                flam_offset = max(0.0, float(hit.flam))
+                flam_offset = hit_offset + max(0.0, float(hit.flam))
                 if beats > 0.0:
                     flam_offset = min(flam_offset, max(0.0, beats))
                 flam_base = base - 14
@@ -508,6 +558,7 @@ class MidiOut:
                             channel=DRUM_CH,
                             time=0))
                 self.active_dr.discard(note)
+            self.dr_position = when_beats + beats
             return
 
         ordered_notes = sorted(active_notes)
@@ -529,12 +580,36 @@ class MidiOut:
                             channel=DRUM_CH,
                             time=0))
                 self.active_dr.discard(note)
+        self.dr_position = when_beats + beats
 
     def save(self, path: str | None = None) -> None:
         target = path or self.fname
         if target is None:
             raise ValueError("MidiOut.save() needs a path (none set at init)")
         self.mid.save(target)
+
+    def write_stems(self, base_path: str) -> list[str]:
+        """Write each voice (+ drums) as its own standalone MIDI file
+        alongside the main render, e.g. `song.mid` -> `song_soprano.mid`,
+        `song_bass.mid`, ..., `song_drums.mid` — directly importable into a
+        DAW for external mixing. Requires split stems (per-voice channels);
+        a merged ensemble render has nothing to split, so this is a no-op.
+        Call after `flush_to_end` so notes are properly terminated. Returns
+        the written paths.
+        """
+        if not self.split_stems:
+            return []
+        stem_base, ext = os.path.splitext(base_path)
+        ext = ext or ".mid"
+        paths: list[str] = []
+        for name, track in list(self.chord_tracks.items()) + [("drums", self.tr_dr)]:
+            stem_mid = MidiFile(type=1, ticks_per_beat=self.tpb)
+            stem_mid.tracks.append(copy.deepcopy(self.tr_meta))
+            stem_mid.tracks.append(copy.deepcopy(track))
+            path = f"{stem_base}_{name}{ext}"
+            stem_mid.save(path)
+            paths.append(path)
+        return paths
 
     def to_bytes(self) -> bytes:
         """Serialize the MIDI to an in-memory bytes object (no disk write).

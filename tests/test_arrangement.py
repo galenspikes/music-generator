@@ -69,6 +69,14 @@ def test_build_events_timeline():
     assert whens == sorted(whens)
 
 
+def test_render_with_stems_writes_stem_files(tmp_path):
+    spec = A.build_spec(RAW)
+    out = str(tmp_path / "song.mid")
+    A.render(spec, out, stems=True)
+    for name in ("soprano", "alto", "tenor", "bass", "drums"):
+        assert (tmp_path / f"song_{name}.mid").exists()
+
+
 def test_render_produces_valid_midi_with_tempo_map(tmp_path):
     spec = A.build_spec(RAW)
     out = str(tmp_path / "song.mid")
@@ -79,3 +87,463 @@ def test_render_produces_valid_midi_with_tempo_map(tmp_path):
     # at least the two section tempos appear in the map
     assert len(tempos) >= 2
     assert mid.length > 0
+
+
+# --- Thread 1a: form references (blocks + form) --------------------------
+
+FORM_RAW = {
+    "title": "form-song",
+    "tempo": 120,
+    "defaults": {"chord_length": "q"},
+    "blocks": {
+        "verse": {"keys": "C::maj, F::maj", "bass": {"style": "root"}},
+        "chorus": {"keys": "G::maj, C::maj", "bass": {"style": "octaves"}},
+    },
+    "form": ["verse", "chorus", "verse", {"chorus": {"tempo": 130}}],
+}
+
+
+def test_expand_form_names_and_overrides():
+    spec = A.build_spec(FORM_RAW)
+    names = [s["name"] for s in spec.sections]
+    assert names == ["verse", "chorus", "verse-2", "chorus-2"]
+    assert spec.sections[0]["bass"]["style"] == "root"
+    assert spec.sections[1]["bass"]["style"] == "octaves"
+    # inline per-occurrence override applies only to that one instance
+    assert spec.sections[3]["tempo"] == 130
+    assert spec.sections[1]["tempo"] == 120
+
+
+def test_expand_form_unknown_block_errors():
+    bad = {"blocks": {"verse": {"keys": "C"}}, "form": ["chorus"]}
+    with pytest.raises(ValueError):
+        A.build_spec(bad)
+
+
+def test_expand_form_requires_blocks():
+    with pytest.raises(ValueError):
+        A.build_spec({"form": ["verse"]})
+
+
+def test_expand_form_bad_entry_errors():
+    bad = {"blocks": {"verse": {"keys": "C"}},
+           "form": [{"verse": {}, "chorus": {}}]}  # not a single-key mapping
+    with pytest.raises(ValueError):
+        A.build_spec(bad)
+
+
+# --- Thread 1b: cross-section voice-leading continuity --------------------
+
+def test_build_chord_timeline_prev_sop_seeds_first_voicing():
+    from mtheory import ChordDef
+    import composition as C
+    from voicing import realize_SATB
+
+    chord = ChordDef(root_pc=0, pcs=(0, 4, 7))
+    tl_seeded = C.build_chord_timeline([chord], beats_total=1.0,
+                                       base_len_beats=1.0,
+                                       prev_sop=72, bass_anchor=50)
+    expected = realize_SATB(72, chord.root_pc, list(chord.pcs),
+                            bass_pc=chord.bass_pc, bass_anchor=50)
+    assert tl_seeded[0][2] == expected
+
+
+def test_build_events_threads_prev_sop_between_sections(monkeypatch):
+    calls = []
+    orig = mg.build_chord_timeline
+
+    def spy(*args, **kwargs):
+        calls.append(kwargs.get("prev_sop"))
+        return orig(*args, **kwargs)
+
+    monkeypatch.setattr(mg, "build_chord_timeline", spy)
+    spec = A.build_spec(RAW)
+    A.build_events(spec)
+    assert len(calls) == 2
+    assert calls[0] is None       # first section starts with no lead-in
+    assert calls[1] is not None   # second section is seeded from the first
+
+
+# --- Thread 1c: transitions / fills at section boundaries -----------------
+
+def test_parse_transition_fill_units():
+    assert A._parse_transition_fill("1bar") == 4.0
+    assert A._parse_transition_fill("2bars") == 8.0
+    assert A._parse_transition_fill("0.5bar") == 2.0
+    assert A._parse_transition_fill(1.5) == 6.0
+
+
+def test_apply_transition_fill_replaces_tail():
+    import percussion as P
+    main = P.quantize_to_grid(P.parse_pattern("qk,qk,qk,qk"))
+    fill = P.quantize_to_grid(P.parse_pattern("er,er,er,er,er,er,er,er"))
+    drum_tl = P.build_drum_timeline_with_fills(main, None, 4.0, 0.0)
+
+    out = A._apply_transition_fill(drum_tl, 4.0, "1bar", main, [fill])
+
+    kept = [h for w, d, h in out if w < 3.0]
+    tail = [(w, d, h) for w, d, h in out if w >= 3.0]
+    assert kept  # untouched head remains
+    assert tail  # fill occupies the last bar
+    assert all(w >= 3.0 for w, _, _ in tail)
+    assert sum(d for _, d, _ in out) == pytest.approx(4.0)
+
+
+def test_transition_crash_added_at_next_section_downbeat():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q", "perc": {"main": "qk,qk,qk,qk"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "transition": {"crash": True}},
+            {"name": "b", "bars": 1, "keys": "G::maj"},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, total = A.build_events(spec)
+    crash_note = mg.get_drum_map()["j"]
+    crash_hits = [(w, h) for k, w, _, h in events
+                  if k == "drum" for hit in h if hit.note == crash_note
+                  for _ in [None]]
+    assert any(w == pytest.approx(4.0) for w, _ in crash_hits)
+
+
+
+# --- Thread 1d: dynamics arc (per-section intensity) ----------------------
+
+def test_intensity_lookup_matches_section_boundaries():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "dynamics": {"intensity": 0.6}},
+            {"name": "b", "bars": 1, "keys": "G::maj",
+             "dynamics": {"intensity": 1.2}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    lookup = A.intensity_lookup(spec)
+    assert lookup(0.0) == pytest.approx(0.6)
+    assert lookup(3.9) == pytest.approx(0.6)
+    assert lookup(4.0) == pytest.approx(1.2)   # section b starts here
+    assert lookup(7.9) == pytest.approx(1.2)
+    assert lookup(100.0) == pytest.approx(1.2)  # past the end: last section
+
+
+def test_intensity_lookup_defaults_to_one():
+    spec = A.build_spec(RAW)  # no 'dynamics' set anywhere
+    lookup = A.intensity_lookup(spec)
+    assert lookup(0.0) == pytest.approx(1.0)
+    assert lookup(10.0) == pytest.approx(1.0)
+
+
+def test_dynamics_scales_perc_fill_rate():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q",
+                     "perc": {"main": "qk,qk,qk,qk",
+                              "interrupters": ["ek,ek,ek,ek,ek,ek,ek,ek"],
+                              "fill_rate": 0.5}},
+        "sections": [
+            {"name": "quiet", "bars": 1, "keys": "C::maj",
+             "dynamics": {"intensity": 0.0}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    # intensity 0.0 * fill_rate 0.5 => no interrupter fills should fire, so
+    # every drum slot should be a plain quarter-note kick from the main
+    # pattern (4 beats of section / 1 beat per main-pattern slot = 4)
+    drum_events = [e for e in events if e[0] == "drum"]
+    assert len(drum_events) == 4
+
+
+def test_render_events_intensity_at_scales_velocity(tmp_path):
+    import music_generator as mgen
+    quiet_out = str(tmp_path / "quiet.mid")
+    loud_out = str(tmp_path / "loud.mid")
+
+    def make_events():
+        return [("chord", 0.0, 1.0, (60, 64, 67, 48))]
+
+    for out_path, factor in ((quiet_out, 0.4), (loud_out, 1.0)):
+        midi = mgen.MidiOut(120, out_path, vel_mode_chords="uniform",
+                            split_stems=True)
+        mgen.render_events(midi, make_events(), intensity_at=lambda w: factor)
+        midi.flush_to_end(1.0, 0.0, 1.0)
+        midi.save()
+
+    import mido
+    def max_velocity(path):
+        mid = mido.MidiFile(path)
+        return max((m.velocity for tr in mid.tracks for m in tr
+                    if m.type == "note_on"), default=0)
+
+    assert max_velocity(quiet_out) < max_velocity(loud_out)
+
+
+
+# --- Thread 1e: `length: {seconds}` target ---------------------------------
+
+def _spec_seconds(spec: A.SongSpec) -> float:
+    """Total real-world duration of a spec's sections, from beats + tempo."""
+    total = 0.0
+    for sec in spec.sections:
+        chord_len = mg.DUR_MAP[sec["chord_length"]]
+        seq_len = len(mg.key_roots("ostinato", sec["keys"]))
+        beats = A._section_beats(sec, seq_len, chord_len)
+        total += beats * 60.0 / sec["tempo"]
+    return total
+
+
+def test_length_seconds_loops_and_trims_to_target():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "length": {"seconds": 10.0},
+        "sections": [
+            {"name": "a", "bars": 2, "keys": "C::maj"},   # 8 beats @120bpm = 4s
+            {"name": "b", "bars": 2, "keys": "G::maj"},   # 8 beats @120bpm = 4s
+        ],
+    }
+    spec = A.build_spec(raw)
+    assert _spec_seconds(spec) == pytest.approx(10.0)
+    # a, b, then a-loop2 trimmed to exactly the remaining 2 seconds
+    names = [s["name"] for s in spec.sections]
+    assert names == ["a", "b", "a-loop2"]
+    assert spec.sections[-1]["bars"] == pytest.approx(1.0)  # 2s @120bpm = 4 beats = 1 bar
+
+
+def test_length_seconds_respects_per_section_tempo():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "length": {"seconds": 8.0},
+        "sections": [
+            {"name": "slow", "bars": 1, "tempo": 60, "keys": "C::maj"},  # 4 beats @60 = 4s
+        ],
+    }
+    spec = A.build_spec(raw)
+    assert _spec_seconds(spec) == pytest.approx(8.0)
+    assert len(spec.sections) == 2  # one full pass + a trimmed loop
+
+
+
+# --- Thread 4c: per-section mix/FX (reverb/chorus CC) ----------------------
+
+def test_mix_emits_cc_events_per_voice_and_drums():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "mix": {"bass": {"reverb": 40}, "soprano": {"chorus": 20},
+                     "drums": {"reverb": 10, "chorus": 5}}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    cc_events = {tuple(payload) for k, _, _, payload in events if k == "cc"}
+    assert ("bass", 91, 40) in cc_events
+    assert ("soprano", 93, 20) in cc_events
+    assert ("drums", 91, 10) in cc_events
+    assert ("drums", 93, 5) in cc_events
+
+
+def test_mix_absent_emits_no_cc_events():
+    spec = A.build_spec(RAW)  # no 'mix' anywhere
+    events, _ = A.build_events(spec)
+    assert not any(k == "cc" for k, *_ in events)
+
+
+def test_mix_vol_and_pan_emit_cc7_and_cc10():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q"},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "mix": {"bass": {"vol": 105, "pan": 64},
+                     "soprano": {"pan": 84},
+                     "drums": {"vol": 110}}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    cc_events = {tuple(payload) for k, _, _, payload in events if k == "cc"}
+    assert ("bass", 7, 105) in cc_events
+    assert ("bass", 10, 64) in cc_events
+    assert ("soprano", 10, 84) in cc_events
+    assert ("drums", 7, 110) in cc_events
+
+
+def test_render_events_dispatches_cc_to_midiout(monkeypatch):
+    import music_generator as mgen
+    midi = mgen.MidiOut(120, split_stems=True)
+    calls = []
+    monkeypatch.setattr(midi, "control_change_at",
+                        lambda voice, control, value, when: calls.append(
+                            ("voice", voice, control, value, when)))
+    monkeypatch.setattr(midi, "drum_control_change_at",
+                        lambda control, value, when: calls.append(
+                            ("drums", control, value, when)))
+    events = [
+        ("cc", 2.0, 0.0, ("bass", 91, 64)),
+        ("cc", 2.0, 0.0, ("drums", 93, 32)),
+    ]
+    mgen.render_events(midi, events)
+    assert ("voice", "bass", 91, 64, 2.0) in calls
+    assert ("drums", 93, 32, 2.0) in calls
+
+
+
+# --- Thread 3 v2: bass locked to kick + ghost notes ------------------------
+
+def test_bass_lock_kick_aligns_bass_onsets_to_kick_hits():
+    raw = {
+        "title": "t", "tempo": 120,
+        # chord_length "w" keeps the whole bar as one chord slot, so both
+        # kicks land in the same slot and the lock isn't muddied by the
+        # per-slot coverage fallback (see build_bass_line's kick_times).
+        "defaults": {"chord_length": "w",
+                     "perc": {"main": "qb,qc,qb,qc"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "bass": {"style": "root", "step": 0.25, "lock_kick": True}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    bass_whens = sorted(w for k, w, _, payload in events
+                        if k == "voice" and payload[0] == "bass")
+    # "qb,qc,qb,qc" puts kicks on beats 0 and 2 (quarter-note pattern)
+    assert bass_whens == [0.0, 2.0]
+
+
+def test_bass_without_lock_kick_uses_even_step():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q",
+                     "perc": {"main": "qb,qc,qb,qc"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "bass": {"style": "root", "step": 1.0, "lock_kick": False}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    bass_whens = sorted(w for k, w, _, payload in events
+                        if k == "voice" and payload[0] == "bass")
+    assert bass_whens == [0.0, 1.0, 2.0, 3.0]
+
+
+def test_perc_ghost_rate_fills_empty_slots():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q",
+                     "perc": {"main": "qb,qr,qb,qr",
+                              "ghost_rate": 1.0, "ghost_note": "c"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj"},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, _ = A.build_events(spec)
+    drum_hits = [h for k, _, _, h in events if k == "drum"]
+    snare_note = mg.get_drum_map()["c"]
+    ghost_hits = [h for hits in drum_hits for h in hits
+                 if h.note == snare_note and h.vel_offset < 0]
+    assert len(ghost_hits) == 2  # both rests filled at rate=1.0
+
+
+def test_perc_ghost_rate_zero_is_default_noop():
+    spec = A.build_spec(RAW)  # no ghost_rate anywhere
+    events, _ = A.build_events(spec)
+    for k, _, _, h in events:
+        if k == "drum":
+            assert all(hit.vel_offset >= 0 for hit in h)
+
+
+
+# --- Thread 2: lead/hook generator (5th voice) ------------------------------
+
+LEAD_RAW = {
+    "title": "t", "tempo": 120,
+    "defaults": {"chord_length": "q"},
+    "sections": [
+        {"name": "verse", "bars": 2, "keys": "C::maj, F::maj"},
+        {"name": "chorus", "bars": 2, "keys": "G::maj, C::maj",
+         "lead": {"instrument": "sax", "motif": "q1 q3 q5 qr",
+                  "rests": 0.0}},
+    ],
+}
+
+
+def test_lead_section_emits_lead_voice_and_program():
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    assert spec.with_lead is True
+    events, _ = A.build_events(spec)
+    lead_notes = [(w, p) for k, w, _, p in events
+                  if k == "voice" and p[0] == "lead"]
+    assert lead_notes
+    # lead only plays in the chorus (beats 8..16)
+    assert all(8.0 <= w < 16.0 for w, _ in lead_notes)
+    sax = mg.resolve_instrument("sax")
+    assert ("program", 8.0, 0.0, ("lead", sax)) in events
+
+
+def test_lead_keeps_full_satb_underneath():
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    events, _ = A.build_events(spec)
+    chorus_voices = {p[0] for k, w, _, p in events
+                     if k == "voice" and w >= 8.0}
+    assert {"soprano", "alto", "tenor", "bass", "lead"} <= chorus_voices
+
+
+def test_spec_without_lead_has_with_lead_false():
+    spec = A.build_spec(RAW)
+    assert spec.with_lead is False
+
+
+def test_lead_render_puts_notes_on_lead_channel(tmp_path):
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    out = str(tmp_path / "song.mid")
+    A.render(spec, out)
+    import mido
+    from mtheory import LEAD_CH
+    mid = mido.MidiFile(out)
+    lead_notes = [m for tr in mid.tracks for m in tr
+                  if m.type == "note_on" and m.velocity > 0
+                  and m.channel == LEAD_CH]
+    assert lead_notes
+
+
+def test_lead_render_with_stems_writes_lead_stem(tmp_path):
+    import random
+    random.seed(1)
+    spec = A.build_spec(LEAD_RAW)
+    out = str(tmp_path / "song.mid")
+    A.render(spec, out, stems=True)
+    assert (tmp_path / "song_lead.mid").exists()
+
+
+def test_transition_crash_skipped_on_last_section():
+    raw = {
+        "title": "t", "tempo": 120,
+        "defaults": {"chord_length": "q", "perc": {"main": "qk,qk,qk,qk"}},
+        "sections": [
+            {"name": "a", "bars": 1, "keys": "C::maj",
+             "transition": {"crash": True}},
+        ],
+    }
+    spec = A.build_spec(raw)
+    events, total = A.build_events(spec)
+    crash_note = mg.get_drum_map()["j"]
+    assert not any(hit.note == crash_note for k, _, _, h in events
+                  if k == "drum" for hit in h)

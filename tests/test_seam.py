@@ -160,7 +160,7 @@ def test_song_overrides_include_all_forces_ui_values():
     assert ov["tempo"] == 111
     assert ov["instrument"] == "organ"
     assert ov["perc"]["main"] == ""          # --no-perc -> explicit silence
-    assert ov["bass"] == {"style": "follow", "step": 0.5}
+    assert ov["bass"] == {"style": "follow", "step": 0.5, "lock_kick": False}
 
 
 def test_song_overrides_none_set_preserves_yaml_defaults():

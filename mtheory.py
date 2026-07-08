@@ -20,6 +20,7 @@ __all__ = [
     "ChordDef",
     "CHORD_CH",
     "DRUM_CH",
+    "LEAD_CH",
     "BASS_RANGE",
     "TENOR_RANGE",
     "ALTO_RANGE",
@@ -52,6 +53,7 @@ class ChordDef:
 # Channel constants
 CHORD_CH = 0
 DRUM_CH = 9  # GM percussion = channel 10
+LEAD_CH = 4  # optional lead/hook voice (SATB stems occupy 0-3)
 
 BASS_RANGE = (28, 55)  # E1–G3  (keeps foundation deep but not muddy)
 TENOR_RANGE = (43, 67)  # G2–G4  (gives strong mid-low movement)

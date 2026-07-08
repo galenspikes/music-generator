@@ -43,6 +43,8 @@ from percussion import (  # noqa: F401
     build_perc_from_args, build_drum_timeline_stages,
     build_drum_timeline_with_fills, build_drum_timeline_from_main,
     parse_chord_interrupters, set_active_drum_map,
+    get_drum_map, add_ghost_notes, kick_onsets,
+    apply_pocket, parse_pocket_spec,
 )
 from tokens import key_roots  # noqa: F401
 from voicing import BASS_STYLES  # noqa: F401
@@ -262,7 +264,8 @@ def ts_filename(stem: str) -> str:
 
 
 _EVENT_PRIORITY = {
-    "tempo": 0, "program": 1, "voice": 2, "chord": 3, "densechord": 3, "drum": 4,
+    "tempo": 0, "program": 1, "cc": 1, "voice": 2, "chord": 3, "densechord": 3,
+    "drum": 4,
 }
 
 
@@ -304,13 +307,23 @@ def apply_swing(events: list, s: float) -> list:
 
 
 def render_events(midi: "MidiOut",
-                  events: list) -> tuple[float, float, float]:
+                  events: list,
+                  intensity_at=None) -> tuple[float, float, float]:
     """Dispatch a time-sorted event stream onto a MidiOut. Handles every event
-    kind (tempo, program, voice, chord, densechord, drum). Returns the final
-    (chord_cursor, drum_cursor, voice_max) so the caller can flush to the end.
+    kind (tempo, program, cc, voice, chord, densechord, drum). Returns the
+    final (chord_cursor, drum_cursor, voice_max) so the caller can flush to
+    the end. A ``cc`` event is ``(voice_or_"drums", control, value)`` — a
+    control-change (e.g. CC91 reverb, CC93 chorus) at that voice's/the drum
+    channel's beat offset, the per-section mix/FX knob.
 
     Shared by the flat render, the arrangement renderer, and the fugue/process
     modes — one dispatch loop instead of several copies.
+
+    `intensity_at(when_beats)` (default: constant 1.0) scales each event's
+    base velocity — chord/voice base 78 -> `78 * intensity`, dense-chord base
+    74 similarly, and drum hits via `MidiOut.drums_block`'s `vel_scale`. This
+    is how a section's `dynamics.intensity` reaches the actual note-on
+    velocities without every render path needing to know about dynamics.
     """
     events = apply_swing(events, getattr(midi, "swing", 0.0))
     t_ch = 0.0
@@ -318,9 +331,10 @@ def render_events(midi: "MidiOut",
     voice_max = 0.0
     for kind, when, dur, payload in sorted(
             events, key=lambda e: (e[1], _EVENT_PRIORITY.get(e[0], 9))):
+        intensity = intensity_at(when) if intensity_at else 1.0
         if kind == "voice":
             voice, note = payload
-            midi.play_voice_note(voice, note, when, dur)
+            midi.play_voice_note(voice, note, when, dur, base=round(78 * intensity))
             voice_max = max(voice_max, when + dur)
         elif kind == "chord":
             if when > t_ch:
@@ -329,25 +343,31 @@ def render_events(midi: "MidiOut",
             if when > t_dr:
                 midi.advance_dr(when - t_dr)
                 t_dr = when
-            midi.chord_block(payload, dur, when)
+            midi.chord_block(payload, dur, when, base=round(78 * intensity))
             t_ch += dur
         elif kind == "densechord":
             if when > t_ch:
                 midi.advance_ch(when - t_ch)
                 t_ch = when
-            midi.dense_block(payload, dur, when)
+            midi.dense_block(payload, dur, when, base=round(74 * intensity))
             t_ch += dur
         elif kind == "drum":
             if when > t_dr:
                 midi.advance_dr(when - t_dr)
                 t_dr = when
-            midi.drums_block(payload, dur, when)
+            midi.drums_block(payload, dur, when, vel_scale=intensity)
             t_dr += dur
         elif kind == "tempo":
             midi.set_tempo_at(payload, when)
         elif kind == "program":
             voice, prog = payload
             midi.program_change_at(voice, prog, when)
+        elif kind == "cc":
+            voice, control, value = payload
+            if voice == "drums":
+                midi.drum_control_change_at(control, value, when)
+            else:
+                midi.control_change_at(voice, control, value, when)
     return t_ch, t_dr, voice_max
 
 
@@ -408,6 +428,8 @@ def song_overrides_from_args(args, include) -> dict:
         bass["style"] = args.bass_style
     if include("bass_step", "--bass-step"):
         bass["step"] = float(args.bass_step)
+    if include("bass_lock_kick", "--bass-lock-kick"):
+        bass["lock_kick"] = bool(args.bass_lock_kick)
     if bass:
         ov["bass"] = bass
     perc: dict = {}
@@ -417,6 +439,12 @@ def song_overrides_from_args(args, include) -> dict:
         perc["main"] = ""  # explicit silence (gap-analysis I1)
     elif args.perc_main is not None and include("perc_main", "--perc-main"):
         perc["main"] = args.perc_main
+    if include("perc_ghost_rate", "--perc-ghost-rate"):
+        perc["ghost_rate"] = float(args.perc_ghost_rate)
+    if include("perc_ghost_note", "--perc-ghost-note"):
+        perc["ghost_note"] = args.perc_ghost_note
+    if getattr(args, "perc_pocket", None) and include("perc_pocket", "--perc-pocket"):
+        perc["pocket"] = args.perc_pocket
     if perc:
         ov["perc"] = perc
     if args.voice_instrument:
@@ -498,6 +526,15 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
         when + dur for (when, dur, _n) in chord_tl)
     drum_tl = truncate_timeline_to(drum_tl, ch_end)
 
+    if args.perc_ghost_rate > 0.0:
+        ghost_note = get_drum_map().get(args.perc_ghost_note.lower(), 38)
+        drum_tl = add_ghost_notes(drum_tl, rate=args.perc_ghost_rate,
+                                  note=ghost_note)
+    if getattr(args, "perc_pocket", None):
+        drum_tl = apply_pocket(drum_tl, parse_pocket_spec(args.perc_pocket))
+
+    bass_kick_times = kick_onsets(drum_tl) if args.bass_lock_kick else None
+
     midi = MidiOut(args.bpm, None, tpb=tpb,
                    vel_mode_chords=args.velocity_mode_chords,
                    vel_mode_drums=args.velocity_mode_drums,
@@ -540,6 +577,7 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
             satb_style=args.satb_style,
             bass_style=args.bass_style,
             bass_step=args.bass_step,
+            bass_kick_times=bass_kick_times,
             counterpoint_step=args.counterpoint_step,
             counterpoint_suspension_prob=args.counterpoint_suspension_prob,
             counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
@@ -640,6 +678,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.5,
         help="Subdivision (in beats) for the bass line when --bass-style is not "
         "'follow' (0.5 = eighths, 1.0 = quarters).")
+    ap.add_argument(
+        "--bass-lock-kick",
+        action="store_true",
+        help="Lock the independent bass line's timing to the drum pattern's "
+        "kick hits instead of the even --bass-step subdivision (pitch pattern "
+        "is unchanged). Requires --bass-style other than 'follow'/'none'.")
     ap.add_argument("--bpm", type=int, default=120)
     ap.add_argument("--chord-length",
                     dest="chord_len",
@@ -710,6 +754,24 @@ def build_parser() -> argparse.ArgumentParser:
                     default=None,
                     help="Linear fill-rate ramp 'start:end' (0-1) applied across perc stages.")
     ap.add_argument(
+        "--perc-ghost-rate",
+        type=float,
+        default=0.0,
+        help="0-1. Probability of filling an empty drum slot with a "
+        "low-velocity ghost note (default: snare). Default=0.0 (off).")
+    ap.add_argument(
+        "--perc-ghost-note",
+        type=str,
+        default="c",
+        help="Drum-map letter for the ghost note (default 'c' = snare).")
+    ap.add_argument(
+        "--perc-pocket",
+        type=str,
+        default=None,
+        help="Lay drums back in the pocket: 'letter:beats[,letter:beats...]' "
+        "delays every hit of those drums, e.g. 'c:0.03' for a laid-back "
+        "snare. Delay-only; applied after the pattern is built.")
+    ap.add_argument(
         "--perc-fill-rate",
         type=float,
         default=0.20,
@@ -760,6 +822,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="0–1. Stereo width of the SATB voices across the field "
              "(0=centred/mono, 1=widest). Needs split stems. Default=0.0.")
+    ap.add_argument(
+        "--stems",
+        action="store_true",
+        help="Also write each voice + drums as its own standalone MIDI file "
+             "alongside the main output, for mixing externally. Needs split "
+             "stems (the default).")
 
     return ap
 
@@ -858,9 +926,11 @@ def _run(ap, args):
             vel_mode_chords=args.velocity_mode_chords,
             vel_mode_drums=args.velocity_mode_drums,
             overrides=arr_overrides)
-        arrangement.render(spec, song_out)
+        arrangement.render(spec, song_out, stems=args.stems)
         music_generator_logger.info(f"Wrote {song_out}")
         print(f"Wrote {song_out}")
+        if args.stems:
+            print(f"Wrote stems alongside {song_out}")
         return 0
 
     # ----- output path + sidecar JSON -----
@@ -898,9 +968,18 @@ def _run(ap, args):
         })
 
     midi.save(out_path)
+    if args.stems:
+        if args.split_stems:
+            midi.write_stems(out_path)
+        else:
+            music_generator_logger.warning(
+                "--stems has no effect without split stems "
+                "(all voices share one channel); ignoring.")
 
     # music_generator.py is MIDI-only; audio rendering/preview lives in render.py.
     print(f"Wrote {out_path}")
+    if args.stems and args.split_stems:
+        print(f"Wrote stems alongside {out_path}")
 
     # Log completion
     end_time = datetime.now()

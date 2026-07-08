@@ -14,6 +14,8 @@ Wrapper flags (consumed here); everything else is forwarded to the generator:
   --boost-db N          ffmpeg volume boost (dB)
   --boost-normalize N   normalize, then boost by N dB
   --save-wav            render+keep a WAV (otherwise MIDI only)
+  --stems               also bounce each voice + drums stem MIDI to its own
+                        raw WAV (forwards --stems to the generator)
   --no-play             skip playback
   --output-dir DIR      WAV output dir (default from config.json, else 'audio')
   --keep-temporary      keep intermediate WAVs
@@ -33,6 +35,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 GENERATOR = SCRIPT_DIR / "music_generator.py"
 CONFIG_PATH = SCRIPT_DIR / "config.json"
 SOUNDFONTS_DIR = SCRIPT_DIR / "SoundFonts"
+
+# Matches MidiOut.write_stems's naming: <base>_<name>.mid alongside the main
+# MIDI ("lead" only exists when the song used one; find_stem_midis skips
+# whichever stems weren't written).
+STEM_NAMES = ("soprano", "alto", "tenor", "bass", "lead", "drums")
 
 FX_PRESETS: dict[str, list[str]] = {
     "none": [],
@@ -139,6 +146,21 @@ def run_generator(gen_args: list[str]) -> str:
     raise SystemExit("❌ No MIDI produced (generator failed?).")
 
 
+def find_stem_midis(midi_path: str) -> dict[str, str]:
+    """Sibling stem MIDI files `MidiOut.write_stems` wrote next to `midi_path`
+    (e.g. `song.mid` -> `song_soprano.mid`, ..., `song_drums.mid`). Returns
+    `{name: path}` for whichever stems exist (empty if `--stems` wasn't
+    passed to the generator, or split stems were off)."""
+    p = Path(midi_path)
+    base = p.stem
+    found = {}
+    for name in STEM_NAMES:
+        candidate = p.parent / f"{base}_{name}{p.suffix}"
+        if candidate.is_file():
+            found[name] = str(candidate)
+    return found
+
+
 def post_process(ff: str, wav: str, *, normalize: bool, boost_db: str | None,
                  boost_after_norm: str | None,
                  keep_temporary: bool) -> tuple[str, list[str]]:
@@ -191,6 +213,13 @@ def build_parser(default_sf2: str | None, default_output_dir: str) -> argparse.A
     p.add_argument("--save-wav", dest="save_wav", action="store_true")
     p.add_argument("--output-dir", dest="output_dir", default=default_output_dir)
     p.add_argument("--keep-temporary", dest="keep_temporary", action="store_true")
+    p.add_argument(
+        "--stems", action="store_true",
+        help="Also bounce each voice + drums stem MIDI (forwards --stems to "
+        "the generator) to its own raw WAV alongside the main one, for "
+        "external mixing. Stems are not independently normalized/boosted — "
+        "that would destroy the relative balance between them. Needs "
+        "--sf2 and --save-wav.")
     return p
 
 
@@ -218,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
                                   (cfg.get("default_generator_flags") or [])]
     if args.sf2:
         gen_args += ["--sf2", args.sf2]
+    if args.stems:
+        gen_args += ["--stems"]
 
     fluidsynth = find_tool("fluidsynth")
     ffmpeg = find_tool("ffmpeg")
@@ -238,6 +269,7 @@ def main(argv: list[str] | None = None) -> int:
     meta_dir.mkdir(parents=True, exist_ok=True)
 
     final_wav = None
+    stem_wavs: dict[str, str] = {}
     if args.save_wav:
         if not args.sf2:
             print("ℹ️ --save-wav needs --sf2; skipping WAV render.")
@@ -252,6 +284,19 @@ def main(argv: list[str] | None = None) -> int:
                 ffmpeg, wav, normalize=args.normalize, boost_db=args.boost_db,
                 boost_after_norm=args.boost_after_norm,
                 keep_temporary=args.keep_temporary)
+
+            if args.stems:
+                # Raw FluidSynth render, no normalize/boost: independently
+                # loudness-matching each stem would destroy the relative
+                # balance between them, which is the whole point of stems.
+                for name, stem_mid in find_stem_midis(midi).items():
+                    stem_wav = str(audio_dir / f"{base}_{name}.wav")
+                    print(f"Rendering stem WAV -> {stem_wav}")
+                    subprocess.run(
+                        fluidsynth_render_cmd(fluidsynth, opts, stem_wav,
+                                              args.sf2, stem_mid),
+                        check=True)
+                    stem_wavs[name] = stem_wav
     else:
         print("ℹ️ Skipping WAV render (use --save-wav to enable).")
 
@@ -260,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
         "timestamp_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "generator_args": gen_args,
         "outputs": {"final_wav": final_wav, "latest_midi": midi,
-                    "wav_saved": bool(final_wav)},
+                    "wav_saved": bool(final_wav), "stem_wavs": stem_wavs},
         "render": {"soundfont": args.sf2 or None, "fx_preset": args.fx,
                    "output_dir": args.output_dir},
         "post_processing": {"normalize": bool(args.normalize),
