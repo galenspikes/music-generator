@@ -124,7 +124,8 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
   - **Effort:** 2–3 hours
   - **Priority:** P3 (Documentation)
 
-- [ ] **Add property-based tests for token parsing**
+- [x] **Add property-based tests for token parsing**
+      (tests/test_tokens_properties.py, hypothesis)
   - Use hypothesis to generate random valid/invalid tokens
   - Verify parser handles all edge cases consistently
   - **Effort:** 3–4 hours
