@@ -78,6 +78,14 @@ Key entry points:
   concatenated into one evolving piece. Driven by YAML song files (`songs/*.yml`).
 - **`generator_api.py`** → core. The **programmatic API seam** — the in-process
   entry point the web UI and tests build on, sharing one render path with the CLI.
+- **`progression_store.py`** → (leaf, stdlib sqlite3). The saved-progression
+  library as a SQLite database (transactional, concurrent-safe, searchable);
+  legacy per-file JSON progressions migrate in on first use. Fronted by
+  `generator_api`'s `list/load/save/delete/search_progressions`.
+- **`synth.py`** → (leaf, mido + numpy). In-process MIDI→WAV synthesis for the
+  web preview path (`POST /api/audio`): additive harmonics per GM family plus
+  synthesized drums — no FluidSynth binary, no SoundFont. Production-quality
+  audio still goes through `render.py` + FluidSynth.
 - **`leadsheet.py`** → mtheory. Lead-sheet import's deterministic core: `chordsym_to_token`
   maps conventional chord symbols ("Cmaj7", "F#m7b5") to the colon-token DSL; `ir_to_song_yml`
   turns a normalized chart IR into an `arrangement.py`-ready `song.yml`. See

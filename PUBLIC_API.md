@@ -25,7 +25,8 @@ files under `output/` are touched.
 | `GenerationResult`, `ValidationResult`, `TrackInfo` | Result value objects (`.as_dict()` shapes are the web API's JSON). |
 | `list_songs()` / `load_song(name)` | Song catalog (from `songs/*.yml`). |
 | `list_presets()` / `load_preset()` / `save_preset()` / `delete_preset()` | User preset store. |
-| `list_progressions()` / `load_progression()` / `save_progression()` / `delete_progression()` | Chord-progression store. |
+| `list_progressions()` / `load_progression()` / `save_progression()` / `delete_progression()` / `search_progressions()` | Chord-progression store (SQLite-backed via `progression_store.ProgressionStore`; legacy JSON migrates in). |
+| `synth.render_wav(midi_bytes, sample_rate)` | In-process MIDI→WAV preview synthesis (no FluidSynth/SoundFont); deterministic. |
 | `slugify(name)` | Filesystem-safe identifier (the path-traversal guard). |
 | `envelope_from_bytes(data, duration, buckets)` | MIDI bytes → note-density envelope for waveform visuals. |
 

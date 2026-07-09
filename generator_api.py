@@ -589,6 +589,34 @@ def generate(spec: dict) -> GenerationResult:
     return result
 
 
+# Resource bounds for the web boundary (the UI advertises 4–600s and
+# 40–300bpm via PARAM_ANNOTATIONS; these are the hard caps behind them).
+# The CLI is not bound by these — it drives the engine directly.
+_MAX_SECONDS = 600.0
+_MAX_BPM = 960
+
+
+def _check_bounds(args) -> None:
+    """Reject non-positive or resource-abusive duration/tempo up front,
+    as a structured error — a fuzzed spec like ``seconds=-1.5`` used to
+    'succeed' with a nonsense negative-duration result, and ``seconds=1e6``
+    would happily try to render a twelve-day piece."""
+    seconds = float(args.seconds)
+    if not (0.0 < seconds <= _MAX_SECONDS):
+        raise GenerationError(
+            f"seconds must be between 0 and {_MAX_SECONDS:.0f}, got {seconds}",
+            error_type="invalid_argument",
+            suggestion=f"Pick a length from 1 to {_MAX_SECONDS:.0f} seconds.",
+            code="ERR_ARG_001")
+    bpm = float(args.bpm)
+    if not (0.0 < bpm <= _MAX_BPM):
+        raise GenerationError(
+            f"bpm must be between 1 and {_MAX_BPM}, got {bpm}",
+            error_type="invalid_argument",
+            suggestion="Pick a tempo between 40 and 300 BPM.",
+            code="ERR_ARG_002")
+
+
 def _generate_impl(spec: dict) -> GenerationResult:
     """The generation pipeline behind :func:`generate` (which owns error
     classification and boundary logging): spec → argparse namespace →
@@ -652,6 +680,7 @@ def _generate_impl(spec: dict) -> GenerationResult:
         return _SERIALIZER.result_from_bytes(data, "song")
 
     # ----- flat (chord progression) -----
+    _check_bounds(args)  # songs use their own section lengths; flat only
     midi, _meta = mg.build_flat_midi(args, rng=rng, drum_map=drum_map)
     if args.full_progression:
         result_mode = "full-progression"
