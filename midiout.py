@@ -37,6 +37,29 @@ class MidiOut:
                  swing: float = 0.0,
                  pan_spread: float = 0.0,
                  with_lead: bool = False) -> None:
+        """Set up the Type-1 MIDI file and its track layout.
+
+        Two layouts, chosen by ``split_stems``:
+
+        - merged (default): one chord track + one drum track; all melodic
+          voices share channel 0 (per-voice instruments are impossible);
+        - split stems: one track/channel per SATB voice (plus an optional
+          5th "lead" voice on LEAD_CH when ``with_lead``), then the drum
+          track — required for per-voice programs, panning, and stems.
+
+        Each melodic track gets tempo + volume/expression CCs at time 0,
+        and pan CCs when ``pan_spread`` > 0 (0 = mono, 1 = widest, per
+        VOICE_PAN_POS). ``vel_mode_chords``/``vel_mode_drums`` pick the
+        velocity humanisation ('uniform', 'random', 'human'); ``swing``
+        (0..0.75) is stored for render_events' off-beat warp. ``fname`` is
+        the default save path — save() accepts an explicit one too.
+
+        Example::
+
+            out = MidiOut(bpm=96, split_stems=True, pan_spread=0.6)
+            out.chord_block((72, 67, 60, 48), beats=4.0, when_beats=0.0)
+            out.save("take1.mid")
+        """
         self.bpm = bpm
         self.fname = fname
         self.tpb = tpb
@@ -369,6 +392,20 @@ class MidiOut:
                     beats: float,
                     when_beats: float,
                     base: int = 78) -> None:
+        """Sound one four-voice (SATB) chord for ``beats`` at ``when_beats``.
+
+        In split-stems mode each voice's note goes to its own track/channel
+        (via play_voice_note, so per-voice programs apply); merged mode
+        writes all four notes as a block on the single "ensemble" track.
+        ``base`` is the pre-humanisation velocity — the actual strike
+        velocity comes from ``vel_mode_chords``.
+
+        Example::
+
+            out = MidiOut(bpm=120)
+            out.chord_block((72, 67, 64, 48), beats=2.0, when_beats=0.0)
+            out.chord_block((74, 69, 65, 50), beats=2.0, when_beats=2.0)
+        """
         vel = self._compute_chord_velocity(when_beats, base)
         s, a, t, b = notes
         dur_ticks = self.ticks(beats)
@@ -461,6 +498,23 @@ class MidiOut:
             choke_openhat: bool = False,
             choke_after_beats: float = 0.06,
             vel_scale: float = 1.0) -> None:
+        """Schedule one percussion-token's worth of drum hits on the drum track.
+
+        ``hits`` is the parsed token payload (:func:`percussion.parse_single_token`);
+        an empty list is a rest — the drum cursor still advances by ``beats``.
+        Per-hit fields are honoured here: ``probability`` (chance the hit
+        plays), ``vel_offset``, ``timing_offset`` (push/pull in beats), and
+        ``flam`` (a grace hit that many beats later). The ``vel*`` kwargs set
+        the pre-humanisation base velocity per GM note (kick/snare/hat/…),
+        scaled by ``vel_scale``; final velocities come from ``vel_mode_drums``.
+        ``choke_openhat`` closes an open hi-hat shortly after it sounds
+        (``choke_after_beats``) for a tighter feel.
+
+        Example::
+
+            beats, hits = parse_single_token("qbc")   # quarter: kick+snare
+            out.drums_block(hits, beats, when_beats=0.0)
+        """
         if not hits:
             self.advance_dr(beats)
             return

@@ -421,6 +421,19 @@ def build_drum_timeline_stages(
         fallback_intr: list[list[tuple[float, list[PercHit]]]] | None,
         base_fill_rate: float,
         fill_curve: tuple[float, float] | None) -> list[tuple[float, float, list[PercHit]]]:
+    """Build a drum timeline from a sequence of :class:`PercStage` sections.
+
+    Each stage plays its own main pattern (falling back to ``fallback_main``
+    if it has none) and its own fills (falling back to ``fallback_intr``)
+    for ``stage.beats`` beats. Stages cycle until ``beats_total`` is filled;
+    a stage extending past the end is truncated. The per-stage fill rate is
+    the stage's own value when set, else ``base_fill_rate`` — unless
+    ``fill_curve=(start, end)`` is given, which ramps the rate linearly
+    across the declared stage span instead.
+
+    Returns ``[(when_beats, dur_beats, hits), …]`` ready for
+    ``MidiOut.drums_block``.
+    """
     if beats_total <= 0.0 or not stages:
         return []
 

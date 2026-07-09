@@ -423,6 +423,30 @@ class TestKeyPresetLoading:
         assert presets2 == presets1
 
 
+class TestWarnIfOverwriting:
+    """Test the pre-save overwrite warning."""
+
+    def test_missing_path_no_warning(self, tmp_path, capsys):
+        """A fresh path: no warning, returns False."""
+        target = tmp_path / "fresh.mid"
+        assert M.warn_if_overwriting(str(target)) is False
+        assert "overwrit" not in capsys.readouterr().err
+
+    def test_existing_path_warns(self, tmp_path, capsys):
+        """An existing path warns on stderr and returns True."""
+        target = tmp_path / "existing.mid"
+        target.write_bytes(b"")
+        assert M.warn_if_overwriting(str(target)) is True
+        assert "overwriting existing file" in capsys.readouterr().err
+
+    def test_overwrite_flag_silences(self, tmp_path, capsys):
+        """--overwrite acknowledges the clobber: no warning, still True."""
+        target = tmp_path / "existing.mid"
+        target.write_bytes(b"")
+        assert M.warn_if_overwriting(str(target), overwrite_ok=True) is True
+        assert "overwrit" not in capsys.readouterr().err
+
+
 class TestGmInstrumentMapping:
     """Test GM instrument mapping."""
 

@@ -47,20 +47,20 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 ## SHORT-TERM (1–2 weeks) — Code quality
 
 ### Documentation
-- [ ] **Add docstrings to top 20 functions**
+- [x] **Add docstrings to top 20 functions**
   - Priority: `voicing.realize_SATB()`, `composition.build_progression()`, `midiout.MidiOut.chord_events()`
   - Target: Complex functions >50 lines without docstrings
   - Use ruff rule to identify (e.g., `ruff rule ARG002`)
   - **Effort:** 3–4 hours
   - **Priority:** P2 (Onboarding)
 
-- [ ] **Create PUBLIC_API.md**
+- [x] **Create PUBLIC_API.md**
   - Document stable functions vs. internal helpers
   - Clarify which re-exports from `music_generator.py` are guaranteed
   - **Effort:** 1 hour
   - **Priority:** P2 (API clarity)
 
-- [ ] **Document error codes**
+- [x] **Document error codes** (docs/reference/error-codes.md)
   - Central registry of error codes (ERR_CHORD_001, etc.)
   - Map to error_type, suggested fix, remediation steps
   - **Effort:** 30 min
@@ -73,13 +73,13 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
   - **Effort:** 2–3 hours
   - **Priority:** P2 (Maintainability)
 
-- [ ] **Add function to warn on silent file overwrites**
+- [x] **Add function to warn on silent file overwrites**
   - Current: MIDI files silently overwritten if they exist at output path
   - Proposal: Add `--overwrite` flag; warn by default
   - **Effort:** 30 min
   - **Priority:** P2 (UX)
 
-- [ ] **Fix `fill_chords_to_end()` mutation**
+- [x] **Fix `fill_chords_to_end()` mutation**
   - Current: Mutates input list in-place; callers may not expect this
   - Proposal: Return new list instead (functional style)
   - **Effort:** 15 min
@@ -115,9 +115,11 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
   - **Priority:** P2 (Clarity, testability)
 
 ### Testing
-- [ ] **Add docstring-based tests for complex functions**
+- [x] **Add docstring-based tests for complex functions**
   - Functions >50 lines should have usage examples in docstrings
   - Example: `voicing.realize_SATB()` docstring should show how to use it
+  - Done alongside the docstring pass: realize_SATB, build_counterpoint_lines,
+    build_progression, MidiOut.__init__/chord_block/drums_block carry examples
   - **Effort:** 2–3 hours
   - **Priority:** P3 (Documentation)
 

@@ -242,6 +242,13 @@ class TestFillChordsToEnd:
         assert len(result) == 2
         assert result[-1] == (1.0, 3.0, (60, 55, 48, 40))
 
+    def test_fill_chords_to_end_does_not_mutate_input(self):
+        """Extension returns a new list; the caller's timeline is untouched."""
+        timeline = [(0, 1.0, (60, 55, 48, 40))]
+        result = fill_chords_to_end(timeline, 4.0)
+        assert timeline == [(0, 1.0, (60, 55, 48, 40))]
+        assert result is not timeline
+
     def test_fill_chords_to_end_empty_returns_empty(self):
         """Empty timeline stays empty."""
         result = fill_chords_to_end([], 4.0)

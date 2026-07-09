@@ -23,6 +23,9 @@ explain or teach. Structured for looking things up, not reading start to finish.
 - **[Percussion letter map](percussion-letters.md)** — the full drum-letter table.
   *(Generated from `library/percussion_library.json`.)*
 - **[Charts](charts.md)** — transcribed chord charts / worked command lines.
+- **[Error codes](error-codes.md)** — the registry of `ERR_*` codes and
+  `error_type` categories the API attaches to failures, and how to add one.
+  *(Pinned by `tests/test_errors.py`.)*
 
 ## Planned
 

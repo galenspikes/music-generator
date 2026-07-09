@@ -78,16 +78,19 @@ def _apply_random_inversion(pc_root: int,
 
 
 def fill_chords_to_end(ch_tl, beats_total):
-    """If chord_tl ends early, sustain the last voiced chord to beats_total."""
+    """If chord_tl ends early, sustain the last voiced chord to beats_total.
+
+    Returns a new list when an extension is needed; the input timeline is
+    never mutated. Use the return value.
+    """
     if not ch_tl:
         return ch_tl
     end = max(when + dur for (when, dur, _notes) in ch_tl)
     if end >= beats_total:
         return ch_tl
-    last_when, last_dur, last_notes = ch_tl[-1]
+    _last_when, _last_dur, last_notes = ch_tl[-1]
     gap = beats_total - end
-    ch_tl.append((end, gap, last_notes))
-    return ch_tl
+    return list(ch_tl) + [(end, gap, last_notes)]
 
 
 def make_triad(pc_root: int,
@@ -263,7 +266,24 @@ def build_progression(keys: list[str],
                       chord_modes: list[str],
                       order: str,
                       max_chords: int | None = None) -> list[ChordDef]:
-    """Return chord definitions cycling through the provided key plan."""
+    """Return chord definitions cycling through the provided key plan.
+
+    Each key token is either explicit (a colon token like ``C::maj7``, which
+    maps straight to its ChordDef) or a bare root (``C``, ``Gm``), for which a
+    chord is *generated* from one of the enabled ``chord_modes`` families
+    (triads, sevenths, extended-chords, quartal, …). ``order`` picks how the
+    next family is chosen when several are on: ``'random'`` or round-robin.
+
+    The progression length: ``max_chords`` when given; otherwise one pass of
+    the key ring if any token is explicit (an authored chart plays as
+    written), else four passes (bare roots are a palette, not a chart).
+
+    Example::
+
+        chords = build_progression(["C", "Am", "F", "G"],
+                                   ["sevenths"], order="random")
+        tl = build_chord_timeline(chords, beats_total=32.0, base_len_beats=2.0)
+    """
 
     key_ring = keys[:] if keys else [
         "C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"

@@ -394,6 +394,10 @@ def generate(spec: dict) -> GenerationResult:
 
 
 def _generate_locked(spec: dict) -> GenerationResult:
+    """The generation pipeline behind :func:`generate` (which holds the lock
+    and owns error classification): spec → argparse namespace → engine
+    globals (drum map, seed) → one of the render paths (arrangement song
+    via a temp file, or in-memory flat build) → GenerationResult."""
     # Raw song YAML text (e.g. from the lead-sheet importer) — an alternative
     # to args.song's file path so the webapp never has to write the imported
     # song anywhere durable. Not an argparse flag, so pulled from the raw
@@ -765,7 +769,7 @@ def _default_control(kind: str, choices) -> str:
 # CLI/render plumbing that isn't an instrument control. The underlying flags
 # still work on the CLI and in song YAML — see parameter_schema()'s docstring.
 HIDDEN_PARAMS: set[str] = {
-    "out", "no_play", "song", "sf2", "perc_lib",
+    "out", "no_play", "song", "sf2", "perc_lib", "overwrite",
 }
 
 # Presentation metadata: which rack panel a flag lives in, its control, ranges.

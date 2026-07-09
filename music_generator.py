@@ -278,6 +278,23 @@ def resolve_out_path(out_arg: str | None, default_slug: str) -> str:
     return str(subdir / ts_filename(slug))
 
 
+def warn_if_overwriting(out_path: str, overwrite_ok: bool = False) -> bool:
+    """Warn when ``out_path`` already exists and is about to be clobbered.
+
+    Timestamped filenames make this rare (same slug, same second), but it can
+    bite scripted runs. Pass ``overwrite_ok=True`` (the ``--overwrite`` flag)
+    to acknowledge and silence the warning. Returns True if the path existed.
+    """
+    exists = Path(out_path).exists()
+    if exists and not overwrite_ok:
+        music_generator_logger.warning(
+            f"Output file already exists and will be overwritten: {out_path} "
+            "(pass --overwrite to silence this warning)")
+        print(f"WARNING: overwriting existing file {out_path} "
+              "(pass --overwrite to silence)", file=sys.stderr)
+    return exists
+
+
 def _swing_time(t: float, s: float) -> float:
     """Warp a beat position ``t`` for a swing amount ``s`` (0 = straight).
 
@@ -796,6 +813,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--seconds", type=float, default=60.0)
     ap.add_argument("--out", type=str, default="out")
+    ap.add_argument("--overwrite",
+                    action="store_true",
+                    help="Silence the warning when the output MIDI path "
+                         "already exists (it is overwritten either way).")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--sf2", required=False, help="Path to SoundFont (.sf2)")
     ap.add_argument("--no-play",
@@ -877,6 +898,12 @@ def main():
 
 
 def _run(ap, args):
+    """The CLI's whole run, after parsing: resolve presets/drum map/seed,
+    then either render a YAML song via :mod:`arrangement` (honouring only
+    CLI flags the user actually set) or build the flat-mode MIDI in-process
+    (:func:`build_flat_midi`), writing the .mid plus its sidecar manifest
+    under ``output/``. Returns a process exit code. Raises
+    :class:`SpecError` for bad specs — ``main`` turns that into exit 2."""
     start_time = datetime.now()
     music_generator_logger.info("Starting music generation")
 
@@ -921,6 +948,7 @@ def _run(ap, args):
                        for tok in argv_tokens for f in flags)
 
         arr_overrides = song_overrides_from_args(args, _cli_set)
+        warn_if_overwriting(song_out, args.overwrite)
         spec = arrangement.load_spec(
             args.song,
             vel_mode_chords=args.velocity_mode_chords,
@@ -967,6 +995,7 @@ def _run(ap, args):
             "perc_fill_curve": meta["perc_fill_curve"],
         })
 
+    warn_if_overwriting(out_path, args.overwrite)
     midi.save(out_path)
     if args.stems:
         if args.split_stems:

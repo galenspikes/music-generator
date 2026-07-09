@@ -145,6 +145,39 @@ def build_counterpoint_lines(
         step: float,
         suspension_prob: float,
         anticipation_prob: float) -> dict[str, list[tuple[float, float, int]]]:
+    """Turn a block-chord timeline into four independent melodic lines.
+
+    For each chord slot, every SATB voice walks its own stepwise path
+    (via :func:`_counterpoint_sequence`) from its current pitch toward its
+    note in the *next* chord, subdivided into roughly ``step``-beat segments
+    with a little duration jitter so the lines breathe. Two classic devices
+    are sprinkled in probabilistically per voice per chord:
+
+    - *suspension* (``suspension_prob``): the voice holds its old pitch
+      through the chord change and resolves late;
+    - *anticipation* (``anticipation_prob``): the voice moves to the next
+      chord's pitch early.
+
+    Args:
+        chord_tl: ``[(when_beats, dur_beats, (sop, alto, ten, bass)), …]`` —
+            the block-chord timeline from :func:`composition.build_chord_timeline`.
+        step: target segment length in beats (clamped to >= 0.1; lower = busier).
+        suspension_prob / anticipation_prob: 0..1 chances per voice per chord.
+
+    Returns:
+        ``{voice_name: [(when_beats, dur_beats, midi_note), …]}`` for each of
+        VOICE_ORDER; consecutive equal pitches are merged into held notes.
+
+    Example::
+
+        tl = build_chord_timeline(chords, beats_total=16.0, base_len_beats=4.0)
+        lines = build_counterpoint_lines(tl, step=0.5,
+                                         suspension_prob=0.3,
+                                         anticipation_prob=0.2)
+        for voice, events in lines.items():
+            for when, dur, note in events:
+                midi.voice_note(voice, note, dur, when)
+    """
     lines: dict[str, list[tuple[float, float, int]]] = {
         voice: [] for voice in VOICE_ORDER
     }
@@ -529,6 +562,15 @@ def realize_SATB(prev_sop: int | None,
     register continuous across a section boundary instead of always
     recentering on the same default.
     Returns (sop, alto, tenor, bass) as MIDI notes.
+
+    Example — voice a ii-V-I with smooth soprano motion::
+
+        prev_sop, prev_bass = None, 43
+        for cd in (parse_colon_key_token(t)
+                   for t in ("D::min7", "G::7", "C::maj7")):
+            s, a, t, b = realize_SATB(prev_sop, cd.root_pc, list(cd.pcs),
+                                      bass_pc=cd.bass_pc, bass_anchor=prev_bass)
+            prev_sop, prev_bass = s, b
     """
 
     # choose concrete chord tones (as MIDI around reasonable default center)
