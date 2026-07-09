@@ -7,25 +7,25 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 ## IMMEDIATE (1–2 sessions) — Blocking issues
 
 ### Linting & Tests
-- [ ] **Fix E402 import order** (`webapp/backend/app.py:35`)
+- [x] **Fix E402 import order** (`webapp/backend/app.py:35`)
   - Move `mimetypes.add_type()` call after all imports, or wrap in function
   - **Effort:** 5 min
   - **Priority:** P0 (CI gate)
 
-- [ ] **Resolve duplicate test classes (F811)**
+- [x] **Resolve duplicate test classes (F811)**
   - Merge `TestParameterSchema` definitions in `test_generator_api_comprehensive.py` (lines 327 & 523)
   - Merge `TestVelocityComputation` in `test_midiout_comprehensive.py` (lines 108 & 410)
   - Currently second definition shadows first; tests may not run as intended
   - **Effort:** 15 min
   - **Priority:** P0 (Test coverage integrity)
 
-- [ ] **Remove unused imports (F401)** — 9 instances
+- [x] **Remove unused imports (F401)** — 9 instances
   - Run `ruff check --fix .` to auto-fix F401, F841
   - Manually verify fixes don't change behavior
   - **Effort:** 10 min
   - **Priority:** P1 (Hygiene)
 
-- [ ] **Fix bare `except Exception` in `generator_api.py:89`**
+- [x] **Fix bare `except Exception` in `generator_api.py:89`**
   - Only catch specific exceptions; document why/what's expected
   - Current: silently swallows all errors
   - **Effort:** 5 min

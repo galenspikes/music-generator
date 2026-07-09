@@ -30,14 +30,14 @@ import mimetypes
 import pathlib
 import sys
 
-# stdlib doesn't know this extension; without it StaticFiles serves the PWA
-# manifest as application/octet-stream, which trips some installability checks.
-mimetypes.add_type("application/manifest+json", ".webmanifest")
-
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+# stdlib doesn't know this extension; without it StaticFiles serves the PWA
+# manifest as application/octet-stream, which trips some installability checks.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:

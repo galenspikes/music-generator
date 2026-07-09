@@ -8,7 +8,6 @@ import random
 
 import pytest
 
-import music_generator as M
 from composition import (
     build_progression,
     build_chord_timeline,
@@ -19,9 +18,6 @@ from composition import (
     make_ninth,
     make_extended_chord,
     make_quartal,
-    make_sus,
-    make_add6,
-    make_lyd_dom,
     fill_chords_to_end,
     invert_chord,
     next_mode_picker,
@@ -203,9 +199,9 @@ class TestBuildChordTimeline:
             ChordDef(root_pc=pc('G'), pcs=(7, 11, 2)),
         ]
         timeline = build_chord_timeline(chords, beats_total=8.0, base_len_beats=1.0)
-        # Should have both chords
-        voicings = [voicing for _, _, voicing in timeline]
+        # Should have both chords, each slot carrying a non-empty voicing
         assert len(timeline) >= 4  # At least 2 cycles
+        assert all(voicing for _, _, voicing in timeline)
 
     def test_build_chord_timeline_static_mode_reuses_voicing(self):
         """static=True reuses voicing for identical chords."""

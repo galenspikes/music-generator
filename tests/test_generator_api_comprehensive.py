@@ -324,33 +324,6 @@ class TestGenerate:
             api.generate(spec)
 
 
-class TestParameterSchema:
-    """Test parameter schema introspection."""
-
-    def test_parameter_schema_returns_list(self):
-        """parameter_schema() returns list of parameter specs."""
-        schema = api.parameter_schema()
-        assert isinstance(schema, list)
-        assert len(schema) > 0
-
-    def test_parameter_spec_has_required_fields(self):
-        """Each parameter spec has name, kind, default, etc."""
-        schema = api.parameter_schema()
-        for param in schema:
-            assert isinstance(param, dict)
-            # Should have at least these keys
-            required = {"name", "kind"}
-            assert required.issubset(param.keys())
-
-    def test_schema_includes_common_parameters(self):
-        """Schema includes expected parameters."""
-        schema = api.parameter_schema()
-        param_names = {p["name"] for p in schema}
-        # Check for some expected parameters
-        expected = {"keys", "bpm", "seconds"}
-        assert len(expected & param_names) > 0
-
-
 class TestEnvelopeFromBytes:
     """Test audio envelope extraction."""
 
@@ -528,6 +501,14 @@ class TestParameterSchema:
         schema = api.parameter_schema()
         assert isinstance(schema, list)
         assert len(schema) > 0
+
+    def test_parameter_spec_has_required_fields(self):
+        """Each parameter spec is a dict with at least name and kind."""
+        schema = api.parameter_schema()
+        for param in schema:
+            assert isinstance(param, dict)
+            required = {"name", "kind"}
+            assert required.issubset(param.keys())
 
     def test_schema_entries_have_required_fields(self):
         """Each schema entry has name, kind, and help."""

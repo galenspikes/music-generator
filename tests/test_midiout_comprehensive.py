@@ -99,58 +99,9 @@ class TestMidiOutTiming:
     def test_advance_dr_updates_position(self):
         """advance_dr advances drum track position."""
         out = MidiOut(bpm=120)
-        initial_pos = out.voice_positions.get("ensemble", 0.0)
+        initial_pos = out.dr_position
         out.advance_dr(1.0)
-        # Should advance without error
-        assert out is not None
-
-
-class TestVelocityComputation:
-    """Test velocity humanization and computation."""
-
-    def test_clamp_velocity_bounds(self):
-        """_clamp_velocity clamps to [1, 127]."""
-        assert MidiOut._clamp_velocity(-10) == 1
-        assert MidiOut._clamp_velocity(0) == 1
-        assert MidiOut._clamp_velocity(64) == 64
-        assert MidiOut._clamp_velocity(127) == 127
-        assert MidiOut._clamp_velocity(200) == 127
-
-    def test_compute_chord_velocity_uniform(self):
-        """Uniform velocity mode returns base velocity."""
-        out = MidiOut(bpm=120, vel_mode_chords="uniform")
-        vel = out._compute_chord_velocity(0.0, base=80)
-        assert vel == 80
-
-    def test_compute_chord_velocity_human(self):
-        """Human velocity mode varies velocity around base."""
-        random.seed(42)
-        out = MidiOut(bpm=120, vel_mode_chords="human")
-        velocities = []
-        for _ in range(10):
-            vel = out._compute_chord_velocity(0.0, base=80)
-            velocities.append(vel)
-        # Should have some variation
-        assert len(set(velocities)) > 1
-        # All should be in valid range
-        assert all(1 <= v <= 127 for v in velocities)
-
-    def test_compute_drum_velocity_uniform(self):
-        """Uniform drum velocity mode."""
-        out = MidiOut(bpm=120, vel_mode_drums="uniform")
-        vel = out._compute_drum_velocity(midi_note=35, base=90, when_beats=0.0)
-        assert 1 <= vel <= 127
-
-    def test_compute_drum_velocity_human_mode(self):
-        """Human drum velocity mode varies velocity."""
-        random.seed(42)
-        out = MidiOut(bpm=120, vel_mode_drums="human")
-        velocities = []
-        for _ in range(5):
-            vel = out._compute_drum_velocity(midi_note=35, base=90, when_beats=0.0)
-            velocities.append(vel)
-        # All should be in valid range
-        assert all(1 <= v <= 127 for v in velocities)
+        assert out.dr_position == initial_pos + 1.0
 
 
 class TestChordTrackAccess:
@@ -425,6 +376,36 @@ class TestVelocityComputation:
         """Velocity clamped to maximum of 127."""
         assert MidiOut._clamp_velocity(200) == 127
         assert MidiOut._clamp_velocity(128) == 127
+
+    def test_compute_chord_velocity_uniform(self):
+        """Uniform velocity mode returns base velocity."""
+        out = MidiOut(bpm=120, vel_mode_chords="uniform")
+        vel = out._compute_chord_velocity(0.0, base=80)
+        assert vel == 80
+
+    def test_compute_chord_velocity_human_varies(self):
+        """Human velocity mode varies velocity around base."""
+        random.seed(42)
+        out = MidiOut(bpm=120, vel_mode_chords="human")
+        velocities = [out._compute_chord_velocity(0.0, base=80) for _ in range(10)]
+        assert len(set(velocities)) > 1
+        assert all(1 <= v <= 127 for v in velocities)
+
+    def test_compute_drum_velocity_uniform(self):
+        """Uniform drum velocity mode."""
+        out = MidiOut(bpm=120, vel_mode_drums="uniform")
+        vel = out._compute_drum_velocity(midi_note=35, base=90, when_beats=0.0)
+        assert 1 <= vel <= 127
+
+    def test_compute_drum_velocity_human_mode(self):
+        """Human drum velocity mode stays within valid range."""
+        random.seed(42)
+        out = MidiOut(bpm=120, vel_mode_drums="human")
+        velocities = [
+            out._compute_drum_velocity(midi_note=35, base=90, when_beats=0.0)
+            for _ in range(5)
+        ]
+        assert all(1 <= v <= 127 for v in velocities)
 
     def test_compute_chord_velocity_default_mode(self):
         """Default velocity mode returns consistent velocity."""

@@ -518,7 +518,7 @@ class TestPercussionGridQuantization:
 
     def test_quantize_to_grid_basic(self):
         """quantize_to_grid rounds pattern to grid."""
-        from percussion import quantize_to_grid, GRID_STEP
+        from percussion import quantize_to_grid
 
         # GRID_STEP determines the quantization granularity
         pattern = [(0.5, [PercHit(note=36)])]

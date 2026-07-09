@@ -86,7 +86,11 @@ def _drum_letter_crib() -> str:
               ("s", "tom"), ("f", "clap")]
     try:
         dm = mg.get_drum_map() or {}
-    except Exception:
+    except (OSError, ValueError, KeyError):
+        # get_drum_map may lazily load the percussion library from disk:
+        # a missing/unreadable file (OSError), malformed JSON (ValueError),
+        # or a map missing expected entries (KeyError) all just mean we
+        # can't tailor the crib — fall back to the standard-kit letters.
         dm = {}
     have = [f"{ltr}={name}" for ltr, name in common if not dm or ltr in dm]
     return ", ".join(have) if have else "b=kick, c=snare, g=hi-hat, k=ride"

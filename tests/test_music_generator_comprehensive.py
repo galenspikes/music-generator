@@ -418,8 +418,9 @@ class TestKeyPresetLoading:
         """load_key_presets with force_reload=True reloads."""
         presets1 = M.load_key_presets()
         presets2 = M.load_key_presets(force_reload=True)
-        # Should be equivalent but not the same object if reloaded
+        # Reload reads the same file, so contents stay equivalent
         assert isinstance(presets2, dict)
+        assert presets2 == presets1
 
 
 class TestGmInstrumentMapping:
