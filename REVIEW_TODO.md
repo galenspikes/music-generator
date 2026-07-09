@@ -90,7 +90,8 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 ## MEDIUM-TERM (1–2 months) — Structural debt (Tier 4 refactor)
 
 ### Module Extraction
-- [ ] **Split `percussion.py` (704 lines)**
+- [x] **Split `percussion.py` (704 lines)** — `percussion.py` kept as the
+      public façade; internals now live in map/tokens/timeline layers
   - Create `percussion_map.py` (drum map management: load/set/get)
   - Create `percussion_tokens.py` (token parsing: parse_single_token, parse_pattern)
   - Create `percussion_timeline.py` (timeline building: build_drum_timeline_*)

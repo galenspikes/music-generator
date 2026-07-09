@@ -3,7 +3,7 @@
 Wraps :mod:`mido` to accumulate chord/voice and drum events on a tempo-mapped
 timeline (optionally split into per-voice stems), apply velocity humanisation,
 and save a Type-1 MIDI file. Depends on :mod:`mtheory` (channels, voice order)
-and :mod:`percussion` (:class:`PercHit`).
+and :mod:`percussion_tokens` (:class:`PercHit`).
 """
 import copy
 import os
@@ -12,7 +12,7 @@ import random
 from mido import Message, MidiFile, MidiTrack, MetaMessage, bpm2tempo
 
 from mtheory import CHORD_CH, DRUM_CH, LEAD_CH, VOICE_ORDER
-from percussion import PercHit
+from percussion_tokens import PercHit
 
 __all__ = ["MidiOut"]
 
