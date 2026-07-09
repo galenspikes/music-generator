@@ -20,6 +20,7 @@ import logging
 import math
 import random
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -79,18 +80,21 @@ KEY_PRESETS_PATH = LIB_DIR / "keys_presets.json"
 MIDI_DIR = OUTPUT_DIR / "midi"
 
 _KEY_PRESETS_CACHE: dict[str, list[str]] | None = None
+_KEY_PRESETS_LOCK = threading.Lock()
 
 
 def load_key_presets(force_reload: bool = False) -> dict[str, list[str]]:
-    """Load key presets from library/keys_presets.json (cached)."""
+    """Load key presets from library/keys_presets.json (cached, thread-safe)."""
 
     global _KEY_PRESETS_CACHE
-    if _KEY_PRESETS_CACHE is not None and not force_reload:
-        return _KEY_PRESETS_CACHE
+    with _KEY_PRESETS_LOCK:
+        if _KEY_PRESETS_CACHE is not None and not force_reload:
+            return _KEY_PRESETS_CACHE
 
     if not KEY_PRESETS_PATH.exists():
-        _KEY_PRESETS_CACHE = {}
-        return _KEY_PRESETS_CACHE
+        with _KEY_PRESETS_LOCK:
+            _KEY_PRESETS_CACHE = {}
+            return _KEY_PRESETS_CACHE
 
     try:
         with open(KEY_PRESETS_PATH, "r", encoding="utf-8") as handle:
@@ -145,7 +149,8 @@ def load_key_presets(force_reload: bool = False) -> dict[str, list[str]]:
             if cleaned:
                 out[name] = cleaned
 
-    _KEY_PRESETS_CACHE = out
+    with _KEY_PRESETS_LOCK:
+        _KEY_PRESETS_CACHE = out
     return out
 
 # --- GM instrument aliases (add/edit as you like) ---

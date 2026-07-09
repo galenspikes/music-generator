@@ -73,13 +73,14 @@ def _density_tier(density: float) -> str:
     return "busy"
 
 
-def generate_motif(density: float = 0.5) -> list[MelodyNote]:
+def generate_motif(density: float = 0.5, rng=None) -> list[MelodyNote]:
     """Invent a one-bar motif: a rhythm cell from the density tier plus a
     stepwise contour walk over scale degrees (leaps resolve by step back).
     Ends on a stable degree (1/3/5) so restatements feel grounded."""
-    cell = random.choice(_RHYTHM_CELLS[_density_tier(density)])
+    r = rng or random
+    cell = r.choice(_RHYTHM_CELLS[_density_tier(density)])
     degrees: list[int] = []
-    cur = random.choice((1, 3, 5))
+    cur = r.choice((1, 3, 5))
     pending_resolve = 0
     n_notes = sum(1 for d in cell if d is not None)
     for i in range(n_notes):
@@ -94,7 +95,7 @@ def generate_motif(density: float = 0.5) -> list[MelodyNote]:
             cur += -1 if pending_resolve > 0 else 1  # step back after a leap
             pending_resolve = 0
         else:
-            step = random.choices((-1, 1, -2, 2, 4), weights=(30, 34, 12, 14, 10))[0]
+            step = r.choices((-1, 1, -2, 2, 4), weights=(30, 34, 12, 14, 10))[0]
             if abs(step) > 2:
                 pending_resolve = step
             cur += step
@@ -197,7 +198,8 @@ def build_lead_events(spans: list[tuple[float, float, ChordDef]],
                       motif_text: str | None = None,
                       density: float = 0.5,
                       rests: float = 0.3,
-                      register: str = "high"
+                      register: str = "high",
+                      rng=None
                       ) -> list[tuple[float, float, int]]:
     """Build the lead line for one section.
 
@@ -210,6 +212,7 @@ def build_lead_events(spans: list[tuple[float, float, ChordDef]],
     """
     if not spans:
         return []
+    r = rng or random
     total = spans[-1][1]
     lo, hi = LEAD_REGISTERS.get(str(register).lower(), LEAD_REGISTERS["high"])
     scale = mel.scale_for(mode)
@@ -218,7 +221,7 @@ def build_lead_events(spans: list[tuple[float, float, ChordDef]],
     if motif_text and str(motif_text).strip():
         motif = mel.parse_melody(str(motif_text))
     else:
-        motif = generate_motif(density)
+        motif = generate_motif(density, rng=rng)
     phrase_len = max(PHRASE_BEATS, math.ceil(_motif_beats(motif)))
 
     events: list[tuple[float, float, int]] = []
@@ -231,14 +234,14 @@ def build_lead_events(spans: list[tuple[float, float, ChordDef]],
         if slot == 0:
             notes = motif                      # statement
         elif slot == 1:
-            if random.random() < rests:
+            if r.random() < rests:
                 notes = None                   # response space: silence
             else:
                 notes = _develop(motif, chord, key_pc, scale, "fit")
         elif slot == 2:
             notes = _develop(motif, chord, key_pc, scale, "fit")
         else:
-            device = random.choice(("invert", "sequence"))
+            device = r.choice(("invert", "sequence"))
             notes = _develop(motif, chord, key_pc, scale, device)
         if notes is not None:
             phrase_events, shift = _realize_phrase(
