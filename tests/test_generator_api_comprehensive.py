@@ -718,3 +718,46 @@ class TestSlugify:
         # Slugify produces a valid identifier/slug
         assert isinstance(slug, str)
         assert len(slug) > 0
+
+
+class TestApiClasses:
+    """The class seams behind the module facades (ParameterSchema,
+    ErrorClassifier, ResultSerializer)."""
+
+    def test_parameter_schema_class_backs_facade(self):
+        """parameter_schema() and a fresh ParameterSchema agree."""
+        assert api.ParameterSchema().specs() == api.parameter_schema()
+
+    def test_coerce_scalars_and_lists(self):
+        schema = api.ParameterSchema()
+        actions = schema.actions_by_dest()
+        assert schema.coerce(actions["bpm"], "120") == 120
+        assert schema.coerce(actions["seconds"], "8") == 8.0
+        assert schema.coerce(actions["perc_interrupters"], "qk") == ["qk"]
+        assert schema.coerce(actions["perc_interrupters"], "") == []
+
+    def test_namespace_from_spec_ignores_unknown_keys(self):
+        args = api.ParameterSchema().namespace_from_spec(
+            {"bpm": 90, "not_a_real_flag": 1})
+        assert args.bpm == 90
+        assert not hasattr(args, "not_a_real_flag")
+
+    def test_error_classifier_class_backs_facade(self):
+        clf = api.ErrorClassifier()
+        msg = "Bad key 'Q'"
+        assert clf.classify_message(msg) == api.classify_error(msg)
+
+    def test_result_serializer_channel_name(self):
+        ser = api.ResultSerializer()
+        assert ser.channel_name(None) is None
+        assert ser.channel_name(9) == "drums"
+        assert ser.channel_name(0) == "soprano"
+
+    def test_result_serializer_from_bytes_roundtrip(self):
+        """result_from_bytes rebuilds tracks/duration/envelope from raw MIDI."""
+        res = api.generate({"keys": "C, G", "seconds": 4})
+        rebuilt = api.ResultSerializer().result_from_bytes(res.midi, "song")
+        assert rebuilt.mode == "song"
+        assert rebuilt.duration_seconds > 0
+        assert [t.as_dict() for t in rebuilt.tracks] == \
+            [t.as_dict() for t in res.tracks]

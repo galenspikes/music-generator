@@ -67,7 +67,7 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
   - **Priority:** P3 (UX polish)
 
 ### Refactoring
-- [ ] **Extract parameter validation into a class**
+- [x] **Extract parameter validation into a class**
   - Reduce `generator_api.py` (1,110 lines) complexity
   - Create `ParameterSchema` class to hold validation logic
   - **Effort:** 2–3 hours
@@ -107,7 +107,7 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
   - **Effort:** 2–3 hours
   - **Priority:** P2 (Fragility, reusability)
 
-- [ ] **Refactor `generator_api.py` into classes**
+- [x] **Refactor `generator_api.py` into classes**
   - `ParameterSchema` — introspect and validate CLI args
   - `ErrorClassifier` — classify errors + generate suggestions
   - `ResultSerializer` — convert internal structures to API DTOs
