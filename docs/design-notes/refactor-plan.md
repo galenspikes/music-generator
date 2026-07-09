@@ -159,3 +159,36 @@ Tier 1's tests.
 **Status: Tiers 1–4 are all complete.** The code-health plan is done — the engine
 is modular and layered, the catalog is a supported feature, dead code is gone, and
 `make check` (ruff + pytest) is the pre-commit gate.
+
+---
+
+## Tier 5 — Global-state elimination & concurrency (2026-07-09) ✅ core done
+
+Driven by `REVIEW_TODO.md` (the 2026-07 code-review action items). Delivered:
+
+- **5.1 Thread-safe caches.** `mtheory.RecipeCache` (lock-guarded lazy recipe
+  load; concurrent cold start does one shared load) and a lock around the
+  active-drum-map cache in `percussion_map`.
+- **5.2 Drum-map dependency injection.** `build_perc_from_args(args,
+  drum_map=None)`, `build_flat_midi(args, rng=None, drum_map=None)`, and the
+  `parse_*` token functions accept an injected map. `generator_api` loads a
+  per-request map (`load_drum_map_from`) — the flat path no longer reads or
+  mutates the process-global active map, which remains as the CLI's
+  convenience default.
+- **5.3 RNG as a context parameter.** An `rng` parameter (any
+  `random.Random`-like source, defaulting to the global `random` module, so
+  seeded CLI output is byte-identical) threaded through the flat-path
+  builders: composition chord makers/pickers/timelines, voicing counterpoint
+  + arpeggio, percussion timelines, and `MidiOut` humanisation.
+  `generator_api` gives each seeded request a private `random.Random`.
+- **5.4 Concurrency tests + structured logging.** `tests/test_concurrency.py`
+  pins parallel==serial generation, seeded determinism immune to global-RNG
+  noise, and cache races; `generator_api.generate()` logs spec hash + error
+  code + stack at the error boundary.
+
+**Remaining (the open thread):** the arrangement/lead path still consumes the
+global drum map and RNG — safe under `generator_api._LOCK`, which serialises
+in-process generation. Threading `rng`/`drum_map` through `arrangement.py` and
+`lead.py` the way the flat path works would let `_LOCK` be removed for true
+in-process request parallelism. Process-based multi-worker deployment
+(`uvicorn --workers N`) is already safe: all state is per-process.

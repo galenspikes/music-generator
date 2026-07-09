@@ -475,7 +475,8 @@ def song_overrides_from_args(args, include) -> dict:
     return ov
 
 
-def build_flat_midi(args) -> tuple["MidiOut", dict]:
+def build_flat_midi(args, rng=None,
+                    drum_map: dict[str, int] | None = None) -> tuple["MidiOut", dict]:
     """Render the flat chord-progression path into an in-memory MidiOut.
 
     Shared by the CLI (``main``) and the web API. Pure with respect to disk: it
@@ -484,19 +485,25 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     carries the derived fields the CLI manifest records. RNG-consumption order
     matches the original inline ``main`` body, so seeded output is identical.
 
+    ``rng`` (any random.Random-like source) and ``drum_map`` may be injected
+    for hermetic, concurrency-safe generation; they default to the global
+    ``random`` module and the process-global active drum map, so the seeded
+    CLI behaviour is unchanged.
+
     Root selection: ``--keys`` (a user-authored chart) is used by default,
     cycled to fill the piece. ``--random-roots`` ignores ``--keys`` and instead
     shuffles a circle-of-fifths each run. ``--full-progression`` plays the
     roots through once with no repeats/looping, instead of the default cycle
     (applies to either ``--keys`` or the circle-of-fifths fallback).
     """
+    r = rng or random
     tpb = 480
     beats_total = (args.seconds * args.bpm) / 60.0
     chord_len_beats = DUR_MAP[args.chord_len]
 
     if args.random_roots:
         roots = key_roots("complete", None)
-        random.shuffle(roots)
+        r.shuffle(roots)
         max_ch = 9999
     elif args.keys:
         roots = key_roots("ostinato", args.keys)
@@ -504,13 +511,13 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     else:
         roots = key_roots("complete", None)
         if not args.full_progression:
-            random.shuffle(roots)
+            r.shuffle(roots)
         max_ch = None if args.full_progression else 9999
 
     seq = build_progression(roots, args.chords, args.chords_order,
-                            max_chords=max_ch)
+                            max_chords=max_ch, rng=rng)
 
-    picker = next_mode_picker(args.chords, args.chords_order)
+    picker = next_mode_picker(args.chords, args.chords_order, rng=rng)
     preview_modes = [picker() for _ in range(16)]
 
     chord_intr = parse_chord_interrupters(
@@ -519,10 +526,11 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     chord_tl = build_chord_timeline(seq, beats_total, chord_len_beats,
                                     chord_intr,
                                     chord_fill_rate=args.chord_fill_rate,
-                                    static=(args.satb_style == "static"))
+                                    static=(args.satb_style == "static"),
+                                    rng=rng)
     chord_tl = fill_chords_to_end(chord_tl, beats_total)
 
-    perc_plan = build_perc_from_args(args)
+    perc_plan = build_perc_from_args(args, drum_map=drum_map)
     main_pat = perc_plan.main
     intr_pats = perc_plan.interrupters
     stage_specs = perc_plan.stages or []
@@ -531,11 +539,11 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     if stage_specs:
         drum_tl = build_drum_timeline_stages(stage_specs, beats_total, main_pat,
                                              intr_pats, args.perc_fill_rate,
-                                             fill_curve)
+                                             fill_curve, rng=rng)
     elif intr_pats and args.perc_fill_rate > 0.0:
         drum_tl = build_drum_timeline_with_fills(main_pat, intr_pats,
                                                  beats_total,
-                                                 args.perc_fill_rate)
+                                                 args.perc_fill_rate, rng=rng)
     else:
         drum_tl = build_drum_timeline_from_main(main_pat, beats_total)
 
@@ -544,11 +552,13 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     drum_tl = truncate_timeline_to(drum_tl, ch_end)
 
     if args.perc_ghost_rate > 0.0:
-        ghost_note = get_drum_map().get(args.perc_ghost_note.lower(), 38)
+        ghost_note = (drum_map or get_drum_map()).get(
+            args.perc_ghost_note.lower(), 38)
         drum_tl = add_ghost_notes(drum_tl, rate=args.perc_ghost_rate,
-                                  note=ghost_note)
+                                  note=ghost_note, rng=rng)
     if getattr(args, "perc_pocket", None):
-        drum_tl = apply_pocket(drum_tl, parse_pocket_spec(args.perc_pocket))
+        drum_tl = apply_pocket(
+            drum_tl, parse_pocket_spec(args.perc_pocket, drum_map=drum_map))
 
     bass_kick_times = kick_onsets(drum_tl) if args.bass_lock_kick else None
 
@@ -557,7 +567,8 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
                    vel_mode_drums=args.velocity_mode_drums,
                    split_stems=args.split_stems,
                    swing=getattr(args, "swing", 0.0),
-                   pan_spread=getattr(args, "pan_spread", 0.0))
+                   pan_spread=getattr(args, "pan_spread", 0.0),
+                   rng=rng)
 
     program = resolve_instrument(args.instrument)
 
@@ -600,6 +611,7 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
             counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
             split_stems=args.split_stems,
             logger=music_generator_logger,
+            rng=rng,
         )
 
     for when, dur, hits in drum_tl:

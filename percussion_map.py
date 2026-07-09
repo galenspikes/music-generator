@@ -10,6 +10,7 @@ of modules — import through :mod:`percussion` unless you specifically want
 this layer.
 """
 import json
+import threading
 from pathlib import Path
 
 from mtheory import LIB_DIR
@@ -61,7 +62,13 @@ FALLBACK_DRUM_MAP = {
     "z": 70,  # Maracas
 }
 
+# The process-global *active* drum map: a convenience default for the CLI
+# and one-off scripts. Concurrent embedders (the web API) should prefer
+# loading a map per request via load_drum_map_from() and passing it down
+# explicitly (parse_pattern(..., drum_map=...), build_perc_from_args(...,
+# drum_map=...)) instead of mutating this global.
 _DRUM_MAP_CACHE: dict[str, int] | None = None
+_DRUM_MAP_LOCK = threading.Lock()
 
 
 def load_drum_map_from(path: Path | None) -> dict[str, int]:
@@ -98,11 +105,14 @@ def set_active_drum_map(source: str | Path | None) -> dict[str, int]:
     path = Path(source) if source is not None else DEFAULT_PERC_LIB
     mapping = load_drum_map_from(path)
     global _DRUM_MAP_CACHE
-    _DRUM_MAP_CACHE = mapping
+    with _DRUM_MAP_LOCK:
+        _DRUM_MAP_CACHE = mapping
     return mapping
 
 
 def get_drum_map() -> dict[str, int]:
-    if _DRUM_MAP_CACHE is None:
-        set_active_drum_map(None)
-    return _DRUM_MAP_CACHE
+    with _DRUM_MAP_LOCK:
+        mapping = _DRUM_MAP_CACHE
+    if mapping is None:
+        return set_active_drum_map(None)
+    return mapping

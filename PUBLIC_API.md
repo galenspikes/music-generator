@@ -88,7 +88,8 @@ home module and through `music_generator`. Anything else you find on `mg`
   `generator_api` value objects above, which are stable).
 - `render.py`, `render_gallery.py`, `chord_reference.py` internals — CLI
   tools; drive them via their command lines.
-- Module-global state (`percussion._DRUM_MAP_CACHE`, the recipe cache):
-  scheduled to become injected context (see
-  `docs/design-notes/refactor-plan.md` Tier 5). Use `set_active_drum_map` /
-  `get_drum_map` rather than the cache variables.
+- Module-global state (the active-drum-map cache, the recipe cache): use
+  `set_active_drum_map` / `get_drum_map` rather than the cache variables —
+  or better, inject context explicitly: the builders accept `drum_map=` and
+  `rng=` parameters for hermetic, concurrency-safe generation (see
+  `docs/design-notes/refactor-plan.md` Tier 5).

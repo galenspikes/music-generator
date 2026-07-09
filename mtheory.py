@@ -8,6 +8,7 @@ may import from it.
 """
 import importlib.util
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -266,69 +267,88 @@ def pc(name: str) -> int:
     return NOTE_TO_PC[name]
 
 
-_CHORD_RECIPES_CACHE: dict[str, tuple[int, ...]] | None = None
+class RecipeCache:
+    """Thread-safe, lazily-loaded chord-recipe catalog.
+
+    Loading executes ``library/chord_recipes.py`` (an import), which is not
+    safe to run concurrently from several threads — the lock makes the first
+    load exclusive and every later call a cheap cached read. The loaded dict
+    is treated as immutable (values are tuples; never mutated in place), so
+    handing the same instance to concurrent readers is safe.
+    """
+
+    def __init__(self, path: Path) -> None:
+        self._path = path
+        self._lock = threading.Lock()
+        self._recipes: dict[str, tuple[int, ...]] | None = None
+
+    def load(self, force_reload: bool = False) -> dict[str, tuple[int, ...]]:
+        with self._lock:
+            if self._recipes is not None and not force_reload:
+                return self._recipes
+            self._recipes = self._load_from_disk()
+            return self._recipes
+
+    def get(self, name: str) -> list[int] | None:
+        if not name:
+            return None
+        recipes = self.load()
+        recipe = recipes.get(name) or recipes.get(name.lower())
+        if recipe is None:
+            return None
+        return list(recipe)
+
+    def _load_from_disk(self) -> dict[str, tuple[int, ...]]:
+        if not self._path.exists():
+            return {}
+
+        module_name = "_fs_chord_recipes"
+        sys.modules.pop(module_name, None)
+
+        spec = importlib.util.spec_from_file_location(module_name, self._path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(
+                f"Could not import chord recipes from {self._path}")
+
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:  # pragma: no cover - developer-facing failure
+            raise RuntimeError(f"Failed to load chord_recipes.py: {exc}") from exc
+
+        data = getattr(module, "CHORD_RECIPES", {})
+        if not isinstance(data, dict):
+            raise RuntimeError("chord_recipes.py must define CHORD_RECIPES = {...}")
+
+        # normalise payload to int lists
+        recipes: dict[str, tuple[int, ...]] = {}
+        for key, values in data.items():
+            if not isinstance(key, str) or not isinstance(values, (list, tuple)):
+                continue
+            cleaned: list[int] = []
+            for val in values:
+                try:
+                    cleaned.append(int(val))
+                except Exception:
+                    continue
+            if cleaned:
+                immutable = tuple(cleaned)
+                recipes[key] = immutable
+                lower_key = key.lower()
+                if lower_key not in recipes:
+                    recipes[lower_key] = immutable
+        return recipes
+
+
+_RECIPE_CACHE = RecipeCache(CHORD_RECIPES_PATH)
 
 
 def load_chord_recipes(
         force_reload: bool = False) -> dict[str, tuple[int, ...]]:
-    """Load chord recipes from library/chord_recipes.json (cached)."""
-
-    global _CHORD_RECIPES_CACHE
-    if _CHORD_RECIPES_CACHE is not None and not force_reload:
-        return _CHORD_RECIPES_CACHE
-
-    if not CHORD_RECIPES_PATH.exists():
-        _CHORD_RECIPES_CACHE = {}
-        return _CHORD_RECIPES_CACHE
-
-    module_name = "_fs_chord_recipes"
-    sys.modules.pop(module_name, None)
-
-    spec = importlib.util.spec_from_file_location(module_name,
-                                                  CHORD_RECIPES_PATH)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(
-            f"Could not import chord recipes from {CHORD_RECIPES_PATH}")
-
-    module = importlib.util.module_from_spec(spec)
-    try:
-        spec.loader.exec_module(module)
-    except Exception as exc:  # pragma: no cover - developer-facing failure
-        raise RuntimeError(f"Failed to load chord_recipes.py: {exc}") from exc
-
-    data = getattr(module, "CHORD_RECIPES", {})
-    if not isinstance(data, dict):
-        raise RuntimeError("chord_recipes.py must define CHORD_RECIPES = {...}")
-
-    # normalise payload to int lists
-    recipes: dict[str, tuple[int, ...]] = {}
-    for key, values in data.items():
-        if not isinstance(key, str) or not isinstance(values, (list, tuple)):
-            continue
-        cleaned: list[int] = []
-        for val in values:
-            try:
-                cleaned.append(int(val))
-            except Exception:
-                continue
-        if cleaned:
-            immutable = tuple(cleaned)
-            recipes[key] = immutable
-            lower_key = key.lower()
-            if lower_key not in recipes:
-                recipes[lower_key] = immutable
-
-    _CHORD_RECIPES_CACHE = recipes
-    return recipes
+    """Load chord recipes from library/chord_recipes.py (cached, thread-safe)."""
+    return _RECIPE_CACHE.load(force_reload)
 
 
 def get_chord_recipe(name: str) -> list[int] | None:
     """Fetch a chord recipe by name (case-insensitive)."""
-
-    if not name:
-        return None
-    recipes = load_chord_recipes()
-    recipe = recipes.get(name) or recipes.get(name.lower())
-    if recipe is None:
-        return None
-    return list(recipe)
+    return _RECIPE_CACHE.get(name)

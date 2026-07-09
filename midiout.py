@@ -36,7 +36,8 @@ class MidiOut:
                  split_stems: bool = False,
                  swing: float = 0.0,
                  pan_spread: float = 0.0,
-                 with_lead: bool = False) -> None:
+                 with_lead: bool = False,
+                 rng=None) -> None:
         """Set up the Type-1 MIDI file and its track layout.
 
         Two layouts, chosen by ``split_stems``:
@@ -59,8 +60,13 @@ class MidiOut:
             out = MidiOut(bpm=96, split_stems=True, pan_spread=0.6)
             out.chord_block((72, 67, 60, 48), beats=4.0, when_beats=0.0)
             out.save("take1.mid")
+
+        ``rng`` is the randomness source for velocity humanisation and
+        per-hit probability (any random.Random-like object); it defaults to
+        the global ``random`` module, so seeded CLI behaviour is unchanged.
         """
         self.bpm = bpm
+        self._rng = rng or random
         self.fname = fname
         self.tpb = tpb
         self.vel_mode_chords = (vel_mode_chords or "uniform").lower()
@@ -316,7 +322,7 @@ class MidiOut:
     def _compute_chord_velocity(self, when_beats: float, base: int = 78) -> int:
         mode = self.vel_mode_chords
         if mode == "random":
-            return self._clamp_velocity(base + random.randint(-36, 38))
+            return self._clamp_velocity(base + self._rng.randint(-36, 38))
         if mode == "human":
             beat_pos = (when_beats or 0.0) % 4.0
             accent = 0
@@ -326,7 +332,7 @@ class MidiOut:
                 accent += 6
             elif abs(beat_pos - 1.0) < 0.01 or abs(beat_pos - 3.0) < 0.01:
                 accent += 3
-            jitter = random.randint(-5, 5)
+            jitter = self._rng.randint(-5, 5)
             return self._clamp_velocity(base + accent + jitter)
         return self._clamp_velocity(base)
 
@@ -367,7 +373,7 @@ class MidiOut:
                                when_beats: float) -> int:
         mode = self.vel_mode_drums
         if mode == "random":
-            return self._clamp_velocity(base + random.randint(-35, 35))
+            return self._clamp_velocity(base + self._rng.randint(-35, 35))
         if mode == "human":
             beat_pos = (when_beats or 0.0) % 4.0
             accent = 0
@@ -383,7 +389,7 @@ class MidiOut:
                 accent += 2
             elif midi_note in (42, 46):  # hats
                 accent += 1
-            jitter = random.randint(-6, 6)
+            jitter = self._rng.randint(-6, 6)
             return self._clamp_velocity(base + accent + jitter)
         return self._clamp_velocity(base)
 
@@ -543,7 +549,7 @@ class MidiOut:
         events: list[tuple[float, int, int]] = []
 
         for hit in hits:
-            if random.random() > hit.probability:
+            if self._rng.random() > hit.probability:
                 continue
             note = hit.note
             base = round(base_velocity(note) * vel_scale) + hit.vel_offset

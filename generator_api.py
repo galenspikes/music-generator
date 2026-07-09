@@ -27,7 +27,10 @@ concurrency) is a later, separate step.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
+import json
+import logging
 import random
 import re
 import threading
@@ -523,32 +526,78 @@ def envelope_from_bytes(data: bytes, duration: float, buckets: int = 60) -> list
 
 # --- the seam ------------------------------------------------------------------
 
+_LOG = logging.getLogger("generator_api")
+
+
+def _spec_hash(spec: dict) -> str:
+    """A short stable fingerprint of a spec, for correlating log lines with
+    a reproducible input without dumping the whole spec at every boundary."""
+    payload = json.dumps(spec or {}, sort_keys=True, default=str)
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+
+
+def _log_failure(spec: dict, err: GenerationError, cause: BaseException) -> None:
+    """Structured error-boundary log: spec hash + error code/type + stack.
+
+    One line per failed generation, with enough to debug production issues
+    without verbose mode: grep the code, replay the spec by its hash.
+    """
+    _LOG.error(
+        "generation failed spec=%s code=%s type=%s: %s",
+        _spec_hash(spec), err.code, err.error_type, err,
+        exc_info=cause,
+    )
+
+
 def generate(spec: dict) -> GenerationResult:
     """Turn a spec into music, in memory. Never writes to ``output/``."""
     with _LOCK:
         try:
-            return _generate_locked(spec)
+            result = _generate_locked(spec)
         except GenerationError as exc:
             # Already-structured errors pass through; bare ones (raised deep in
             # the engine / here) get classified so they gain a suggestion too.
-            if exc.suggestion or exc.error_type != "generation_error":
+            err = exc
+            if not (exc.suggestion or exc.error_type != "generation_error"):
+                err = _classified(str(exc))
+            _log_failure(spec, err, exc)
+            if err is exc:
                 raise
-            raise _classified(str(exc)) from exc
+            raise err from exc
         except errors.TokenSyntaxError as exc:  # typed DSL errors: exact classification
-            raise _classified_exc(exc) from exc
+            err = _classified_exc(exc)
+            _log_failure(spec, err, exc)
+            raise err from exc
         except mg.SpecError as exc:  # invalid spec (bad voice-instrument, …)
-            raise _classified_exc(exc) from exc
+            err = _classified_exc(exc)
+            _log_failure(spec, err, exc)
+            raise err from exc
         except SystemExit as exc:  # argparse guard rails
-            raise _classified(str(exc) or "invalid arguments") from exc
+            err = _classified(str(exc) or "invalid arguments")
+            _log_failure(spec, err, exc)
+            raise err from exc
         except Exception as exc:  # surface a readable message to the UI
-            raise _classified(f"{type(exc).__name__}: {exc}") from exc
+            err = _classified(f"{type(exc).__name__}: {exc}")
+            _log_failure(spec, err, exc)
+            raise err from exc
+        _LOG.info("generation ok spec=%s mode=%s duration=%.2fs",
+                  _spec_hash(spec), result.mode, result.duration_seconds)
+        return result
 
 
 def _generate_locked(spec: dict) -> GenerationResult:
     """The generation pipeline behind :func:`generate` (which holds the lock
-    and owns error classification): spec → argparse namespace → engine
-    globals (drum map, seed) → one of the render paths (arrangement song
-    via a temp file, or in-memory flat build) → GenerationResult."""
+    and owns error classification): spec → argparse namespace → per-request
+    context (drum map, RNG) → one of the render paths (arrangement song via
+    a temp file, or in-memory flat build) → GenerationResult.
+
+    The flat path is hermetic: its drum map is loaded per request and its
+    RNG is a private ``random.Random`` when a seed is given, so it neither
+    reads nor mutates the process-global engine state. The song path still
+    leans on the globals (arrangement reads the active drum map and the
+    global RNG deep inside), which is safe under ``_LOCK`` — removing that
+    remaining dependence is what stands between here and dropping the lock.
+    """
     # Raw song YAML text (e.g. from the lead-sheet importer) — an alternative
     # to args.song's file path so the webapp never has to write the imported
     # song anywhere durable. Not an argparse flag, so pulled from the raw
@@ -564,13 +613,22 @@ def _generate_locked(spec: dict) -> GenerationResult:
                 f"Unknown keys preset '{args.keys_preset}'")
         args.keys = ",".join(preset)
 
-    mg.set_active_drum_map(args.perc_lib if args.perc_lib else None)
     mg.apply_arg_normalization(args)
-    if args.seed is not None:
-        random.seed(args.seed)
+    # Per-request context: a private drum map and (when seeded) a private
+    # Random. random.Random(seed) yields the same stream random.seed(seed)
+    # did, so seeded output is byte-identical to the old global-seeding path.
+    drum_map = mg.load_drum_map_from(
+        Path(args.perc_lib) if args.perc_lib else mg.DEFAULT_PERC_LIB)
+    rng = random.Random(args.seed) if args.seed is not None else None
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
     if args.song or song_yaml_text:
+        # The song path still consumes the process globals (arrangement and
+        # the lead generator read the active drum map / global RNG deep
+        # inside) — set them up per request; _LOCK serialises access.
+        mg.set_active_drum_map(args.perc_lib if args.perc_lib else None)
+        if args.seed is not None:
+            random.seed(args.seed)
         import tempfile
         import arrangement
 
@@ -597,7 +655,7 @@ def _generate_locked(spec: dict) -> GenerationResult:
         return _SERIALIZER.result_from_bytes(data, "song")
 
     # ----- flat (chord progression) -----
-    midi, _meta = mg.build_flat_midi(args)
+    midi, _meta = mg.build_flat_midi(args, rng=rng, drum_map=drum_map)
     if args.full_progression:
         result_mode = "full-progression"
     elif args.random_roots or not args.keys:

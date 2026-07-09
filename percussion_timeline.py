@@ -49,13 +49,15 @@ class PercPlan:
     fill_curve: tuple[float, float] | None
 
 
-def choose_perc_pattern(main, interrupters, fill_rate):
+def choose_perc_pattern(main, interrupters, fill_rate, rng=None):
     """
     Returns either the main percussion pattern or a fill interrupter
-    depending on fill_rate probability.
+    depending on fill_rate probability. ``rng`` is any random.Random-like
+    source (defaults to the global ``random`` module).
     """
-    if interrupters and fill_rate > 0.0 and random.random() < fill_rate:
-        return random.choice(interrupters)
+    r = rng or random
+    if interrupters and fill_rate > 0.0 and r.random() < fill_rate:
+        return r.choice(interrupters)
     return main
 
 
@@ -75,26 +77,29 @@ def build_drum_timeline_with_fills(
         main_pat: list[tuple[float, list[PercHit]]],
         intr_pats: list[list[tuple[float, list[PercHit]]]] | None,
         beats_total: float,
-        fill_rate: float) -> list[tuple[float, float, list[PercHit]]]:
+        fill_rate: float,
+        rng=None) -> list[tuple[float, float, list[PercHit]]]:
     """
     Bar-less unroll: each iteration chooses either main or a fill motif
     based on fill_rate. If intr_pats is None or fill_rate==0, falls back to main only.
     """
-    return build_drum_segment(0.0, beats_total, main_pat, intr_pats, fill_rate)
+    return build_drum_segment(0.0, beats_total, main_pat, intr_pats, fill_rate,
+                              rng=rng)
 
 
 def build_drum_segment(start_beats: float,
                        duration: float,
                        main_pat: list[tuple[float, list[PercHit]]],
                        intr_pats: list[list[tuple[float, list[PercHit]]]] | None,
-                       fill_rate: float) -> list[tuple[float, float, list[PercHit]]]:
+                       fill_rate: float,
+                       rng=None) -> list[tuple[float, float, list[PercHit]]]:
     """Unroll a single percussion segment starting at start_beats."""
     if not main_pat or duration <= 0.0:
         return []
     out: list[tuple[float, float, list[PercHit]]] = []
     local = 0.0
     while local < duration:
-        pattern = choose_perc_pattern(main_pat, intr_pats, fill_rate)
+        pattern = choose_perc_pattern(main_pat, intr_pats, fill_rate, rng=rng)
         for beats, hits in pattern:
             if local >= duration:
                 break
@@ -112,7 +117,8 @@ def build_drum_timeline_stages(
         fallback_main: list[tuple[float, list[PercHit]]],
         fallback_intr: list[list[tuple[float, list[PercHit]]]] | None,
         base_fill_rate: float,
-        fill_curve: tuple[float, float] | None) -> list[tuple[float, float, list[PercHit]]]:
+        fill_curve: tuple[float, float] | None,
+        rng=None) -> list[tuple[float, float, list[PercHit]]]:
     """Build a drum timeline from a sequence of :class:`PercStage` sections.
 
     Each stage plays its own main pattern (falling back to ``fallback_main``
@@ -150,14 +156,14 @@ def build_drum_timeline_stages(
         stage_fills = list(stage.fills) if stage.fills else fallback_intr
         out.extend(
             build_drum_segment(pos, segment_len, stage.main, stage_fills,
-                               stage_fill))
+                               stage_fill, rng=rng))
         pos += stage.beats
 
     if pos < beats_total and fallback_main:
         remainder = beats_total - pos
         out.extend(
             build_drum_segment(pos, remainder, fallback_main, fallback_intr,
-                               base_fill_rate))
+                               base_fill_rate, rng=rng))
 
     return out
 
@@ -204,7 +210,8 @@ def add_ghost_notes(
         drum_tl: list[tuple[float, float, list[PercHit]]],
         rate: float = 0.0,
         note: int = 38,
-        vel_offset: int = -40
+        vel_offset: int = -40,
+        rng=None
         ) -> list[tuple[float, float, list[PercHit]]]:
     """Fill empty (rest) slots in a drum timeline with a low-velocity ghost
     hit, independently at probability ``rate`` per empty slot. Slots that
@@ -212,19 +219,24 @@ def add_ghost_notes(
     """
     if rate <= 0.0 or not drum_tl:
         return drum_tl
+    r = rng or random
     out = []
     for when, dur, hits in drum_tl:
-        if not hits and random.random() < rate:
+        if not hits and r.random() < rate:
             out.append((when, dur, [PercHit(note=note, vel_offset=vel_offset)]))
         else:
             out.append((when, dur, hits))
     return out
 
 
-def build_perc_from_args(args) -> PercPlan:
-    """Build percussion plan (main loop, fills, staged evolution) from CLI args."""
+def build_perc_from_args(args, drum_map: dict[str, int] | None = None) -> PercPlan:
+    """Build percussion plan (main loop, fills, staged evolution) from CLI args.
 
-    drum_map = get_drum_map()
+    ``drum_map`` may be injected explicitly (the concurrency-safe path);
+    otherwise the process-global active map is used.
+    """
+
+    drum_map = drum_map or get_drum_map()
 
     # Default perc_lib to the bundled library so groove lookups (perc_main_key,
     # perc_intr_keys) work out of the box on the CLI.

@@ -85,13 +85,15 @@ def _counterpoint_sequence(start: int,
                            target: int,
                            pcs: set[int],
                            segments: int,
-                           voice: str) -> list[int]:
+                           voice: str,
+                           rng=None) -> list[int]:
     lo, hi = VOICE_RANGE_MAP[voice]
     start = clamp_to_range(start, lo, hi)
     target = clamp_to_range(target, lo, hi)
     if segments <= 1:
         return [start]
 
+    r = rng or random
     seq: list[int] = []
     current = start
     for idx in range(segments):
@@ -105,12 +107,12 @@ def _counterpoint_sequence(start: int,
                 guess = current + (3 if delta > 0 else -3)
             elif delta == 0:
                 guess = _decorative_step(current, voice)
-                if random.random() < 0.35:
-                    guess += random.choice([-2, 2])
+                if r.random() < 0.35:
+                    guess += r.choice([-2, 2])
             else:
                 guess = current + delta
-                if abs(delta) <= 2 and random.random() < 0.4:
-                    guess += random.choice([-2, 2])
+                if abs(delta) <= 2 and r.random() < 0.4:
+                    guess += r.choice([-2, 2])
             note = _snap_note_to_pcs(guess, pcs, voice)
             if note == current:
                 deco = _decorative_step(current, voice)
@@ -144,7 +146,8 @@ def build_counterpoint_lines(
         chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
         step: float,
         suspension_prob: float,
-        anticipation_prob: float) -> dict[str, list[tuple[float, float, int]]]:
+        anticipation_prob: float,
+        rng=None) -> dict[str, list[tuple[float, float, int]]]:
     """Turn a block-chord timeline into four independent melodic lines.
 
     For each chord slot, every SATB voice walks its own stepwise path
@@ -184,6 +187,7 @@ def build_counterpoint_lines(
     if not chord_tl:
         return lines
 
+    r = rng or random
     safe_step = max(0.1, step)
     current_pitch: dict[str, int] = {
         voice: chord_tl[0][2][idx] for idx, voice in enumerate(VOICE_ORDER)
@@ -210,7 +214,7 @@ def build_counterpoint_lines(
         for _ in range(base_segments):
             if remaining <= 1e-6:
                 break
-            jitter = random.uniform(0.75, 1.4)
+            jitter = r.uniform(0.75, 1.4)
             seg = safe_step * jitter
             if seg >= remaining:
                 seg = remaining
@@ -226,7 +230,7 @@ def build_counterpoint_lines(
             start_pitch = current_pitch.get(voice, notes[v_idx])
             target_pitch = next_notes[v_idx] if next_exists else start_pitch
             seq = _counterpoint_sequence(start_pitch, target_pitch, pcs_union,
-                                         segments, voice)
+                                         segments, voice, rng=rng)
 
             hold_segments = pending_hold.get(voice, 0)
             if hold_segments > 0:
@@ -237,7 +241,7 @@ def build_counterpoint_lines(
             suspension_applied = False
 
             if next_exists and segments >= 2:
-                if random.random() < suspension_prob:
+                if r.random() < suspension_prob:
                     seq[-1] = start_pitch
                     if len(seq) >= 3:
                         seq[-2] = start_pitch
@@ -245,7 +249,7 @@ def build_counterpoint_lines(
                     suspension_applied = True
 
             if (not suspension_applied and next_exists and segments >= 2
-                    and random.random() < anticipation_prob):
+                    and r.random() < anticipation_prob):
                 seq[-1] = target_pitch
                 if len(seq) >= 3:
                     seq[-2] = target_pitch
@@ -266,7 +270,8 @@ def build_counterpoint_lines(
 def build_arpeggio_events(
         chord_tl: list[tuple[float, float, tuple[int, int, int, int]]],
         step: float,
-        pattern_cycle: tuple[tuple[str, ...], ...] | None = None
+        pattern_cycle: tuple[tuple[str, ...], ...] | None = None,
+        rng=None
 ) -> list[tuple[str, float, float, int]]:
     """Render arpeggiated SATB events with varied motion and light randomness."""
 
@@ -286,6 +291,7 @@ def build_arpeggio_events(
     if not chord_tl:
         return events
 
+    r = rng or random
     last_pitch: dict[str, int | None] = {voice: None for voice in VOICE_ORDER}
 
     for chord_index, (when, dur, notes) in enumerate(chord_tl):
@@ -296,12 +302,12 @@ def build_arpeggio_events(
         steps = max(1, int(round(total / step)))
 
         patterns = list(pattern_cycle)
-        random.shuffle(patterns)
+        r.shuffle(patterns)
 
         pattern_seq: list[str] = []
         while len(pattern_seq) < steps:
-            pattern = random.choice(patterns)
-            if chord_index % 2 and random.random() < 0.5:
+            pattern = r.choice(patterns)
+            if chord_index % 2 and r.random() < 0.5:
                 pattern = tuple(reversed(pattern))
             pattern_seq.extend(pattern)
         pattern_seq = pattern_seq[:steps]
@@ -317,7 +323,7 @@ def build_arpeggio_events(
             voice = pattern_seq[idx]
             if voice == prev_voice:
                 alternatives = [v for v in VOICE_ORDER if v != voice]
-                voice = random.choice(alternatives)
+                voice = r.choice(alternatives)
             prev_voice = voice
 
             try:
@@ -329,7 +335,7 @@ def build_arpeggio_events(
             fitted = _fit_arpeggio_pitch(note, voice, last_pitch[voice])
             last_pitch[voice] = fitted
 
-            jitter = (random.random() - 0.5) * step * 0.15
+            jitter = (r.random() - 0.5) * step * 0.15
             start_jittered = min(max(when, start + jitter), when + total)
             end_jittered = min(start_jittered + seg_len, when + total)
             seg_len = max(1e-6, end_jittered - start_jittered)
