@@ -11,6 +11,7 @@ or a ``sys.argv`` hack. Endpoints:
     GET  /api/schema    every parameter, introspected from the CLI parser
     POST /api/validate  does this spec parse? (inline editor feedback)
     POST /api/generate  spec -> { midi (base64), tracks, duration, warnings }
+    POST /api/audio     spec -> WAV bytes (in-process synth; no FluidSynth)
     GET  /api/docs      the docs/ tree (Diátaxis sections) for the Docs tab
     GET  /api/docs/{slug}  one doc's raw markdown (slug = path under docs/)
     GET  /api/recipes   chord-recipe catalog (category, intervals, notes) for
@@ -30,7 +31,7 @@ import mimetypes
 import pathlib
 import sys
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -46,6 +47,7 @@ if str(REPO_ROOT) not in sys.path:
 import generator_api as api  # noqa: E402
 import leadsheet  # noqa: E402
 import leadsheet_extract  # noqa: E402
+import synth  # noqa: E402
 
 app = FastAPI(title="Music Generator", version="0.2.0")
 
@@ -127,6 +129,21 @@ def parse_perc(req: ParsePercRequest) -> dict:
     return api.parse_perc(req.pattern, req.kind)
 
 
+@app.post("/api/audio")
+def generate_audio(req: SpecRequest) -> Response:
+    """Spec → WAV, synthesized entirely in-process (synth.py) — the audio
+    preview path that needs no FluidSynth binary and no SoundFont. For
+    production-quality renders use the CLI (`render.py`) with a real
+    SoundFont; this endpoint trades timbre realism for zero dependencies."""
+    try:
+        result = api.generate(req.spec)
+    except api.GenerationError as exc:
+        raise HTTPException(status_code=422, detail=exc.as_dict()) from exc
+    wav = synth.render_wav(result.midi)
+    return Response(content=wav, media_type="audio/wav",
+                    headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/generate")
 def generate(req: SpecRequest) -> dict:
     try:
@@ -198,8 +215,11 @@ def delete_preset(name: str) -> dict:
 
 
 @app.get("/api/progressions")
-def list_progressions() -> dict:
-    """List saved chord progressions."""
+def list_progressions(q: str = "", tag: str | None = None) -> dict:
+    """List saved chord progressions; optional substring (`q`) and exact-tag
+    (`tag`) filters for the library browser."""
+    if q or tag:
+        return {"progressions": api.search_progressions(q, tag)}
     return {"progressions": api.list_progressions()}
 
 

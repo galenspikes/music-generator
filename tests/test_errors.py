@@ -157,3 +157,36 @@ class TestApiSurfacesTypedClassification:
         res = api.parse_perc("qb, q!")
         assert not res["ok"]
         assert "drum letters" in res["suggestion"].lower()
+
+
+class TestArgumentBounds:
+    """The API boundary rejects non-positive / resource-abusive args as
+    structured errors instead of rendering nonsense (found by fuzzing:
+    seconds=-1.5 used to 'succeed' with a negative-duration result)."""
+
+    def test_negative_seconds_rejected(self):
+        with pytest.raises(api.GenerationError) as ei:
+            api.generate({"keys": "C", "seconds": -1.5})
+        assert ei.value.error_type == "invalid_argument"
+        assert ei.value.code == "ERR_ARG_001"
+
+    def test_zero_seconds_rejected(self):
+        with pytest.raises(api.GenerationError):
+            api.generate({"keys": "C", "seconds": 0})
+
+    def test_huge_seconds_rejected(self):
+        with pytest.raises(api.GenerationError) as ei:
+            api.generate({"keys": "C", "seconds": 10**6})
+        assert ei.value.code == "ERR_ARG_001"
+
+    def test_absurd_bpm_rejected(self):
+        with pytest.raises(api.GenerationError) as ei:
+            api.generate({"keys": "C", "seconds": 4, "bpm": 12862})
+        assert ei.value.error_type == "invalid_argument"
+        assert ei.value.code == "ERR_ARG_002"
+
+    def test_boundary_values_accepted(self):
+        assert api.generate({"keys": "C", "seconds": 600, "bpm": 40,
+                             "seed": 1}).duration_seconds == 600
+        assert api.generate({"keys": "C", "seconds": 1, "bpm": 960,
+                             "seed": 1}).midi

@@ -188,12 +188,17 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 - [x] Property-based fuzzing of full MIDI generation pipeline —
       tests/test_pipeline_properties.py: generated specs either render
       mido-parseable MIDI with coherent metadata or fail as GenerationError
-- [ ] Support in-process audio synthesis (remove FluidSynth dependency for web)
+- [x] Support in-process audio synthesis (remove FluidSynth dependency for web)
+      — synth.py (numpy additive/noise synth, deterministic MIDI→WAV) +
+      `POST /api/audio`; production renders still use render.py + FluidSynth
 - [x] Async generation support in web API — delivered by the lock removal:
       FastAPI already runs sync endpoints in a threadpool, and with
       `generate()` lock-free those requests now truly run in parallel
       (making the endpoint `async def` would only block the event loop)
-- [ ] Database for saved progressions (ChordBuilder feature)
+- [x] Database for saved progressions (ChordBuilder feature) —
+      progression_store.ProgressionStore (SQLite, transactional, concurrent-
+      safe, name/title/keys/tag search); legacy *.json files migrate on
+      first use; API and web shapes unchanged + `GET /api/progressions?q=&tag=`
 
 ---
 

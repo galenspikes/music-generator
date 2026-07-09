@@ -433,9 +433,12 @@ def test_delete_missing_progression_is_not_an_error(progressions_dir):
     api.delete_progression("never-existed")  # must not raise
 
 
-def test_progression_name_is_slugified_on_disk(progressions_dir):
+def test_progression_name_is_slugified_in_store(progressions_dir):
     api.save_progression("My Cool Vamp!", "C::maj7")
-    assert (progressions_dir / "my-cool-vamp.json").exists()
+    names = [p["name"] for p in api.list_progressions()]
+    assert names == ["my-cool-vamp"]
+    # storage stays inside the progressions dir (SQLite db, not loose files)
+    assert (progressions_dir / "progressions.db").exists()
 
 
 def test_load_progression_rejects_path_traversal(progressions_dir):
@@ -451,4 +454,7 @@ def test_save_progression_path_traversal_cannot_write_outside_progressions_dir(t
     api.save_progression("../../escaped", "C::maj7")
 
     assert not escape_target.exists()
-    assert list(sandbox.glob("*.json"))
+    # the write landed inside the sandbox, under a slugified name
+    assert [p["name"] for p in api.list_progressions()] == ["escaped"]
+    assert (sandbox / "progressions.db").exists()
+    assert not list(tmp_path.glob("*.json"))

@@ -46,3 +46,8 @@ _public/
 # Preset/progression fixtures leaked by an interrupted test run (the API
 # tests clean up after themselves via try/finally, but a killed run can't)
 presets/**/test_*.json
+
+# Progression library database (runtime data; legacy *.json seeds migrate in)
+presets/**/*.db
+presets/**/*.db-wal
+presets/**/*.db-shm

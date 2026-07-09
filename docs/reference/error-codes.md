@@ -25,6 +25,8 @@ message-pattern matching in `generator_api.classify_error()`.
 | `ERR_SYNTAX_001` | `invalid_syntax` | `InvalidRepetitionError` | Malformed `*N` repetition or `[...]*N` chain. | Shows the `C*4` / `[C, G]*2` forms. |
 | `ERR_SYNTAX_002` | `invalid_syntax` | `EmptyTokenError` | A token came out empty (stray comma, dangling `:`). | Look for the stray separator. |
 | `ERR_SYNTAX_000` | `invalid_syntax` | `TokenSyntaxError` (base) | Any other DSL parse error (bad inversion, too many `:` sections, …). | Points at the token grammar doc. |
+| `ERR_ARG_001` | `invalid_argument` | — (raised structured at the API boundary) | `seconds` out of the API's 0–600 range (non-positive or resource-abusive). | Pick a length from 1 to 600 seconds. |
+| `ERR_ARG_002` | `invalid_argument` | — (raised structured at the API boundary) | `bpm` out of the API's 1–960 range. | Pick a tempo between 40 and 300 BPM. |
 | `ERR_GEN_000` | `generation_error` | — (unclassified fallback) | Anything the registry doesn't recognise. | Points at the token grammar doc. |
 
 ## Conventions
