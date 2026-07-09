@@ -7,6 +7,14 @@ comma-separated key string into a flat list of normalized key tokens via
 """
 import re
 
+from errors import (
+    EmptyTokenError,
+    InvalidBassError,
+    InvalidKeyError,
+    InvalidRecipeError,
+    InvalidRepetitionError,
+    TokenSyntaxError,
+)
 from mtheory import ChordDef, NOTE_TO_PC, get_chord_recipe, parse_key_name
 
 __all__ = [
@@ -31,7 +39,7 @@ def parse_colon_key_token(token: str) -> ChordDef | None:
 
     raw = token.strip()
     if not raw:
-        raise ValueError("Empty colon chord token")
+        raise EmptyTokenError("Empty colon chord token")
 
     # Optional slash-bass suffix.
     slash_bass_pc: int | None = None
@@ -40,16 +48,16 @@ def parse_colon_key_token(token: str) -> ChordDef | None:
         raw = raw.strip()
         bass_part = bass_part.strip()
         if not bass_part:
-            raise ValueError(f"Missing bass note after '/' in token '{token}'")
+            raise InvalidBassError(f"Missing bass note after '/' in token '{token}'")
         try:
             slash_bass_pc, _ = parse_key_name(bass_part)
         except Exception as exc:
-            raise ValueError(
+            raise InvalidBassError(
                 f"Bad slash bass '{bass_part}' in token '{token}'") from exc
 
     parts = raw.split(":")
     if len(parts) > 3:
-        raise ValueError(f"Too many ':' sections in '{token}'")
+        raise TokenSyntaxError(f"Too many ':' sections in '{token}'")
 
     # pad to [root, inversion?, recipe?]
     while len(parts) < 3:
@@ -57,7 +65,7 @@ def parse_colon_key_token(token: str) -> ChordDef | None:
 
     root_part, inv_part, recipe_part = (p.strip() for p in parts[:3])
     if not root_part:
-        raise ValueError(f"Missing root in colon token '{token}'")
+        raise TokenSyntaxError(f"Missing root in colon token '{token}'")
 
     root_pc, is_minor = parse_key_name(root_part)
 
@@ -66,17 +74,17 @@ def parse_colon_key_token(token: str) -> ChordDef | None:
         try:
             inversion = int(inv_part)
         except ValueError as exc:
-            raise ValueError(
+            raise TokenSyntaxError(
                 f"Bad inversion '{inv_part}' in colon token '{token}'") from exc
 
     recipe_name = recipe_part or ("min" if is_minor else "maj")
     recipe = get_chord_recipe(recipe_name)
     if recipe is None:
-        raise ValueError(
+        raise InvalidRecipeError(
             f"Unknown chord recipe '{recipe_name}' in token '{token}'")
 
     if not recipe:
-        raise ValueError(f"Chord recipe '{recipe_name}' has no tones")
+        raise InvalidRecipeError(f"Chord recipe '{recipe_name}' has no tones")
 
     pcs = tuple(sorted({(root_pc + off) % 12 for off in recipe}))
     bass_pc = None
@@ -96,20 +104,21 @@ def parse_repetition_token(token: str) -> tuple[str, int]:
 
     parts = token.split("*")
     if len(parts) != 2:
-        raise ValueError(f"Bad repetition syntax in '{token}' (use *N format)")
+        raise InvalidRepetitionError(f"Bad repetition syntax in '{token}' (use *N format)")
 
     base_token = parts[0].strip()
     count_str = parts[1].strip()
 
     if not base_token:
-        raise ValueError(f"Empty base token in '{token}'")
+        raise EmptyTokenError(f"Empty base token in '{token}'")
 
     try:
         count = int(count_str)
     except ValueError as exc:
-        raise ValueError(f"Bad repetition count '{count_str}' in '{token}'") from exc
+        raise InvalidRepetitionError(
+            f"Bad repetition count '{count_str}' in '{token}'") from exc
     if count < 1:
-        raise ValueError(f"Repetition count must be >= 1, got {count}")
+        raise InvalidRepetitionError(f"Repetition count must be >= 1, got {count}")
 
     return base_token, count
 
@@ -117,12 +126,13 @@ def parse_repetition_token(token: str) -> tuple[str, int]:
 def parse_chain_repetition(token: str) -> tuple[list[str], int]:
     """Parse chain repetition token like [A:1:maj*2,B:0:min*2]*3. Returns (chain_tokens, count)."""
     if not token.startswith("["):
-        raise ValueError(f"Chain repetition must start with bracket: '{token}'")
+        raise InvalidRepetitionError(f"Chain repetition must start with bracket: '{token}'")
 
     # Find the last *N pattern by looking for * followed by digits at the end
     match = re.search(r'\*(\d+)$', token)
     if not match:
-        raise ValueError(f"Chain repetition must have *N count at the end: '{token}'")
+        raise InvalidRepetitionError(
+            f"Chain repetition must have *N count at the end: '{token}'")
 
     count_str = match.group(1)
     chain_part = token[:match.start()].strip()
@@ -131,26 +141,29 @@ def parse_chain_repetition(token: str) -> tuple[list[str], int]:
     if chain_part.startswith("["):
         chain_part = chain_part[1:]
     else:
-        raise ValueError(f"Chain repetition must start with bracket: '{token}'")
+        raise InvalidRepetitionError(f"Chain repetition must start with bracket: '{token}'")
 
     # Remove the closing bracket if it exists
     if chain_part.endswith("]"):
         chain_part = chain_part[:-1]
 
     if not chain_part:
-        raise ValueError(f"Empty chain in '{token}'")
+        raise EmptyTokenError(f"Empty chain in '{token}'")
 
     try:
         count = int(count_str)
         if count < 1:
-            raise ValueError(f"Chain repetition count must be >= 1, got {count}")
+            raise InvalidRepetitionError(f"Chain repetition count must be >= 1, got {count}")
+    except InvalidRepetitionError:
+        raise
     except ValueError as exc:
-        raise ValueError(f"Bad chain repetition count '{count_str}' in '{token}'") from exc
+        raise InvalidRepetitionError(
+            f"Bad chain repetition count '{count_str}' in '{token}'") from exc
 
     # Parse the chain tokens (comma-separated)
     chain_tokens = [t.strip() for t in chain_part.split(",") if t.strip()]
     if not chain_tokens:
-        raise ValueError(f"Empty chain in '{token}'")
+        raise EmptyTokenError(f"Empty chain in '{token}'")
 
     return chain_tokens, count
 
@@ -179,7 +192,7 @@ def _normalize_key_token(base_token: str) -> str:
     t = (t[0].upper() + t[1:].lower()) if t else t
     t = _KEY_SHARP_TO_FLAT.get(t, t)
     if t not in NOTE_TO_PC:
-        raise ValueError(f"Bad key '{base_token}'")
+        raise InvalidKeyError(f"Bad key '{base_token}'")
     return t
 
 
@@ -215,7 +228,10 @@ def key_roots(mode: str, keys_csv: str | None) -> list[str]:
                 try:
                     _emit_key_chain(chain, out)
                 except ValueError as e:
-                    raise ValueError(f"Invalid chain repetition '{chain}': {e}")
+                    # Re-raise as the same type so the classification the
+                    # inner parser chose (bad key, bad count, …) survives
+                    # the added context.
+                    raise type(e)(f"Invalid chain repetition '{chain}': {e}") from e
             else:
                 _emit_key_token(tok, out)
         return out

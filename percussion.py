@@ -12,6 +12,7 @@ import random
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from errors import EmptyTokenError, InvalidDrumLetterError, InvalidDurationError
 from mtheory import DUR_MAP, LIB_DIR
 
 __all__ = [
@@ -184,13 +185,13 @@ def parse_single_token(tok: str,
     """
     tok = tok.strip()
     if not tok:
-        raise ValueError("Empty percussion token")
+        raise EmptyTokenError("Empty percussion token")
     ln = tok[0].lower()
     if ln not in DUR_MAP:
-        raise ValueError(f"Bad duration in token '{tok}'")
+        raise InvalidDurationError(f"Bad duration in token '{tok}'")
     beats = DUR_MAP[ln]
     if len(tok) == 1:
-        raise ValueError(f"Incomplete token '{tok}' (needs instruments or 'r')")
+        raise InvalidDurationError(f"Incomplete token '{tok}' (needs instruments or 'r')")
     rest = tok[1:]
     if rest.lower() == "r":
         return (beats, [])
@@ -207,7 +208,7 @@ def parse_single_token(tok: str,
             raise ValueError(f"Unexpected '[' in token '{tok}'")
         key = ch.lower()
         if key not in drum_map:
-            raise ValueError(f"Unknown drum letter '{ch}' in token '{tok}'")
+            raise InvalidDrumLetterError(f"Unknown drum letter '{ch}' in token '{tok}'")
         i += 1
         vel_offset = 0
         probability = 1.0
@@ -486,7 +487,7 @@ def parse_pocket_spec(spec: str,
             raise ValueError(f"Pocket entry must be letter:beats, got '{part}'")
         letter, raw = (s.strip() for s in part.split(":", 1))
         if letter.lower() not in drum_map:
-            raise ValueError(f"Unknown drum letter '{letter}' in pocket spec")
+            raise InvalidDrumLetterError(f"Unknown drum letter '{letter}' in pocket spec")
         try:
             beats = float(raw)
         except ValueError as exc:

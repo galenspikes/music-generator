@@ -2,14 +2,16 @@
 
 Note/pitch-class tables, duration and General-MIDI instrument maps, voice
 ranges and channel constants, the :class:`ChordDef` value object, key parsing,
-register helpers, and the chord-recipe loader. Everything here is
-dependency-free with respect to the rest of the project, so every other module
+register helpers, and the chord-recipe loader. Everything here depends only on
+:mod:`errors` (the import-free exception base layer), so every other module
 may import from it.
 """
 import importlib.util
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+
+from errors import EmptyTokenError, InvalidKeyError
 
 # --- project folders (relative to this module, i.e. the repo root) ---
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -221,12 +223,12 @@ def parse_key_name(kname: str) -> tuple[int, bool]:
     """
     s = kname.strip()
     if not s:
-        raise ValueError("Empty key name")
+        raise EmptyTokenError("Empty key name")
     is_minor = s.endswith("m")
     core = s[:-1] if is_minor else s
     core = core.replace("♭", "b").replace("♯", "#")
     if core not in NOTE_TO_PC:
-        raise ValueError(f"Bad key '{kname}'")
+        raise InvalidKeyError(f"Bad key '{kname}'")
     return NOTE_TO_PC[core], is_minor
 
 

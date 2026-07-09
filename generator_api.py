@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import mido
+import errors
 import music_generator as mg
 
 _LOCK = threading.Lock()
@@ -96,14 +97,66 @@ def _drum_letter_crib() -> str:
     return ", ".join(have) if have else "b=kick, c=snare, g=hi-hat, k=ride"
 
 
+# Suggestion text per typed exception class (errors.py). error_type and code
+# ride on the exception classes themselves; suggestions live here because they
+# need runtime context (the active drum map, the friendly-root list) that
+# belongs to this API layer, not to the parsers. Values are callables so the
+# drum crib reflects the drum map active at classification time.
+_EXC_SUGGESTIONS: dict[type, "callable"] = {
+    errors.InvalidKeyError: lambda: (
+        "Chord roots are note names — try one of: "
+        f"{', '.join(_FRIENDLY_ROOTS)} (optionally with a recipe, "
+        "e.g. C::maj7)."),
+    errors.InvalidRecipeError: lambda: (
+        "That chord recipe isn't known. Browse Docs → Chord Recipes for "
+        "valid names (e.g. maj7, min9, sus4, 13)."),
+    errors.InvalidBassError: lambda: (
+        "A slash chord needs a bass note after '/', e.g. C::maj7/G."),
+    errors.InvalidDrumLetterError: lambda: (
+        f"Valid drum letters: {_drum_letter_crib()} — see the drum "
+        "legend under the pattern field for the full list."),
+    errors.InvalidDurationError: lambda: (
+        f"Each token starts with a duration letter ({_DUR_CRIB}), then "
+        "the drum letters — e.g. qb = quarter kick, eg = eighth hi-hat."),
+    errors.InvalidPresetError: lambda: (
+        "That key preset name isn't known — check the spelling."),
+    errors.InvalidRepetitionError: lambda: (
+        "Repeats use *N — e.g. C*4, or [C, G]*2 for a group."),
+    errors.EmptyTokenError: lambda: (
+        "A token came out empty — check for a stray comma or a ':' with "
+        "nothing after it."),
+    errors.TokenSyntaxError: lambda: (
+        "Check the chord and percussion tokens against Docs → Token grammar."),
+}
+
+
+def classify_exception(exc: BaseException) -> tuple[str, str, str]:
+    """Map an exception to ``(error_type, suggestion, code)``.
+
+    Typed DSL errors (:class:`errors.TokenSyntaxError` subclasses) classify by
+    ``isinstance`` — the class carries ``error_type``/``code`` and the registry
+    above supplies the suggestion, so rewording a message can't break its
+    classification. Anything else falls back to :func:`classify_error`'s
+    message matching (bare errors from the deep engine, ``SystemExit`` from
+    argparse, …).
+    """
+    if isinstance(exc, errors.TokenSyntaxError):
+        for klass in type(exc).__mro__:
+            fn = _EXC_SUGGESTIONS.get(klass)
+            if fn is not None:
+                return (exc.error_type, fn(), exc.code)
+    return classify_error(str(exc))
+
+
 def classify_error(message: str) -> tuple[str, str, str]:
     """Map a raw engine error message to ``(error_type, suggestion, code)``.
 
-    Pattern-matches the human strings the token/percussion parsers raise
-    (``Bad key 'ZZ'``, ``Unknown drum letter 'x' …``, …) and attaches a
-    concrete fix. Matching is done at this API boundary rather than at each
-    deep ``raise`` site, so the CLI and engine are untouched. Unknown messages
-    get a safe generic classification — never a crash.
+    The string-matching *fallback* behind :func:`classify_exception`, for
+    errors that reach the boundary as bare messages (deep engine raises,
+    ``SystemExit`` text, songs/presets). Pattern-matches the human strings the
+    parsers historically raised (``Bad key 'ZZ'``, ``Unknown drum letter 'x'
+    …``, …) and attaches a concrete fix. Unknown messages get a safe generic
+    classification — never a crash.
     """
     m = message or ""
     if re.search(r"[Bb]ad key '([^']*)'", m):
@@ -153,6 +206,14 @@ def _classified(message: str) -> GenerationError:
     """Build a GenerationError with a suggestion inferred from its message."""
     error_type, suggestion, code = classify_error(message)
     return GenerationError(message, error_type=error_type,
+                           suggestion=suggestion, code=code)
+
+
+def _classified_exc(exc: BaseException) -> GenerationError:
+    """Build a GenerationError classified from the exception itself (typed
+    dispatch when possible, message matching otherwise)."""
+    error_type, suggestion, code = classify_exception(exc)
+    return GenerationError(str(exc), error_type=error_type,
                            suggestion=suggestion, code=code)
 
 
@@ -322,8 +383,10 @@ def generate(spec: dict) -> GenerationResult:
             if exc.suggestion or exc.error_type != "generation_error":
                 raise
             raise _classified(str(exc)) from exc
+        except errors.TokenSyntaxError as exc:  # typed DSL errors: exact classification
+            raise _classified_exc(exc) from exc
         except mg.SpecError as exc:  # invalid spec (bad voice-instrument, …)
-            raise _classified(str(exc)) from exc
+            raise _classified_exc(exc) from exc
         except SystemExit as exc:  # argparse guard rails
             raise _classified(str(exc) or "invalid arguments") from exc
         except Exception as exc:  # surface a readable message to the UI
@@ -342,7 +405,8 @@ def _generate_locked(spec: dict) -> GenerationResult:
         presets = mg.load_key_presets()
         preset = presets.get(args.keys_preset)
         if not preset:
-            raise GenerationError(f"Unknown keys preset '{args.keys_preset}'")
+            raise errors.InvalidPresetError(
+                f"Unknown keys preset '{args.keys_preset}'")
         args.keys = ",".join(preset)
 
     mg.set_active_drum_map(args.perc_lib if args.perc_lib else None)
@@ -524,7 +588,7 @@ def parse_keys(keys: str, mode: str = "ostinato") -> dict:
                 err_index = idx
                 err_span = [off, off + len(tok)]
                 break
-        _etype, suggestion, _code = classify_error(str(exc))
+        _etype, suggestion, _code = classify_exception(exc)
         return {"ok": False, "chords": [], "segments": [], "total": 0,
                 "error": str(exc), "suggestion": suggestion,
                 "error_index": err_index, "error_span": err_span}
@@ -560,7 +624,8 @@ def _describe_drum_token(tok: str, drum_map, note_labels: dict) -> dict:
             "hits": [note_labels.get(h.note, f"n{h.note}") for h in hits],
         }
     except Exception as exc:
-        return {"token": tok, "ok": False, "error": str(exc)}
+        return {"token": tok, "ok": False, "error": str(exc),
+                "suggestion": classify_exception(exc)[1]}
 
 
 def _describe_chord_interrupt_token(tok: str) -> dict:
@@ -586,7 +651,7 @@ def parse_perc(pattern: str, kind: str = "drums") -> dict:
     pattern = pattern or ""
     note_labels = _drum_note_labels() if kind == "drums" else {}
     drum_map = mg.get_drum_map() if kind == "drums" else None
-    tokens, first_err = [], None
+    tokens, first_err, suggestion = [], None, None
     # Split on commas but not inside [...] modifier blocks (e.g. qk[vel+10,prob0.5]).
     for raw, _off in _split_top_level(pattern):
         tok = raw.strip()
@@ -597,7 +662,9 @@ def parse_perc(pattern: str, kind: str = "drums") -> dict:
         tokens.append(d)
         if not d["ok"] and first_err is None:
             first_err = d["error"]
-    suggestion = classify_error(first_err)[1] if first_err else None
+            # Typed classification stashed by _describe_drum_token; the
+            # chord-interrupter grammar only has message-based fallback.
+            suggestion = d.get("suggestion") or classify_error(first_err)[1]
     return {"ok": first_err is None, "tokens": tokens, "error": first_err,
             "suggestion": suggestion}
 

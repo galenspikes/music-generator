@@ -34,7 +34,7 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 ---
 
 ### Error Handling
-- [ ] **Replace regex-based error classification**
+- [x] **Replace regex-based error classification**
   - Current: `classify_error()` pattern-matches raw error messages (brittle)
   - Proposal: Raise specific exception types (`InvalidKeyError`, `InvalidRecipeError`, etc.)
   - Map exception type → (error_type, suggestion, code) in a registry
@@ -98,8 +98,9 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
   - **Effort:** 4–6 hours
   - **Priority:** P2 (SRP, testability)
 
-- [ ] **Extract error classification into a class**
-  - Create `ErrorClassifier` class (or use exception registry)
+- [x] **Extract error classification into a class**
+  - Done via the exception registry option: `errors.py` types +
+    `generator_api._EXC_SUGGESTIONS` / `classify_exception()` dispatch
   - Move `classify_error()`, `_drum_letter_crib()`, `_classified()` logic
   - Replace regex matching with exception type dispatch
   - **Effort:** 2–3 hours
