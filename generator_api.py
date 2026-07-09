@@ -18,10 +18,10 @@ extracted from ``main`` so the CLI and this seam drive one code path per mode:
 ``build_flat_midi`` (ostinato/mixed), ``build_fugue_midi`` / ``build_process_midi``,
 and ``song_overrides_from_args`` (the arrangement override dict — the CLI and API
 pass different ``include`` predicates but share the builder). Invalid specs raise
-``mg.SpecError`` rather than the CLI's ``SystemExit``. Generation is serialised by
-a lock because the engine still keeps process-global state (active drum map, RNG);
-each call is ~0.1s so this is fine for a demo. Removing that global state (true
-concurrency) is a later, separate step.
+``mg.SpecError`` rather than the CLI's ``SystemExit``. Generation is safe to run
+concurrently without a lock: every request gets its own drum map and (when
+seeded) its own ``random.Random``, and the engine's remaining process-global
+caches are read-only and lock-protected. See tests/test_concurrency.py.
 """
 
 from __future__ import annotations
@@ -33,7 +33,6 @@ import json
 import logging
 import random
 import re
-import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,7 +40,6 @@ import mido
 import errors
 import music_generator as mg
 
-_LOCK = threading.Lock()
 
 
 class GenerationError(RuntimeError):
@@ -550,53 +548,56 @@ def _log_failure(spec: dict, err: GenerationError, cause: BaseException) -> None
 
 
 def generate(spec: dict) -> GenerationResult:
-    """Turn a spec into music, in memory. Never writes to ``output/``."""
-    with _LOCK:
-        try:
-            result = _generate_locked(spec)
-        except GenerationError as exc:
-            # Already-structured errors pass through; bare ones (raised deep in
-            # the engine / here) get classified so they gain a suggestion too.
-            err = exc
-            if not (exc.suggestion or exc.error_type != "generation_error"):
-                err = _classified(str(exc))
-            _log_failure(spec, err, exc)
-            if err is exc:
-                raise
-            raise err from exc
-        except errors.TokenSyntaxError as exc:  # typed DSL errors: exact classification
-            err = _classified_exc(exc)
-            _log_failure(spec, err, exc)
-            raise err from exc
-        except mg.SpecError as exc:  # invalid spec (bad voice-instrument, …)
-            err = _classified_exc(exc)
-            _log_failure(spec, err, exc)
-            raise err from exc
-        except SystemExit as exc:  # argparse guard rails
-            err = _classified(str(exc) or "invalid arguments")
-            _log_failure(spec, err, exc)
-            raise err from exc
-        except Exception as exc:  # surface a readable message to the UI
-            err = _classified(f"{type(exc).__name__}: {exc}")
-            _log_failure(spec, err, exc)
-            raise err from exc
-        _LOG.info("generation ok spec=%s mode=%s duration=%.2fs",
-                  _spec_hash(spec), result.mode, result.duration_seconds)
-        return result
+    """Turn a spec into music, in memory. Never writes to ``output/``.
+
+    Safe to call concurrently: every render path is hermetic (per-request
+    drum map + RNG, per-request temp files), so requests run in parallel
+    without a lock — see tests/test_concurrency.py.
+    """
+    try:
+        result = _generate_impl(spec)
+    except GenerationError as exc:
+        # Already-structured errors pass through; bare ones (raised deep in
+        # the engine / here) get classified so they gain a suggestion too.
+        err = exc
+        if not (exc.suggestion or exc.error_type != "generation_error"):
+            err = _classified(str(exc))
+        _log_failure(spec, err, exc)
+        if err is exc:
+            raise
+        raise err from exc
+    except errors.TokenSyntaxError as exc:  # typed DSL errors: exact classification
+        err = _classified_exc(exc)
+        _log_failure(spec, err, exc)
+        raise err from exc
+    except mg.SpecError as exc:  # invalid spec (bad voice-instrument, …)
+        err = _classified_exc(exc)
+        _log_failure(spec, err, exc)
+        raise err from exc
+    except SystemExit as exc:  # argparse guard rails
+        err = _classified(str(exc) or "invalid arguments")
+        _log_failure(spec, err, exc)
+        raise err from exc
+    except Exception as exc:  # surface a readable message to the UI
+        err = _classified(f"{type(exc).__name__}: {exc}")
+        _log_failure(spec, err, exc)
+        raise err from exc
+    _LOG.info("generation ok spec=%s mode=%s duration=%.2fs",
+              _spec_hash(spec), result.mode, result.duration_seconds)
+    return result
 
 
-def _generate_locked(spec: dict) -> GenerationResult:
-    """The generation pipeline behind :func:`generate` (which holds the lock
-    and owns error classification): spec → argparse namespace → per-request
-    context (drum map, RNG) → one of the render paths (arrangement song via
-    a temp file, or in-memory flat build) → GenerationResult.
+def _generate_impl(spec: dict) -> GenerationResult:
+    """The generation pipeline behind :func:`generate` (which owns error
+    classification and boundary logging): spec → argparse namespace →
+    per-request context (drum map, RNG) → one of the render paths
+    (arrangement song via a temp file, or in-memory flat build) →
+    GenerationResult.
 
-    The flat path is hermetic: its drum map is loaded per request and its
-    RNG is a private ``random.Random`` when a seed is given, so it neither
-    reads nor mutates the process-global engine state. The song path still
-    leans on the globals (arrangement reads the active drum map and the
-    global RNG deep inside), which is safe under ``_LOCK`` — removing that
-    remaining dependence is what stands between here and dropping the lock.
+    Both paths are hermetic: the drum map is loaded per request and the RNG
+    is a private ``random.Random`` when a seed is given, so a request
+    neither reads nor mutates process-global engine state — which is what
+    makes lock-free concurrent generation safe.
     """
     # Raw song YAML text (e.g. from the lead-sheet importer) — an alternative
     # to args.song's file path so the webapp never has to write the imported
@@ -623,12 +624,6 @@ def _generate_locked(spec: dict) -> GenerationResult:
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
     if args.song or song_yaml_text:
-        # The song path still consumes the process globals (arrangement and
-        # the lead generator read the active drum map / global RNG deep
-        # inside) — set them up per request; _LOCK serialises access.
-        mg.set_active_drum_map(args.perc_lib if args.perc_lib else None)
-        if args.seed is not None:
-            random.seed(args.seed)
         import tempfile
         import arrangement
 
@@ -650,7 +645,7 @@ def _generate_locked(spec: dict) -> GenerationResult:
                 vel_mode_drums=args.velocity_mode_drums,
                 overrides=arr_overrides)
             out = str(Path(tmp) / "song.mid")
-            arrangement.render(song_spec, out)
+            arrangement.render(song_spec, out, rng=rng, drum_map=drum_map)
             data = Path(out).read_bytes()
         return _SERIALIZER.result_from_bytes(data, "song")
 

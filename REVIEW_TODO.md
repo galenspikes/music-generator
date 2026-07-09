@@ -182,10 +182,17 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 
 ## NICE-TO-HAVE (Lower priority)
 
-- [ ] Add performance benchmarks (target: <100ms per generation)
-- [ ] Property-based fuzzing of full MIDI generation pipeline
+- [x] Add performance benchmarks (target: <100ms per generation) —
+      tests/test_performance.py; measured ~68ms median, asserted under a
+      CI-noise-proof 400ms budget
+- [x] Property-based fuzzing of full MIDI generation pipeline —
+      tests/test_pipeline_properties.py: generated specs either render
+      mido-parseable MIDI with coherent metadata or fail as GenerationError
 - [ ] Support in-process audio synthesis (remove FluidSynth dependency for web)
-- [ ] Async generation support in web API
+- [x] Async generation support in web API — delivered by the lock removal:
+      FastAPI already runs sync endpoints in a threadpool, and with
+      `generate()` lock-free those requests now truly run in parallel
+      (making the endpoint `async def` would only block the event loop)
 - [ ] Database for saved progressions (ChordBuilder feature)
 
 ---
@@ -209,15 +216,16 @@ Current grade: B+ (Strong execution + good tests, held back by debt + linting + 
 - **Risk:** Global state elimination (Tier 5) is highest risk; needs comprehensive testing. Recommend doing it incrementally (drum map → RNG → chord recipes) with a new test suite for concurrent generation.
 - **Dependencies:** Error classification refactor should precede API refactor (both touch error boundaries).
 
-## FOLLOW-UP (post-completion, 2026-07-09)
+## FOLLOW-UP (post-completion, 2026-07-09) — ✅ done
 
-Everything tracked above is done. The one architectural thread deliberately
-left open: the **arrangement/lead path** still consumes the process-global
-drum map and RNG (safe today — `generator_api._LOCK` serialises it, and
-song renders are reproducible via the global seed). Threading `rng` and
-`drum_map` through `arrangement.py`/`lead.py` the way the flat path now
-works would allow removing `_LOCK` for true in-process request parallelism.
-See `_generate_locked`'s docstring and tests/test_concurrency.py.
+The one thread left open after the main pass is now closed: `rng`/`drum_map`
+are threaded through `arrangement.py` and `lead.py` (fills, ghost notes,
+pocket, crash lookups, motif generation), so the song path is hermetic like
+the flat path, and `generator_api._LOCK` has been **removed** — `generate()`
+runs concurrently in-process. tests/test_concurrency.py pins lock-free
+parallel==serial for both paths and that a seeded song render neither
+consumes nor reseeds the global RNG. See `_generate_impl`'s docstring and
+`docs/design-notes/refactor-plan.md` §5.5.
 
 ---
 

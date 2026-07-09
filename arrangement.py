@@ -287,14 +287,14 @@ def load_spec(path: str,
     return build_spec(raw, vel_mode_chords, vel_mode_drums, overrides)
 
 
-def _pocket_offsets(cfg) -> dict[int, float]:
+def _pocket_offsets(cfg, drum_map: dict[str, int] | None = None) -> dict[int, float]:
     """Normalize a section's `perc.pocket` to {midi_note: delay_beats}.
 
     Accepts the YAML mapping form ({c: 0.03}) or the CLI spec string
     ("c:0.03,d:0.02" — how --perc-pocket arrives via song overrides)."""
     if isinstance(cfg, str):
-        return mg.parse_pocket_spec(cfg)
-    drum_map = mg.get_drum_map()
+        return mg.parse_pocket_spec(cfg, drum_map=drum_map)
+    drum_map = drum_map or mg.get_drum_map()
     out: dict[int, float] = {}
     for letter, beats in dict(cfg).items():
         key = str(letter).lower()
@@ -325,7 +325,8 @@ def _apply_transition_fill(drum_tl: list[tuple[float, float, list]],
                            sec_beats: float,
                            fill_spec,
                            main_pat: list,
-                           intr_pats: list[list] | None
+                           intr_pats: list[list] | None,
+                           rng=None
                            ) -> list[tuple[float, float, list]]:
     """Replace the last `fill_spec` beats of a section's drum timeline with a
     fill motif (an interrupter pattern played back-to-back, or the main
@@ -338,7 +339,7 @@ def _apply_transition_fill(drum_tl: list[tuple[float, float, list]],
     if kept and kept[-1][0] + kept[-1][1] > cut:
         w, d, h = kept[-1]
         kept[-1] = (w, cut - w, h)
-    fill_pat = random.choice(intr_pats) if intr_pats else main_pat
+    fill_pat = (rng or random).choice(intr_pats) if intr_pats else main_pat
     fill_tl = mg.build_drum_segment(cut, fill_beats, fill_pat, None, 0.0)
     return kept + fill_tl
 
@@ -390,12 +391,17 @@ def _chord_spans(seq: list, chord_len: float,
     return spans
 
 
-def build_events(spec: SongSpec) -> tuple[list, float]:
+def build_events(spec: SongSpec, rng=None,
+                 drum_map: dict[str, int] | None = None) -> tuple[list, float]:
     """Build the full, time-sorted event stream for the arrangement.
 
     Event kinds: ('tempo', when, 0, bpm), ('program', when, 0, (voice, prog)),
     ('voice', when, dur, (voice, note)), ('drum', when, dur, hits).
     Returns (events, total_beats).
+
+    ``rng`` (random.Random-like) and ``drum_map`` may be injected for
+    hermetic, concurrency-safe rendering; they default to the global
+    ``random`` module and the process-global active drum map.
     """
     events: list = []
     cursor = 0.0
@@ -407,12 +413,13 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
         chord_len = mg.DUR_MAP[sec["chord_length"]]
         roots = mg.key_roots("ostinato", sec["keys"])
         seq = mg.build_progression(roots, sec["chords"], sec["chords_order"],
-                                   max_chords=len(roots))
+                                   max_chords=len(roots), rng=rng)
         sec_beats = _section_beats(sec, len(seq), chord_len)
         chord_tl = mg.build_chord_timeline(seq, sec_beats, chord_len,
                                            static=(sec["satb"] == "static"),
                                            prev_sop=prev_sop,
-                                           bass_anchor=bass_anchor)
+                                           bass_anchor=bass_anchor,
+                                           rng=rng)
         if chord_tl:
             prev_sop = chord_tl[-1][2][0]
             bass_anchor = chord_tl[-1][2][3]
@@ -443,21 +450,24 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
         # separately, at render time, via intensity_lookup).
         perc = sec.get("perc") or {}
         intensity = float((sec.get("dynamics") or {}).get("intensity", 1.0))
-        main_pat = mg.parse_pattern(perc["main"]) if perc.get("main") else []
-        intr = mg.parse_many_patterns(perc.get("interrupters") or []) or None
+        main_pat = (mg.parse_pattern(perc["main"], drum_map)
+                    if perc.get("main") else [])
+        intr = mg.parse_many_patterns(perc.get("interrupters") or [],
+                                      drum_map) or None
         fill_rate = max(0.0, min(1.0, float(perc.get("fill_rate", 0.0)) * intensity))
         drum_tl = mg.build_drum_timeline_with_fills(
-            main_pat, intr, sec_beats, fill_rate)
+            main_pat, intr, sec_beats, fill_rate, rng=rng)
 
         ghost_rate = float(perc.get("ghost_rate", 0.0))
         if ghost_rate > 0.0:
-            ghost_note = mg.get_drum_map().get(
+            ghost_note = (drum_map or mg.get_drum_map()).get(
                 str(perc.get("ghost_note", "c")).lower(), 38)
             drum_tl = mg.add_ghost_notes(drum_tl, rate=ghost_rate,
-                                         note=ghost_note)
+                                         note=ghost_note, rng=rng)
         pocket_cfg = perc.get("pocket")
         if pocket_cfg:
-            drum_tl = mg.apply_pocket(drum_tl, _pocket_offsets(pocket_cfg))
+            drum_tl = mg.apply_pocket(drum_tl,
+                                      _pocket_offsets(pocket_cfg, drum_map))
 
         # transition: replace the section's tail with a fill, and/or crash
         # into the next section's downbeat (hard cut stays the default).
@@ -466,11 +476,11 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
         fill_spec = transition.get("fill")
         if fill_spec and main_pat:
             drum_tl = _apply_transition_fill(drum_tl, sec_beats, fill_spec,
-                                             main_pat, intr)
+                                             main_pat, intr, rng=rng)
         for when, dur, hits in drum_tl:
             events.append(("drum", when + start, dur, hits))
         if transition.get("crash") and not is_last:
-            crash_note = mg.get_drum_map().get("j", 49)
+            crash_note = (drum_map or mg.get_drum_map()).get("j", 49)
             events.append(("drum", start + sec_beats, 0.0,
                           [mg.PercHit(note=crash_note)]))
 
@@ -490,6 +500,7 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
             counterpoint_anticipation_prob=float(cp.get("anticipation_prob", 0.0)),
             split_stems=True,
             when_offset=start,
+            rng=rng,
         )
         mel_text = sec.get("melody")
         has_melody = bool(mel_text and str(mel_text).strip())
@@ -541,7 +552,8 @@ def build_events(spec: SongSpec) -> tuple[list, float]:
                 motif_text=lead_cfg.get("motif"),
                 density=float(lead_cfg.get("density", 0.5)),
                 rests=float(lead_cfg.get("rests", 0.3)),
-                register=str(lead_cfg.get("register", "high")))
+                register=str(lead_cfg.get("register", "high")),
+                rng=rng)
             lead_prog = mg.resolve_instrument(
                 str(lead_cfg.get("instrument", "sax")))
             events.append(("program", start, 0.0, ("lead", lead_prog)))
@@ -581,14 +593,16 @@ def intensity_lookup(spec: SongSpec):
     return lookup
 
 
-def render(spec: SongSpec, out_path: str, stems: bool = False) -> str:
+def render(spec: SongSpec, out_path: str, stems: bool = False, rng=None,
+           drum_map: dict[str, int] | None = None) -> str:
     """Render the arrangement to a MIDI file at out_path. Returns out_path.
 
     `stems=True` also writes each voice + drums as its own standalone MIDI
     file alongside `out_path` (see `MidiOut.write_stems`), for mixing/
-    mastering externally.
+    mastering externally. ``rng``/``drum_map`` inject the randomness source
+    and drum map for hermetic rendering (see `build_events`).
     """
-    events, total = build_events(spec)
+    events, total = build_events(spec, rng=rng, drum_map=drum_map)
 
     midi = mg.MidiOut(spec.tempo, out_path,
                       vel_mode_chords=spec.vel_mode_chords,
@@ -596,7 +610,8 @@ def render(spec: SongSpec, out_path: str, stems: bool = False) -> str:
                       split_stems=True,
                       swing=spec.swing,
                       pan_spread=spec.pan_spread,
-                      with_lead=spec.with_lead)
+                      with_lead=spec.with_lead,
+                      rng=rng)
 
     _t_ch, t_dr, _vmax = mg.render_events(midi, events,
                                           intensity_at=intensity_lookup(spec))

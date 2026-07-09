@@ -20,6 +20,30 @@ import mtheory
 import percussion
 
 
+# A small arrangement exercising the song path's randomness: fills,
+# transition fill, ghost notes, and a generated lead motif.
+SONG_YAML = """
+title: concurrency probe
+tempo: 120
+defaults:
+  chord_length: q
+  perc:
+    main: "qb, eg, qc, eg"
+    interrupters: ["qk,er,qs,er"]
+    fill_rate: 0.4
+sections:
+  - name: a
+    repeat: 1
+    keys: "C::maj7, A::min9, D::min7, G::13"
+    lead: { density: 0.6, rests: 0.3 }
+    perc: { ghost_rate: 0.3 }
+    transition: { fill: 1bar, crash: true }
+  - name: b
+    repeat: 1
+    satb: counterpoint
+    keys: "F::maj7, Bb::maj7, G::min7, C::7"
+"""
+
 SPECS = [
     {"keys": "C::maj7, A::min9", "seconds": 4, "seed": 11,
      "perc_main": "qb, eg, qc, eg"},
@@ -30,6 +54,7 @@ SPECS = [
     {"random_roots": True, "seconds": 4, "seed": 44,
      "perc_main": "qb, eg", "perc_interrupters": ["qk,er,qs,er"],
      "perc_fill_rate": 0.5},
+    {"song_yaml": SONG_YAML, "seed": 55},
 ]
 
 
@@ -55,6 +80,24 @@ class TestDeterminism:
         one = api.generate({**base, "seed": 1}).midi
         two = api.generate({**base, "seed": 2}).midi
         assert one != two
+
+    def test_seeded_song_render_is_deterministic_and_hermetic(self):
+        """The arrangement path draws from the injected RNG too: same seed,
+        same bytes, regardless of global-RNG noise in between."""
+        spec = {"song_yaml": SONG_YAML, "seed": 7}
+        a = api.generate(spec).midi
+        random.seed(12345)
+        random.random()
+        b = api.generate(spec).midi
+        assert a == b
+
+    def test_song_render_does_not_touch_global_rng(self):
+        """A seeded song render must not consume or reseed the global RNG."""
+        random.seed(42)
+        expected = random.random()
+        random.seed(42)
+        api.generate({"song_yaml": SONG_YAML, "seed": 7})
+        assert random.random() == expected
 
 
 class TestConcurrentGeneration:

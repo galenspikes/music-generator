@@ -186,9 +186,17 @@ Driven by `REVIEW_TODO.md` (the 2026-07 code-review action items). Delivered:
   noise, and cache races; `generator_api.generate()` logs spec hash + error
   code + stack at the error boundary.
 
-**Remaining (the open thread):** the arrangement/lead path still consumes the
-global drum map and RNG — safe under `generator_api._LOCK`, which serialises
-in-process generation. Threading `rng`/`drum_map` through `arrangement.py` and
-`lead.py` the way the flat path works would let `_LOCK` be removed for true
-in-process request parallelism. Process-based multi-worker deployment
-(`uvicorn --workers N`) is already safe: all state is per-process.
+- **5.5 Arrangement/lead DI + lock removal (follow-up, same day).**
+  `rng`/`drum_map` threaded through `arrangement.build_events`/`render`
+  (fills, transition fills, ghost notes, pocket, crash-note lookup) and
+  `lead.generate_motif`/`build_lead_events`; the key-presets cache gained a
+  lock. With every render path hermetic, `generator_api._LOCK` was removed —
+  `generate()` now runs concurrently in-process. `tests/test_concurrency.py`
+  pins lock-free parallel==serial for both flat and song paths, and that a
+  seeded song render neither consumes nor reseeds the global RNG.
+
+**Done means:** process-based multi-worker deployment was already safe (state
+is per-process); in-process request parallelism is now lock-free as well. The
+engine's only remaining globals are read-only, lock-protected caches plus the
+CLI's convenience defaults (active drum map, global RNG), which the API no
+longer touches.
