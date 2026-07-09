@@ -24,6 +24,7 @@ import random
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import errors
 import feel as feelmod
 import lead as leadgen
 import melody as mel
@@ -298,7 +299,8 @@ def _pocket_offsets(cfg) -> dict[int, float]:
     for letter, beats in dict(cfg).items():
         key = str(letter).lower()
         if key not in drum_map:
-            raise ValueError(f"Unknown drum letter '{letter}' in perc.pocket")
+            raise errors.InvalidDrumLetterError(
+                f"Unknown drum letter '{letter}' in perc.pocket")
         val = float(beats)
         if val < 0.0:
             raise ValueError(f"perc.pocket delay must be >=0 for '{letter}'")

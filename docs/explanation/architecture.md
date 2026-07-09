@@ -40,12 +40,13 @@ re-exports every public name (star imports), so callers that reach through
 
 | Module | Responsibility | Depends on |
 |---|---|---|
-| **`mtheory.py`** | Note/pitch-class tables, duration + GM instrument maps, voice ranges + channels, `ChordDef`, key parsing, register helpers, chord-recipe loader. | — (base layer) |
+| **`errors.py`** | Typed DSL exceptions (`TokenSyntaxError` and subclasses, all `ValueError`s) carrying machine-readable `error_type`/`code`, so the API boundary classifies errors by `isinstance` instead of message regexes. Import-free. | — (base layer) |
+| **`mtheory.py`** | Note/pitch-class tables, duration + GM instrument maps, voice ranges + channels, `ChordDef`, key parsing, register helpers, chord-recipe loader. | errors |
 | **`theory.py`** | Pitch-class set analysis for the chord recipes: normal/prime form, interval-class vector, Forte number, consonance rating, character flags (symmetry, quartal, whole-tone/octatonic subsets). Feeds `chord_reference.py`'s generated reference; distinct from `mtheory.py` (which is note/instrument plumbing, not set theory). | mtheory |
-| **`percussion.py`** | Active drum map (load/set/get), the percussion-token DSL, `PercHit`/`PercStage`/`PercPlan`, grid quantisation, drum timelines, `build_perc_from_args`. | mtheory |
+| **`percussion.py`** | Façade re-exporting the three percussion layers: **`percussion_map.py`** (active drum map load/set/get), **`percussion_tokens.py`** (the token DSL, `PercHit`, grid quantisation, pocket specs), **`percussion_timeline.py`** (`PercStage`/`PercPlan`, drum-timeline builders, `build_perc_from_args`). Import through the façade unless you want one layer. | mtheory |
 | **`tokens.py`** | Chord DSL: `parse_colon_key_token`, `*N`/`[...]*N` repetition, `key_roots` expansion. | mtheory |
 | **`voicing.py`** | `realize_SATB`, `realize_dense`, `build_bass_line`, `build_arpeggio_events`, `build_counterpoint_lines` + voice-leading helpers. | mtheory |
-| **`midiout.py`** | The `MidiOut` writer — mido-backed Type-1 serializer with stem splitting, humanisation, drum/chord scheduling. | mtheory, percussion |
+| **`midiout.py`** | The `MidiOut` writer — mido-backed Type-1 serializer with stem splitting, humanisation, drum/chord scheduling. | mtheory, percussion_tokens |
 | **`composition.py`** | `build_progression` + chord-family pickers, `build_chord_timeline`, `build_dense_timeline`, `build_harmony_events`. | mtheory, tokens, voicing |
 | **`music_generator.py`** | CLI/`main`, manifest + master catalog, `render_events`/`resolve_out_path`, project paths, logging setup; re-exports all of the above. | everything above |
 
@@ -117,7 +118,9 @@ Key entry points:
 Inside the core, imports flow strictly upward through the engine layers:
 
 ```
-mtheory                              (base: no local deps)
+errors                               (base: no local deps)
+   ▲
+mtheory
    ▲     ▲       ▲        ▲
 tokens percussion voicing │
    ▲     ▲       ▲        │

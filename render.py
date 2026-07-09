@@ -224,6 +224,11 @@ def build_parser(default_sf2: str | None, default_output_dir: str) -> argparse.A
 
 
 def main(argv: list[str] | None = None) -> int:
+    """The ``play_music`` entry point: forward unrecognised flags to
+    ``music_generator`` to produce the MIDI, then (unless ``--no-play``)
+    render/preview it through FluidSynth with the chosen SoundFont —
+    optionally saving WAV/MP3 next to the MIDI. Returns a process exit
+    code; render-tool failures surface as messages, not tracebacks."""
     cfg = load_config()
     parser = build_parser(cfg.get("default_sf2"),
                           _config_output_dir(cfg) or "audio")

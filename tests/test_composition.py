@@ -8,7 +8,6 @@ import random
 
 import pytest
 
-import music_generator as M
 from composition import (
     build_progression,
     build_chord_timeline,
@@ -19,9 +18,6 @@ from composition import (
     make_ninth,
     make_extended_chord,
     make_quartal,
-    make_sus,
-    make_add6,
-    make_lyd_dom,
     fill_chords_to_end,
     invert_chord,
     next_mode_picker,
@@ -203,9 +199,9 @@ class TestBuildChordTimeline:
             ChordDef(root_pc=pc('G'), pcs=(7, 11, 2)),
         ]
         timeline = build_chord_timeline(chords, beats_total=8.0, base_len_beats=1.0)
-        # Should have both chords
-        voicings = [voicing for _, _, voicing in timeline]
+        # Should have both chords, each slot carrying a non-empty voicing
         assert len(timeline) >= 4  # At least 2 cycles
+        assert all(voicing for _, _, voicing in timeline)
 
     def test_build_chord_timeline_static_mode_reuses_voicing(self):
         """static=True reuses voicing for identical chords."""
@@ -245,6 +241,13 @@ class TestFillChordsToEnd:
         result = fill_chords_to_end(timeline, 4.0)
         assert len(result) == 2
         assert result[-1] == (1.0, 3.0, (60, 55, 48, 40))
+
+    def test_fill_chords_to_end_does_not_mutate_input(self):
+        """Extension returns a new list; the caller's timeline is untouched."""
+        timeline = [(0, 1.0, (60, 55, 48, 40))]
+        result = fill_chords_to_end(timeline, 4.0)
+        assert timeline == [(0, 1.0, (60, 55, 48, 40))]
+        assert result is not timeline
 
     def test_fill_chords_to_end_empty_returns_empty(self):
         """Empty timeline stays empty."""

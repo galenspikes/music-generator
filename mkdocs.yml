@@ -84,6 +84,7 @@ nav:
       - Chord recipes: reference/chord-recipes.md
       - Percussion letters: reference/percussion-letters.md
       - Charts & recipes: reference/charts.md
+      - Error codes: reference/error-codes.md
   - Explanation:
       - explanation/index.md
       - Architecture: explanation/architecture.md

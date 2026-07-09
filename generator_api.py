@@ -27,7 +27,10 @@ concurrency) is a later, separate step.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import io
+import json
+import logging
 import random
 import re
 import threading
@@ -35,6 +38,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import mido
+import errors
 import music_generator as mg
 
 _LOCK = threading.Lock()
@@ -86,70 +90,149 @@ def _drum_letter_crib() -> str:
               ("s", "tom"), ("f", "clap")]
     try:
         dm = mg.get_drum_map() or {}
-    except Exception:
+    except (OSError, ValueError, KeyError):
+        # get_drum_map may lazily load the percussion library from disk:
+        # a missing/unreadable file (OSError), malformed JSON (ValueError),
+        # or a map missing expected entries (KeyError) all just mean we
+        # can't tailor the crib — fall back to the standard-kit letters.
         dm = {}
     have = [f"{ltr}={name}" for ltr, name in common if not dm or ltr in dm]
     return ", ".join(have) if have else "b=kick, c=snare, g=hi-hat, k=ride"
 
 
-def classify_error(message: str) -> tuple[str, str, str]:
-    """Map a raw engine error message to ``(error_type, suggestion, code)``.
+class ErrorClassifier:
+    """Turns engine failures into actionable ``(error_type, suggestion, code)``.
 
-    Pattern-matches the human strings the token/percussion parsers raise
-    (``Bad key 'ZZ'``, ``Unknown drum letter 'x' …``, …) and attaches a
-    concrete fix. Matching is done at this API boundary rather than at each
-    deep ``raise`` site, so the CLI and engine are untouched. Unknown messages
-    get a safe generic classification — never a crash.
+    Two strategies, in order of preference:
+
+    - **typed dispatch**: :class:`errors.TokenSyntaxError` subclasses carry
+      ``error_type``/``code`` on the class; the suggestion registry here adds
+      the human fix. Suggestions live in this layer (not on the exceptions)
+      because they need runtime context — the active drum map, the friendly
+      root list. Registry values are callables so the drum crib reflects the
+      map active at classification time.
+    - **message matching**: the fallback for errors that reach the boundary
+      as bare strings (deep engine raises, ``SystemExit`` text). Pattern-
+      matches the human strings the parsers historically raised. Unknown
+      messages get a safe generic classification — never a crash.
+
+    The error codes are documented in ``docs/reference/error-codes.md``.
     """
-    m = message or ""
-    if re.search(r"[Bb]ad key '([^']*)'", m):
-        return ("invalid_chord",
+
+    def __init__(self) -> None:
+        self._suggestions: dict[type, object] = {
+            errors.InvalidKeyError: lambda: (
                 "Chord roots are note names — try one of: "
                 f"{', '.join(_FRIENDLY_ROOTS)} (optionally with a recipe, "
-                "e.g. C::maj7).",
-                "ERR_CHORD_001")
-    if "has no tones" in m or "recipe" in m.lower():
-        return ("invalid_recipe",
+                "e.g. C::maj7)."),
+            errors.InvalidRecipeError: lambda: (
                 "That chord recipe isn't known. Browse Docs → Chord Recipes for "
-                "valid names (e.g. maj7, min9, sus4, 13).",
-                "ERR_CHORD_002")
-    if re.search(r"[Mm]issing bass note", m):
-        return ("invalid_chord",
-                "A slash chord needs a bass note after '/', e.g. C::maj7/G.",
-                "ERR_CHORD_003")
-    if re.search(r"[Uu]nknown drum letter", m):
-        return ("invalid_drum",
+                "valid names (e.g. maj7, min9, sus4, 13)."),
+            errors.InvalidBassError: lambda: (
+                "A slash chord needs a bass note after '/', e.g. C::maj7/G."),
+            errors.InvalidDrumLetterError: lambda: (
                 f"Valid drum letters: {_drum_letter_crib()} — see the drum "
-                "legend under the pattern field for the full list.",
-                "ERR_PERC_001")
-    if re.search(r"[Bb]ad duration|duration in token|[Ii]ncomplete token", m):
-        return ("invalid_duration",
+                "legend under the pattern field for the full list."),
+            errors.InvalidDurationError: lambda: (
                 f"Each token starts with a duration letter ({_DUR_CRIB}), then "
-                "the drum letters — e.g. qb = quarter kick, eg = eighth hi-hat.",
-                "ERR_DUR_001")
-    if "keys preset" in m.lower():
-        return ("invalid_preset",
-                "That key preset name isn't known — check the spelling.",
-                "ERR_PRESET_001")
-    if re.search(r"repetition|\*N", m):
-        return ("invalid_syntax",
-                "Repeats use *N — e.g. C*4, or [C, G]*2 for a group.",
-                "ERR_SYNTAX_001")
-    if re.search(r"[Ee]mpty .*token|[Ee]mpty chain|[Ee]mpty base", m):
-        return ("invalid_syntax",
+                "the drum letters — e.g. qb = quarter kick, eg = eighth hi-hat."),
+            errors.InvalidPresetError: lambda: (
+                "That key preset name isn't known — check the spelling."),
+            errors.InvalidRepetitionError: lambda: (
+                "Repeats use *N — e.g. C*4, or [C, G]*2 for a group."),
+            errors.EmptyTokenError: lambda: (
                 "A token came out empty — check for a stray comma or a ':' with "
-                "nothing after it.",
-                "ERR_SYNTAX_002")
-    return ("generation_error",
-            "Check the chord and percussion tokens against Docs → Token grammar.",
-            "ERR_GEN_000")
+                "nothing after it."),
+            errors.TokenSyntaxError: lambda: (
+                "Check the chord and percussion tokens against Docs → Token grammar."),
+        }
+
+    def classify_exception(self, exc: BaseException) -> tuple[str, str, str]:
+        """Typed dispatch when possible; message matching otherwise. A new
+        exception subclass without its own registry entry inherits the
+        nearest ancestor's suggestion via the MRO walk."""
+        if isinstance(exc, errors.TokenSyntaxError):
+            for klass in type(exc).__mro__:
+                fn = self._suggestions.get(klass)
+                if fn is not None:
+                    return (exc.error_type, fn(), exc.code)
+        return self.classify_message(str(exc))
+
+    def classify_message(self, message: str) -> tuple[str, str, str]:
+        """The string-matching fallback for bare error messages."""
+        m = message or ""
+        if re.search(r"[Bb]ad key '([^']*)'", m):
+            return ("invalid_chord",
+                    self._suggestions[errors.InvalidKeyError](),
+                    "ERR_CHORD_001")
+        if "has no tones" in m or "recipe" in m.lower():
+            return ("invalid_recipe",
+                    self._suggestions[errors.InvalidRecipeError](),
+                    "ERR_CHORD_002")
+        if re.search(r"[Mm]issing bass note", m):
+            return ("invalid_chord",
+                    self._suggestions[errors.InvalidBassError](),
+                    "ERR_CHORD_003")
+        if re.search(r"[Uu]nknown drum letter", m):
+            return ("invalid_drum",
+                    self._suggestions[errors.InvalidDrumLetterError](),
+                    "ERR_PERC_001")
+        if re.search(r"[Bb]ad duration|duration in token|[Ii]ncomplete token", m):
+            return ("invalid_duration",
+                    self._suggestions[errors.InvalidDurationError](),
+                    "ERR_DUR_001")
+        if "keys preset" in m.lower():
+            return ("invalid_preset",
+                    self._suggestions[errors.InvalidPresetError](),
+                    "ERR_PRESET_001")
+        if re.search(r"repetition|\*N", m):
+            return ("invalid_syntax",
+                    self._suggestions[errors.InvalidRepetitionError](),
+                    "ERR_SYNTAX_001")
+        if re.search(r"[Ee]mpty .*token|[Ee]mpty chain|[Ee]mpty base", m):
+            return ("invalid_syntax",
+                    self._suggestions[errors.EmptyTokenError](),
+                    "ERR_SYNTAX_002")
+        return ("generation_error",
+                self._suggestions[errors.TokenSyntaxError](),
+                "ERR_GEN_000")
+
+    def classified(self, message: str) -> GenerationError:
+        """Build a GenerationError with a suggestion inferred from its message."""
+        error_type, suggestion, code = self.classify_message(message)
+        return GenerationError(message, error_type=error_type,
+                               suggestion=suggestion, code=code)
+
+    def classified_exc(self, exc: BaseException) -> GenerationError:
+        """Build a GenerationError classified from the exception itself."""
+        error_type, suggestion, code = self.classify_exception(exc)
+        return GenerationError(str(exc), error_type=error_type,
+                               suggestion=suggestion, code=code)
+
+
+_CLASSIFIER = ErrorClassifier()
+
+
+# Module-level facades — the stable names callers and tests use.
+
+def classify_exception(exc: BaseException) -> tuple[str, str, str]:
+    """Map an exception to ``(error_type, suggestion, code)``. See
+    :class:`ErrorClassifier`."""
+    return _CLASSIFIER.classify_exception(exc)
+
+
+def classify_error(message: str) -> tuple[str, str, str]:
+    """Map a raw engine error message to ``(error_type, suggestion, code)``.
+    The string-matching fallback behind :func:`classify_exception`."""
+    return _CLASSIFIER.classify_message(message)
 
 
 def _classified(message: str) -> GenerationError:
-    """Build a GenerationError with a suggestion inferred from its message."""
-    error_type, suggestion, code = classify_error(message)
-    return GenerationError(message, error_type=error_type,
-                           suggestion=suggestion, code=code)
+    return _CLASSIFIER.classified(message)
+
+
+def _classified_exc(exc: BaseException) -> GenerationError:
+    return _CLASSIFIER.classified_exc(exc)
 
 
 @dataclass
@@ -198,135 +281,323 @@ class ValidationResult:
                 "suggestion": self.suggestion, "error_type": self.error_type}
 
 
-# --- spec -> argparse.Namespace ------------------------------------------------
+# --- spec <-> CLI parser (introspection + coercion) -----------------------------
 
-def _action_by_dest() -> dict[str, argparse.Action]:
-    return {a.dest: a for a in mg.build_parser()._actions if a.dest != "help"}
+class ParameterSchema:
+    """The bridge between JSON specs and the CLI parser, by introspection.
 
+    Owns both directions of the seam: **inbound**, coercing a JSON-decoded
+    spec dict into an ``argparse.Namespace`` the engine accepts
+    (:meth:`namespace_from_spec`); **outbound**, describing every
+    controllable flag as a UI-renderable spec (:meth:`specs`). Defaults and
+    types always come from ``mg.build_parser()`` itself, so the API never
+    hand-maintains a parallel list of flags.
 
-def _coerce(action: argparse.Action | None, value):
-    """Coerce a JSON-decoded value to what the engine expects for this flag."""
-    if action is None or value is None:
+    Presentation metadata (rack group, control kind, ranges) comes from the
+    module-level PARAM_ANNOTATIONS, and HIDDEN_PARAMS hides CLI/render
+    plumbing from :meth:`specs` — both looked up at call time so tests can
+    patch them.
+    """
+
+    def actions_by_dest(self) -> dict[str, argparse.Action]:
+        return {a.dest: a for a in mg.build_parser()._actions if a.dest != "help"}
+
+    @staticmethod
+    def coerce(action: argparse.Action | None, value):
+        """Coerce a JSON-decoded value to what the engine expects for this flag."""
+        if action is None or value is None:
+            return value
+        is_list = action.nargs in ("*", "+") or isinstance(action, argparse._AppendAction)
+        if is_list:
+            if isinstance(value, (list, tuple)):
+                return [str(v) for v in value]
+            if isinstance(value, str) and value.strip() == "":
+                return []
+            return [str(value)]
+        if action.type is int:
+            return int(value)
+        if action.type is float:
+            return float(value)
+        if action.nargs == 0:  # store_true / store_false → boolean flag
+            return bool(value)
         return value
-    is_list = action.nargs in ("*", "+") or isinstance(action, argparse._AppendAction)
-    if is_list:
-        if isinstance(value, (list, tuple)):
-            return [str(v) for v in value]
-        if isinstance(value, str) and value.strip() == "":
-            return []
-        return [str(value)]
-    if action.type is int:
-        return int(value)
-    if action.type is float:
-        return float(value)
-    if action.nargs == 0:  # store_true / store_false → boolean flag
-        return bool(value)
-    return value
+
+    def namespace_from_spec(self, spec: dict) -> argparse.Namespace:
+        """Start from the parser's full set of defaults, then apply spec
+        overrides. Unknown keys are ignored rather than erroring (a 500)."""
+        args = mg.build_parser().parse_args([])
+        actions = self.actions_by_dest()
+        for key, value in (spec or {}).items():
+            if not hasattr(args, key):
+                continue  # unknown key: ignore rather than 500
+            setattr(args, key, self.coerce(actions.get(key), value))
+        return args
+
+    def specs(self) -> list[dict]:
+        """Every controllable CLI parameter as a UI-renderable spec dict.
+
+        Any flag not annotated in PARAM_ANNOTATIONS still appears (group
+        'More', inferred control), so the UI can never silently omit a real
+        instrument control; HIDDEN_PARAMS is the one deliberate exception.
+        See docs/design-notes/controllability-audit.md.
+        """
+        defaults = vars(mg.build_parser().parse_args([]))
+        out: list[dict] = []
+        seen: set[str] = set()
+        for action in mg.build_parser()._actions:
+            dest = action.dest
+            if dest in ("help",) or dest in seen or dest in HIDDEN_PARAMS:
+                continue
+            seen.add(dest)
+            out.append(self._param_spec(action, defaults.get(dest)))
+        return out
+
+    def _param_spec(self, action: argparse.Action, default) -> dict:
+        dest = action.dest
+        ann = PARAM_ANNOTATIONS.get(dest, {})
+        choices = list(action.choices) if action.choices else None
+        is_list = action.nargs in ("*", "+") or isinstance(action, argparse._AppendAction)
+        if action.nargs == 0:
+            kind = "bool"
+        elif choices and is_list:
+            kind = "multichoice"
+        elif choices:
+            kind = "choice"
+        elif action.type is int:
+            kind = "int"
+        elif action.type is float:
+            kind = "float"
+        elif is_list:
+            kind = "list"
+        else:
+            kind = "str"
+        spec = {
+            "name": dest,
+            "flag": (action.option_strings or [dest])[-1],
+            "kind": kind,
+            "choices": choices,
+            "default": default,
+            # A UI-facing "why you'd use it" tooltip can override the terser CLI
+            # help via PARAM_ANNOTATIONS["…"]["help"]; otherwise fall back to the
+            # argparse help so every control still gets *some* explanation.
+            "help": (ann.get("help") or action.help or "").strip(),
+            "group": ann.get("group", "More"),
+            "control": ann.get("control", self._default_control(kind, choices)),
+        }
+        for opt in ("min", "max", "step", "multiline"):
+            if opt in ann:
+                spec[opt] = ann[opt]
+        return spec
+
+    @staticmethod
+    def _default_control(kind: str, choices) -> str:
+        if kind == "bool":
+            return "toggle"
+        if kind == "multichoice":
+            return "chips"
+        if kind == "choice":
+            return "segmented" if choices and len(choices) <= 4 else "dropdown"
+        if kind == "int":
+            return "slider"
+        if kind == "float":
+            return "knob"
+        if kind == "list":
+            return "taglist"
+        return "text"
+
+
+_SCHEMA = ParameterSchema()
 
 
 def _namespace_from_spec(spec: dict) -> argparse.Namespace:
-    """Start from the parser's full set of defaults, then apply spec overrides.
-
-    Defaults come from the parser itself, so every flag is present and in sync —
-    the API never hand-maintains a parallel list.
-    """
-    args = mg.build_parser().parse_args([])
-    actions = _action_by_dest()
-    for key, value in (spec or {}).items():
-        if not hasattr(args, key):
-            continue  # unknown key: ignore rather than 500
-        setattr(args, key, _coerce(actions.get(key), value))
-    return args
+    return _SCHEMA.namespace_from_spec(spec)
 
 
 # --- result extraction ---------------------------------------------------------
 
-def _channel_name(channel: int | None) -> str | None:
-    if channel is None:
-        return None
-    if channel == getattr(mg, "DRUM_CH", 9):
-        return "drums"
-    order = getattr(mg, "VOICE_ORDER", [])
-    if 0 <= channel < len(order):
-        return order[channel]
-    return f"ch{channel}"
+class ResultSerializer:
+    """Converts the engine's internal structures into the API's DTOs.
+
+    Everything the web layer renders about a take comes through here: the
+    per-track summaries (:meth:`track_infos`), the note-density envelope
+    (:meth:`envelope_from_bytes`), and the assembled
+    :class:`GenerationResult` (:meth:`result` from a live ``MidiOut``,
+    :meth:`result_from_bytes` from rendered bytes, e.g. the song path).
+    """
+
+    @staticmethod
+    def channel_name(channel: int | None) -> str | None:
+        if channel is None:
+            return None
+        if channel == getattr(mg, "DRUM_CH", 9):
+            return "drums"
+        order = getattr(mg, "VOICE_ORDER", [])
+        if 0 <= channel < len(order):
+            return order[channel]
+        return f"ch{channel}"
+
+    def track_infos(self, midifile) -> list[TrackInfo]:
+        infos: list[TrackInfo] = []
+        for i, track in enumerate(midifile.tracks):
+            name = program = channel = None
+            notes = 0
+            for msg in track:
+                if msg.type == "track_name":
+                    name = msg.name
+                elif msg.type == "program_change":
+                    program = msg.program
+                    if channel is None:
+                        channel = msg.channel
+                elif msg.type == "note_on" and msg.velocity > 0:
+                    notes += 1
+                    if channel is None:
+                        channel = msg.channel
+            if notes == 0 and program is None and name is None:
+                continue  # skip the tempo/meta-only track
+            infos.append(TrackInfo(i, name or self.channel_name(channel),
+                                   program, channel, notes))
+        # In merged/dense mode the single melodic track sits on channel 0 and
+        # would be mislabeled "soprano" — call the lone harmony track
+        # "ensemble" instead.
+        melodic = [t for t in infos if t.name != "drums"]
+        if len(melodic) == 1 and melodic[0].name in getattr(mg, "VOICE_ORDER", []):
+            melodic[0].name = "ensemble"
+        return infos
+
+    @staticmethod
+    def envelope_from_bytes(data: bytes, duration: float,
+                            buckets: int = 60) -> list[float]:
+        """A coarse, time-bucketed note-density envelope (0..1 per bucket) for
+        a lightweight "waveform" visual in the webapp (webapp-ui-design.md's
+        waveform display, still missing as of ui-ux-roadmap.md Thread C).
+
+        Computed here via ``mido``'s tempo-aware absolute timing (iterating a
+        ``MidiFile`` merges tracks and converts tick deltas to seconds using
+        the tempo map) rather than re-parsed client-side — MIDI tick/tempo
+        math is easy to get subtly wrong in a hand-rolled parser, and this
+        project already trusts mido elsewhere (tests, MidiOut).
+        """
+        if duration <= 0 or buckets <= 0:
+            return [0.0] * max(buckets, 0)
+        mid = mido.MidiFile(file=io.BytesIO(data))
+        counts = [0.0] * buckets
+        t = 0.0
+        for msg in mid:
+            t += msg.time
+            if msg.type == "note_on" and msg.velocity > 0:
+                idx = min(buckets - 1, max(0, int((t / duration) * buckets)))
+                counts[idx] += msg.velocity
+        peak = max(counts) or 1.0
+        return [round(c / peak, 3) for c in counts]
+
+    def result(self, midi, duration: float, mode: str) -> GenerationResult:
+        """Assemble a GenerationResult from a live ``MidiOut``."""
+        data = midi.to_bytes()
+        return GenerationResult(
+            midi=data,
+            tracks=self.track_infos(midi.mid),
+            duration_seconds=duration,
+            mode=mode,
+            envelope=self.envelope_from_bytes(data, duration),
+        )
+
+    def result_from_bytes(self, data: bytes, mode: str) -> GenerationResult:
+        """Assemble a GenerationResult from already-rendered MIDI bytes
+        (duration read from the file's own tempo map)."""
+        mid = mido.MidiFile(file=io.BytesIO(data))
+        duration = float(mid.length)
+        return GenerationResult(
+            data, self.track_infos(mid), duration, mode,
+            envelope=self.envelope_from_bytes(data, duration))
+
+
+_SERIALIZER = ResultSerializer()
 
 
 def _track_infos(midifile) -> list[TrackInfo]:
-    infos: list[TrackInfo] = []
-    for i, track in enumerate(midifile.tracks):
-        name = program = channel = None
-        notes = 0
-        for msg in track:
-            if msg.type == "track_name":
-                name = msg.name
-            elif msg.type == "program_change":
-                program = msg.program
-                if channel is None:
-                    channel = msg.channel
-            elif msg.type == "note_on" and msg.velocity > 0:
-                notes += 1
-                if channel is None:
-                    channel = msg.channel
-        if notes == 0 and program is None and name is None:
-            continue  # skip the tempo/meta-only track
-        infos.append(TrackInfo(i, name or _channel_name(channel), program,
-                               channel, notes))
-    # In merged/dense mode the single melodic track sits on channel 0 and would
-    # be mislabeled "soprano" — call the lone harmony track "ensemble" instead.
-    melodic = [t for t in infos if t.name != "drums"]
-    if len(melodic) == 1 and melodic[0].name in getattr(mg, "VOICE_ORDER", []):
-        melodic[0].name = "ensemble"
-    return infos
+    return _SERIALIZER.track_infos(midifile)
 
 
 def envelope_from_bytes(data: bytes, duration: float, buckets: int = 60) -> list[float]:
-    """A coarse, time-bucketed note-density envelope (0..1 per bucket) for a
-    lightweight "waveform" visual in the webapp (webapp-ui-design.md's
-    waveform display, still missing as of ui-ux-roadmap.md Thread C).
-
-    Computed here via ``mido``'s tempo-aware absolute timing (iterating a
-    ``MidiFile`` merges tracks and converts tick deltas to seconds using the
-    tempo map) rather than re-parsed client-side — MIDI tick/tempo math is
-    easy to get subtly wrong in a hand-rolled parser, and this project
-    already trusts mido elsewhere (tests, MidiOut).
-    """
-    if duration <= 0 or buckets <= 0:
-        return [0.0] * max(buckets, 0)
-    mid = mido.MidiFile(file=io.BytesIO(data))
-    counts = [0.0] * buckets
-    t = 0.0
-    for msg in mid:
-        t += msg.time
-        if msg.type == "note_on" and msg.velocity > 0:
-            idx = min(buckets - 1, max(0, int((t / duration) * buckets)))
-            counts[idx] += msg.velocity
-    peak = max(counts) or 1.0
-    return [round(c / peak, 3) for c in counts]
+    """Note-density envelope for the webapp's waveform visual. See
+    :meth:`ResultSerializer.envelope_from_bytes`."""
+    return _SERIALIZER.envelope_from_bytes(data, duration, buckets)
 
 
 # --- the seam ------------------------------------------------------------------
+
+_LOG = logging.getLogger("generator_api")
+
+
+def _spec_hash(spec: dict) -> str:
+    """A short stable fingerprint of a spec, for correlating log lines with
+    a reproducible input without dumping the whole spec at every boundary."""
+    payload = json.dumps(spec or {}, sort_keys=True, default=str)
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:12]
+
+
+def _log_failure(spec: dict, err: GenerationError, cause: BaseException) -> None:
+    """Structured error-boundary log: spec hash + error code/type + stack.
+
+    One line per failed generation, with enough to debug production issues
+    without verbose mode: grep the code, replay the spec by its hash.
+    """
+    _LOG.error(
+        "generation failed spec=%s code=%s type=%s: %s",
+        _spec_hash(spec), err.code, err.error_type, err,
+        exc_info=cause,
+    )
+
 
 def generate(spec: dict) -> GenerationResult:
     """Turn a spec into music, in memory. Never writes to ``output/``."""
     with _LOCK:
         try:
-            return _generate_locked(spec)
+            result = _generate_locked(spec)
         except GenerationError as exc:
             # Already-structured errors pass through; bare ones (raised deep in
             # the engine / here) get classified so they gain a suggestion too.
-            if exc.suggestion or exc.error_type != "generation_error":
+            err = exc
+            if not (exc.suggestion or exc.error_type != "generation_error"):
+                err = _classified(str(exc))
+            _log_failure(spec, err, exc)
+            if err is exc:
                 raise
-            raise _classified(str(exc)) from exc
+            raise err from exc
+        except errors.TokenSyntaxError as exc:  # typed DSL errors: exact classification
+            err = _classified_exc(exc)
+            _log_failure(spec, err, exc)
+            raise err from exc
         except mg.SpecError as exc:  # invalid spec (bad voice-instrument, …)
-            raise _classified(str(exc)) from exc
+            err = _classified_exc(exc)
+            _log_failure(spec, err, exc)
+            raise err from exc
         except SystemExit as exc:  # argparse guard rails
-            raise _classified(str(exc) or "invalid arguments") from exc
+            err = _classified(str(exc) or "invalid arguments")
+            _log_failure(spec, err, exc)
+            raise err from exc
         except Exception as exc:  # surface a readable message to the UI
-            raise _classified(f"{type(exc).__name__}: {exc}") from exc
+            err = _classified(f"{type(exc).__name__}: {exc}")
+            _log_failure(spec, err, exc)
+            raise err from exc
+        _LOG.info("generation ok spec=%s mode=%s duration=%.2fs",
+                  _spec_hash(spec), result.mode, result.duration_seconds)
+        return result
 
 
 def _generate_locked(spec: dict) -> GenerationResult:
+    """The generation pipeline behind :func:`generate` (which holds the lock
+    and owns error classification): spec → argparse namespace → per-request
+    context (drum map, RNG) → one of the render paths (arrangement song via
+    a temp file, or in-memory flat build) → GenerationResult.
+
+    The flat path is hermetic: its drum map is loaded per request and its
+    RNG is a private ``random.Random`` when a seed is given, so it neither
+    reads nor mutates the process-global engine state. The song path still
+    leans on the globals (arrangement reads the active drum map and the
+    global RNG deep inside), which is safe under ``_LOCK`` — removing that
+    remaining dependence is what stands between here and dropping the lock.
+    """
     # Raw song YAML text (e.g. from the lead-sheet importer) — an alternative
     # to args.song's file path so the webapp never has to write the imported
     # song anywhere durable. Not an argparse flag, so pulled from the raw
@@ -338,16 +609,26 @@ def _generate_locked(spec: dict) -> GenerationResult:
         presets = mg.load_key_presets()
         preset = presets.get(args.keys_preset)
         if not preset:
-            raise GenerationError(f"Unknown keys preset '{args.keys_preset}'")
+            raise errors.InvalidPresetError(
+                f"Unknown keys preset '{args.keys_preset}'")
         args.keys = ",".join(preset)
 
-    mg.set_active_drum_map(args.perc_lib if args.perc_lib else None)
     mg.apply_arg_normalization(args)
-    if args.seed is not None:
-        random.seed(args.seed)
+    # Per-request context: a private drum map and (when seeded) a private
+    # Random. random.Random(seed) yields the same stream random.seed(seed)
+    # did, so seeded output is byte-identical to the old global-seeding path.
+    drum_map = mg.load_drum_map_from(
+        Path(args.perc_lib) if args.perc_lib else mg.DEFAULT_PERC_LIB)
+    rng = random.Random(args.seed) if args.seed is not None else None
 
     # ----- arrangement (YAML song): renders to disk; round-trip a temp file -----
     if args.song or song_yaml_text:
+        # The song path still consumes the process globals (arrangement and
+        # the lead generator read the active drum map / global RNG deep
+        # inside) — set them up per request; _LOCK serialises access.
+        mg.set_active_drum_map(args.perc_lib if args.perc_lib else None)
+        if args.seed is not None:
+            random.seed(args.seed)
         import tempfile
         import arrangement
 
@@ -371,31 +652,17 @@ def _generate_locked(spec: dict) -> GenerationResult:
             out = str(Path(tmp) / "song.mid")
             arrangement.render(song_spec, out)
             data = Path(out).read_bytes()
-        mid = mido.MidiFile(file=io.BytesIO(data))
-        duration = float(mid.length)
-        return GenerationResult(data, _track_infos(mid), duration, "song",
-                                envelope=envelope_from_bytes(data, duration))
+        return _SERIALIZER.result_from_bytes(data, "song")
 
     # ----- flat (chord progression) -----
-    midi, _meta = mg.build_flat_midi(args)
+    midi, _meta = mg.build_flat_midi(args, rng=rng, drum_map=drum_map)
     if args.full_progression:
         result_mode = "full-progression"
     elif args.random_roots or not args.keys:
         result_mode = "random-roots"
     else:
         result_mode = "progression"
-    return _result(midi, float(args.seconds), result_mode)
-
-
-def _result(midi, duration: float, mode: str) -> GenerationResult:
-    data = midi.to_bytes()
-    return GenerationResult(
-        midi=data,
-        tracks=_track_infos(midi.mid),
-        duration_seconds=duration,
-        mode=mode,
-        envelope=envelope_from_bytes(data, duration),
-    )
+    return _SERIALIZER.result(midi, float(args.seconds), result_mode)
 
 
 # --- chord-token parsing (powers the harmony editor's chip strip + errors) -----
@@ -520,7 +787,7 @@ def parse_keys(keys: str, mode: str = "ostinato") -> dict:
                 err_index = idx
                 err_span = [off, off + len(tok)]
                 break
-        _etype, suggestion, _code = classify_error(str(exc))
+        _etype, suggestion, _code = classify_exception(exc)
         return {"ok": False, "chords": [], "segments": [], "total": 0,
                 "error": str(exc), "suggestion": suggestion,
                 "error_index": err_index, "error_span": err_span}
@@ -556,7 +823,8 @@ def _describe_drum_token(tok: str, drum_map, note_labels: dict) -> dict:
             "hits": [note_labels.get(h.note, f"n{h.note}") for h in hits],
         }
     except Exception as exc:
-        return {"token": tok, "ok": False, "error": str(exc)}
+        return {"token": tok, "ok": False, "error": str(exc),
+                "suggestion": classify_exception(exc)[1]}
 
 
 def _describe_chord_interrupt_token(tok: str) -> dict:
@@ -582,7 +850,7 @@ def parse_perc(pattern: str, kind: str = "drums") -> dict:
     pattern = pattern or ""
     note_labels = _drum_note_labels() if kind == "drums" else {}
     drum_map = mg.get_drum_map() if kind == "drums" else None
-    tokens, first_err = [], None
+    tokens, first_err, suggestion = [], None, None
     # Split on commas but not inside [...] modifier blocks (e.g. qk[vel+10,prob0.5]).
     for raw, _off in _split_top_level(pattern):
         tok = raw.strip()
@@ -593,7 +861,9 @@ def parse_perc(pattern: str, kind: str = "drums") -> dict:
         tokens.append(d)
         if not d["ok"] and first_err is None:
             first_err = d["error"]
-    suggestion = classify_error(first_err)[1] if first_err else None
+            # Typed classification stashed by _describe_drum_token; the
+            # chord-interrupter grammar only has message-based fallback.
+            suggestion = d.get("suggestion") or classify_error(first_err)[1]
     return {"ok": first_err is None, "tokens": tokens, "error": first_err,
             "suggestion": suggestion}
 
@@ -614,87 +884,15 @@ def validate(spec: dict) -> ValidationResult:
 
 def parameter_schema() -> list[dict]:
     """Every controllable CLI parameter as a UI-renderable spec, derived from
-    build_parser.
-
-    Annotations (group + control hint + range) live in PARAM_ANNOTATIONS; any
-    flag not annotated still appears (group 'More', inferred control), so the
-    UI can never silently omit a real instrument control. HIDDEN_PARAMS is the
-    one deliberate exception: CLI/render plumbing (output path, song file,
-    soundfont, ...) that isn't an instrument control. Those flags stay fully
-    functional on the CLI and in song YAML — they're just not rendered as
-    rack controls. See docs/design-notes/controllability-audit.md.
-    """
-    defaults = vars(mg.build_parser().parse_args([]))
-    out: list[dict] = []
-    seen: set[str] = set()
-    for action in mg.build_parser()._actions:
-        dest = action.dest
-        if dest in ("help",) or dest in seen or dest in HIDDEN_PARAMS:
-            continue
-        seen.add(dest)
-        out.append(_param_spec(action, defaults.get(dest)))
-    return out
-
-
-def _param_spec(action: argparse.Action, default) -> dict:
-    dest = action.dest
-    ann = PARAM_ANNOTATIONS.get(dest, {})
-    choices = list(action.choices) if action.choices else None
-    is_list = action.nargs in ("*", "+") or isinstance(action, argparse._AppendAction)
-    if action.nargs == 0:
-        kind = "bool"
-    elif choices and is_list:
-        kind = "multichoice"
-    elif choices:
-        kind = "choice"
-    elif action.type is int:
-        kind = "int"
-    elif action.type is float:
-        kind = "float"
-    elif is_list:
-        kind = "list"
-    else:
-        kind = "str"
-    spec = {
-        "name": dest,
-        "flag": (action.option_strings or [dest])[-1],
-        "kind": kind,
-        "choices": choices,
-        "default": default,
-        # A UI-facing "why you'd use it" tooltip can override the terser CLI
-        # help via PARAM_ANNOTATIONS["…"]["help"]; otherwise fall back to the
-        # argparse help so every control still gets *some* explanation.
-        "help": (ann.get("help") or action.help or "").strip(),
-        "group": ann.get("group", "More"),
-        "control": ann.get("control", _default_control(kind, choices)),
-    }
-    for opt in ("min", "max", "step", "multiline"):
-        if opt in ann:
-            spec[opt] = ann[opt]
-    return spec
-
-
-def _default_control(kind: str, choices) -> str:
-    if kind == "bool":
-        return "toggle"
-    if kind == "multichoice":
-        return "chips"
-    if kind == "choice":
-        return "segmented" if choices and len(choices) <= 4 else "dropdown"
-    if kind == "int":
-        return "slider"
-    if kind == "float":
-        return "knob"
-    if kind == "list":
-        return "taglist"
-    return "text"
+    build_parser. See :class:`ParameterSchema`."""
+    return _SCHEMA.specs()
 
 
 # Baggage cut from the webapp control surface (controllability-audit.md):
 # CLI/render plumbing that isn't an instrument control. The underlying flags
 # still work on the CLI and in song YAML — see parameter_schema()'s docstring.
 HIDDEN_PARAMS: set[str] = {
-    "out", "no_play", "song", "sf2", "perc_lib",
+    "out", "no_play", "song", "sf2", "perc_lib", "overwrite",
 }
 
 # Presentation metadata: which rack panel a flag lives in, its control, ranges.

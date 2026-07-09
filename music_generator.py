@@ -278,6 +278,23 @@ def resolve_out_path(out_arg: str | None, default_slug: str) -> str:
     return str(subdir / ts_filename(slug))
 
 
+def warn_if_overwriting(out_path: str, overwrite_ok: bool = False) -> bool:
+    """Warn when ``out_path`` already exists and is about to be clobbered.
+
+    Timestamped filenames make this rare (same slug, same second), but it can
+    bite scripted runs. Pass ``overwrite_ok=True`` (the ``--overwrite`` flag)
+    to acknowledge and silence the warning. Returns True if the path existed.
+    """
+    exists = Path(out_path).exists()
+    if exists and not overwrite_ok:
+        music_generator_logger.warning(
+            f"Output file already exists and will be overwritten: {out_path} "
+            "(pass --overwrite to silence this warning)")
+        print(f"WARNING: overwriting existing file {out_path} "
+              "(pass --overwrite to silence)", file=sys.stderr)
+    return exists
+
+
 def _swing_time(t: float, s: float) -> float:
     """Warp a beat position ``t`` for a swing amount ``s`` (0 = straight).
 
@@ -458,7 +475,8 @@ def song_overrides_from_args(args, include) -> dict:
     return ov
 
 
-def build_flat_midi(args) -> tuple["MidiOut", dict]:
+def build_flat_midi(args, rng=None,
+                    drum_map: dict[str, int] | None = None) -> tuple["MidiOut", dict]:
     """Render the flat chord-progression path into an in-memory MidiOut.
 
     Shared by the CLI (``main``) and the web API. Pure with respect to disk: it
@@ -467,19 +485,25 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     carries the derived fields the CLI manifest records. RNG-consumption order
     matches the original inline ``main`` body, so seeded output is identical.
 
+    ``rng`` (any random.Random-like source) and ``drum_map`` may be injected
+    for hermetic, concurrency-safe generation; they default to the global
+    ``random`` module and the process-global active drum map, so the seeded
+    CLI behaviour is unchanged.
+
     Root selection: ``--keys`` (a user-authored chart) is used by default,
     cycled to fill the piece. ``--random-roots`` ignores ``--keys`` and instead
     shuffles a circle-of-fifths each run. ``--full-progression`` plays the
     roots through once with no repeats/looping, instead of the default cycle
     (applies to either ``--keys`` or the circle-of-fifths fallback).
     """
+    r = rng or random
     tpb = 480
     beats_total = (args.seconds * args.bpm) / 60.0
     chord_len_beats = DUR_MAP[args.chord_len]
 
     if args.random_roots:
         roots = key_roots("complete", None)
-        random.shuffle(roots)
+        r.shuffle(roots)
         max_ch = 9999
     elif args.keys:
         roots = key_roots("ostinato", args.keys)
@@ -487,13 +511,13 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     else:
         roots = key_roots("complete", None)
         if not args.full_progression:
-            random.shuffle(roots)
+            r.shuffle(roots)
         max_ch = None if args.full_progression else 9999
 
     seq = build_progression(roots, args.chords, args.chords_order,
-                            max_chords=max_ch)
+                            max_chords=max_ch, rng=rng)
 
-    picker = next_mode_picker(args.chords, args.chords_order)
+    picker = next_mode_picker(args.chords, args.chords_order, rng=rng)
     preview_modes = [picker() for _ in range(16)]
 
     chord_intr = parse_chord_interrupters(
@@ -502,10 +526,11 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     chord_tl = build_chord_timeline(seq, beats_total, chord_len_beats,
                                     chord_intr,
                                     chord_fill_rate=args.chord_fill_rate,
-                                    static=(args.satb_style == "static"))
+                                    static=(args.satb_style == "static"),
+                                    rng=rng)
     chord_tl = fill_chords_to_end(chord_tl, beats_total)
 
-    perc_plan = build_perc_from_args(args)
+    perc_plan = build_perc_from_args(args, drum_map=drum_map)
     main_pat = perc_plan.main
     intr_pats = perc_plan.interrupters
     stage_specs = perc_plan.stages or []
@@ -514,11 +539,11 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     if stage_specs:
         drum_tl = build_drum_timeline_stages(stage_specs, beats_total, main_pat,
                                              intr_pats, args.perc_fill_rate,
-                                             fill_curve)
+                                             fill_curve, rng=rng)
     elif intr_pats and args.perc_fill_rate > 0.0:
         drum_tl = build_drum_timeline_with_fills(main_pat, intr_pats,
                                                  beats_total,
-                                                 args.perc_fill_rate)
+                                                 args.perc_fill_rate, rng=rng)
     else:
         drum_tl = build_drum_timeline_from_main(main_pat, beats_total)
 
@@ -527,11 +552,13 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
     drum_tl = truncate_timeline_to(drum_tl, ch_end)
 
     if args.perc_ghost_rate > 0.0:
-        ghost_note = get_drum_map().get(args.perc_ghost_note.lower(), 38)
+        ghost_note = (drum_map or get_drum_map()).get(
+            args.perc_ghost_note.lower(), 38)
         drum_tl = add_ghost_notes(drum_tl, rate=args.perc_ghost_rate,
-                                  note=ghost_note)
+                                  note=ghost_note, rng=rng)
     if getattr(args, "perc_pocket", None):
-        drum_tl = apply_pocket(drum_tl, parse_pocket_spec(args.perc_pocket))
+        drum_tl = apply_pocket(
+            drum_tl, parse_pocket_spec(args.perc_pocket, drum_map=drum_map))
 
     bass_kick_times = kick_onsets(drum_tl) if args.bass_lock_kick else None
 
@@ -540,7 +567,8 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
                    vel_mode_drums=args.velocity_mode_drums,
                    split_stems=args.split_stems,
                    swing=getattr(args, "swing", 0.0),
-                   pan_spread=getattr(args, "pan_spread", 0.0))
+                   pan_spread=getattr(args, "pan_spread", 0.0),
+                   rng=rng)
 
     program = resolve_instrument(args.instrument)
 
@@ -583,6 +611,7 @@ def build_flat_midi(args) -> tuple["MidiOut", dict]:
             counterpoint_anticipation_prob=args.counterpoint_anticipation_prob,
             split_stems=args.split_stems,
             logger=music_generator_logger,
+            rng=rng,
         )
 
     for when, dur, hits in drum_tl:
@@ -796,6 +825,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ap.add_argument("--seconds", type=float, default=60.0)
     ap.add_argument("--out", type=str, default="out")
+    ap.add_argument("--overwrite",
+                    action="store_true",
+                    help="Silence the warning when the output MIDI path "
+                         "already exists (it is overwritten either way).")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--sf2", required=False, help="Path to SoundFont (.sf2)")
     ap.add_argument("--no-play",
@@ -877,6 +910,12 @@ def main():
 
 
 def _run(ap, args):
+    """The CLI's whole run, after parsing: resolve presets/drum map/seed,
+    then either render a YAML song via :mod:`arrangement` (honouring only
+    CLI flags the user actually set) or build the flat-mode MIDI in-process
+    (:func:`build_flat_midi`), writing the .mid plus its sidecar manifest
+    under ``output/``. Returns a process exit code. Raises
+    :class:`SpecError` for bad specs — ``main`` turns that into exit 2."""
     start_time = datetime.now()
     music_generator_logger.info("Starting music generation")
 
@@ -921,6 +960,7 @@ def _run(ap, args):
                        for tok in argv_tokens for f in flags)
 
         arr_overrides = song_overrides_from_args(args, _cli_set)
+        warn_if_overwriting(song_out, args.overwrite)
         spec = arrangement.load_spec(
             args.song,
             vel_mode_chords=args.velocity_mode_chords,
@@ -967,6 +1007,7 @@ def _run(ap, args):
             "perc_fill_curve": meta["perc_fill_curve"],
         })
 
+    warn_if_overwriting(out_path, args.overwrite)
     midi.save(out_path)
     if args.stems:
         if args.split_stems:

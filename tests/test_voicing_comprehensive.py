@@ -6,13 +6,11 @@ Covers voice range assignment, register management, and note selection algorithm
 
 import random
 
-import pytest
 
 import voicing as V
 from mtheory import (
     ALTO_RANGE, BASS_RANGE, SOP_RANGE, TENOR_RANGE,
-    VOICE_ORDER, VOICE_RANGE_MAP,
-    ChordDef, pc, nearest_in_register
+    VOICE_ORDER, VOICE_RANGE_MAP
 )
 
 

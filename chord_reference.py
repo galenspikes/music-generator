@@ -236,6 +236,10 @@ def parse_glosses() -> dict[str, str]:
 
 
 def build_catalog() -> dict:
+    """Analyse every chord recipe into the JSON-able catalog the reference
+    page renders: per-recipe intervals, pitch-class set analysis
+    (normal/prime form, Forte number, interval-class vector, consonance),
+    category, and the hand-written gloss parsed from chord_recipes.py."""
     from chord_recipes import CHORD_RECIPES  # noqa: E402  (added to path in main)
 
     glosses = parse_glosses()
@@ -299,6 +303,10 @@ def render_references_html() -> str:
 
 
 def render_html(catalog: dict, *, full_document: bool) -> str:
+    """Render the interactive chord-reference page (recipe rack, keyboard,
+    Web-Audio preview) from :func:`build_catalog`'s output. With
+    ``full_document`` emit a standalone HTML page; without, a fragment for
+    embedding (the webapp's Docs tab)."""
     data_json = json.dumps(catalog, separators=(",", ":"))
     refs_html = render_references_html()
     intro = (

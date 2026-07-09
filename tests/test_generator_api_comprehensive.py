@@ -324,33 +324,6 @@ class TestGenerate:
             api.generate(spec)
 
 
-class TestParameterSchema:
-    """Test parameter schema introspection."""
-
-    def test_parameter_schema_returns_list(self):
-        """parameter_schema() returns list of parameter specs."""
-        schema = api.parameter_schema()
-        assert isinstance(schema, list)
-        assert len(schema) > 0
-
-    def test_parameter_spec_has_required_fields(self):
-        """Each parameter spec has name, kind, default, etc."""
-        schema = api.parameter_schema()
-        for param in schema:
-            assert isinstance(param, dict)
-            # Should have at least these keys
-            required = {"name", "kind"}
-            assert required.issubset(param.keys())
-
-    def test_schema_includes_common_parameters(self):
-        """Schema includes expected parameters."""
-        schema = api.parameter_schema()
-        param_names = {p["name"] for p in schema}
-        # Check for some expected parameters
-        expected = {"keys", "bpm", "seconds"}
-        assert len(expected & param_names) > 0
-
-
 class TestEnvelopeFromBytes:
     """Test audio envelope extraction."""
 
@@ -528,6 +501,14 @@ class TestParameterSchema:
         schema = api.parameter_schema()
         assert isinstance(schema, list)
         assert len(schema) > 0
+
+    def test_parameter_spec_has_required_fields(self):
+        """Each parameter spec is a dict with at least name and kind."""
+        schema = api.parameter_schema()
+        for param in schema:
+            assert isinstance(param, dict)
+            required = {"name", "kind"}
+            assert required.issubset(param.keys())
 
     def test_schema_entries_have_required_fields(self):
         """Each schema entry has name, kind, and help."""
@@ -737,3 +718,46 @@ class TestSlugify:
         # Slugify produces a valid identifier/slug
         assert isinstance(slug, str)
         assert len(slug) > 0
+
+
+class TestApiClasses:
+    """The class seams behind the module facades (ParameterSchema,
+    ErrorClassifier, ResultSerializer)."""
+
+    def test_parameter_schema_class_backs_facade(self):
+        """parameter_schema() and a fresh ParameterSchema agree."""
+        assert api.ParameterSchema().specs() == api.parameter_schema()
+
+    def test_coerce_scalars_and_lists(self):
+        schema = api.ParameterSchema()
+        actions = schema.actions_by_dest()
+        assert schema.coerce(actions["bpm"], "120") == 120
+        assert schema.coerce(actions["seconds"], "8") == 8.0
+        assert schema.coerce(actions["perc_interrupters"], "qk") == ["qk"]
+        assert schema.coerce(actions["perc_interrupters"], "") == []
+
+    def test_namespace_from_spec_ignores_unknown_keys(self):
+        args = api.ParameterSchema().namespace_from_spec(
+            {"bpm": 90, "not_a_real_flag": 1})
+        assert args.bpm == 90
+        assert not hasattr(args, "not_a_real_flag")
+
+    def test_error_classifier_class_backs_facade(self):
+        clf = api.ErrorClassifier()
+        msg = "Bad key 'Q'"
+        assert clf.classify_message(msg) == api.classify_error(msg)
+
+    def test_result_serializer_channel_name(self):
+        ser = api.ResultSerializer()
+        assert ser.channel_name(None) is None
+        assert ser.channel_name(9) == "drums"
+        assert ser.channel_name(0) == "soprano"
+
+    def test_result_serializer_from_bytes_roundtrip(self):
+        """result_from_bytes rebuilds tracks/duration/envelope from raw MIDI."""
+        res = api.generate({"keys": "C, G", "seconds": 4})
+        rebuilt = api.ResultSerializer().result_from_bytes(res.midi, "song")
+        assert rebuilt.mode == "song"
+        assert rebuilt.duration_seconds > 0
+        assert [t.as_dict() for t in rebuilt.tracks] == \
+            [t.as_dict() for t in res.tracks]

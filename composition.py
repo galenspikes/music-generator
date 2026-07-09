@@ -64,90 +64,99 @@ def _pcs_from_offsets(pc_root: int, offs_abs: list[int]) -> list[int]:
 
 def _apply_random_inversion(pc_root: int,
                             offs: list[int],
-                            max_inv: int | None = None) -> list[int]:
+                            max_inv: int | None = None,
+                            rng=None) -> list[int]:
     """
     Pick a random inversion and return pitch classes.
     max_inv can cap how deep inversions go (defaults to size-1).
+    ``rng`` is any random.Random-like source (defaults to the global module).
     """
     if not offs:
         return []
+    r = rng or random
     lim = (len(offs) - 1) if max_inv is None else min(max_inv, len(offs) - 1)
-    inv = random.randint(0, max(0, lim))
+    inv = r.randint(0, max(0, lim))
     offs_inv = _invert_offsets(offs, inv)
     return _pcs_from_offsets(pc_root, offs_inv)
 
 
 def fill_chords_to_end(ch_tl, beats_total):
-    """If chord_tl ends early, sustain the last voiced chord to beats_total."""
+    """If chord_tl ends early, sustain the last voiced chord to beats_total.
+
+    Returns a new list when an extension is needed; the input timeline is
+    never mutated. Use the return value.
+    """
     if not ch_tl:
         return ch_tl
     end = max(when + dur for (when, dur, _notes) in ch_tl)
     if end >= beats_total:
         return ch_tl
-    last_when, last_dur, last_notes = ch_tl[-1]
+    _last_when, _last_dur, last_notes = ch_tl[-1]
     gap = beats_total - end
-    ch_tl.append((end, gap, last_notes))
-    return ch_tl
+    return list(ch_tl) + [(end, gap, last_notes)]
 
 
 def make_triad(pc_root: int,
                quality: str | None = None,
-               is_minor_key: bool = False) -> list[int]:
+               is_minor_key: bool = False,
+               rng=None) -> list[int]:
     if quality is None:
         quality = "min" if is_minor_key else "maj"
     offs = [0, 4, 7] if quality == "maj" else [0, 3, 7]
-    return _apply_random_inversion(pc_root, offs)
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
-def make_seventh(pc_root: int, is_minor_key: bool = False) -> list[int]:
+def make_seventh(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
     # Choose a quality that fits the key center more often
+    r = rng or random
     if is_minor_key:
-        bank = random.choice([[0, 3, 7, 10], [0, 3, 7, 11]])  # m7 or m(maj7)
+        bank = r.choice([[0, 3, 7, 10], [0, 3, 7, 11]])  # m7 or m(maj7)
     else:
-        bank = random.choice([[0, 4, 7, 11], [0, 4, 7, 10]])  # maj7 or dom7
-    return _apply_random_inversion(pc_root, bank)
+        bank = r.choice([[0, 4, 7, 11], [0, 4, 7, 10]])  # maj7 or dom7
+    return _apply_random_inversion(pc_root, bank, rng=rng)
 
 
-def make_ninth(pc_root: int, is_minor_key: bool = False) -> list[int]:
+def make_ninth(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
     variants = ([[0, 3, 7, 10, 14], [0, 3, 7, 14], [0, 4, 7, 10, 14]]
                 if is_minor_key else [[0, 4, 7, 11, 14], [0, 4, 7, 10, 14],
                                       [0, 4, 7, 14]])
-    offs = random.choice(variants)
-    return _apply_random_inversion(pc_root, offs)
+    offs = (rng or random).choice(variants)
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
-def make_quartal(pc_root: int, is_minor_key: bool = False) -> list[int]:
+def make_quartal(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
     # stacked 4ths, 1–4–7–10(–13) flavor
     offs = [0, 5, 10, 15]  # extendable if you like: add 20 for a 5th tone
-    return _apply_random_inversion(pc_root, offs)
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
-def make_sus(pc_root: int, is_minor_key: bool = False) -> list[int]:
-    offs = random.choice([[0, 2, 7], [0, 5, 7]])  # sus2 or sus4
-    return _apply_random_inversion(pc_root, offs)
+def make_sus(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
+    offs = (rng or random).choice([[0, 2, 7], [0, 5, 7]])  # sus2 or sus4
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
-def make_add6(pc_root: int, is_minor_key: bool = False) -> list[int]:
+def make_add6(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
     # classic add6 (major color); feel free to branch on is_minor_key if desired
     offs = [0, 4, 7, 9]
-    return _apply_random_inversion(pc_root, offs)
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
-def make_lyd_dom(pc_root: int, is_minor_key: bool = False) -> list[int]:
+def make_lyd_dom(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
     # 1, 3, #4, b7 (can add 9/13 later)
     offs = [0, 4, 6, 10]
-    return _apply_random_inversion(pc_root, offs)
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
 # If you have other families, route them through _apply_random_inversion the same way.
 
 
 def chromatic_mediant_from_key(pc_key: int,
-                               is_minor_key: bool = False
+                               is_minor_key: bool = False,
+                               rng=None
                               ) -> tuple[int, list[int]]:
     """Pick a chromatic mediant (±3 or ±4 semitones) and choose maj/min by common-tone vs key triad."""
     candidates = [(pc_key + d) % 12 for d in (3, 9, 4, 8)]
-    root = random.choice(candidates)
+    root = (rng or random).choice(candidates)
     key_triad = {
         (pc_key + o) % 12 for o in ([0, 3, 7] if is_minor_key else [0, 4, 7])
     }
@@ -159,7 +168,7 @@ def chromatic_mediant_from_key(pc_key: int,
     return root, pcs
 
 
-def next_mode_picker(modes: list[str], order: str):
+def next_mode_picker(modes: list[str], order: str, rng=None):
     """Return a callable that yields the next chord family per step."""
     if not modes:
         modes = ["extended-chords"]
@@ -173,8 +182,10 @@ def next_mode_picker(modes: list[str], order: str):
 
         return rr
     # random (duplicates in modes act as weighting)
+    r = rng or random
+
     def rnd():
-        return random.choice(modes)
+        return r.choice(modes)
 
     return rnd
 
@@ -217,7 +228,7 @@ def invert_chord(chord_pcs: list[int], inversion: int) -> list[int]:
     return pcs
 
 
-def make_extended_chord(pc_root: int, is_minor_key: bool = False) -> list[int]:
+def make_extended_chord(pc_root: int, is_minor_key: bool = False, rng=None) -> list[int]:
     """
     Pick from 9/11/13 families with key-sensitive 3rd/7th, then apply a random inversion.
     """
@@ -233,9 +244,9 @@ def make_extended_chord(pc_root: int, is_minor_key: bool = False) -> list[int]:
         [0, 3, 7, 10, 14, 17],  # min9(11)
         [0, 3, 7, 10, 14, 21],  # min13
     ]
-    offs = random.choice(pools_minor if is_minor_key else pools_major)
+    offs = (rng or random).choice(pools_minor if is_minor_key else pools_major)
     # allow inversions up to the number of chord tones - 1
-    return _apply_random_inversion(pc_root, offs)
+    return _apply_random_inversion(pc_root, offs, rng=rng)
 
 
 def circle_of_fifths_sequence(keys: list[str],
@@ -262,8 +273,26 @@ def circle_of_fifths_sequence(keys: list[str],
 def build_progression(keys: list[str],
                       chord_modes: list[str],
                       order: str,
-                      max_chords: int | None = None) -> list[ChordDef]:
-    """Return chord definitions cycling through the provided key plan."""
+                      max_chords: int | None = None,
+                      rng=None) -> list[ChordDef]:
+    """Return chord definitions cycling through the provided key plan.
+
+    Each key token is either explicit (a colon token like ``C::maj7``, which
+    maps straight to its ChordDef) or a bare root (``C``, ``Gm``), for which a
+    chord is *generated* from one of the enabled ``chord_modes`` families
+    (triads, sevenths, extended-chords, quartal, …). ``order`` picks how the
+    next family is chosen when several are on: ``'random'`` or round-robin.
+
+    The progression length: ``max_chords`` when given; otherwise one pass of
+    the key ring if any token is explicit (an authored chart plays as
+    written), else four passes (bare roots are a palette, not a chart).
+
+    Example::
+
+        chords = build_progression(["C", "Am", "F", "G"],
+                                   ["sevenths"], order="random")
+        tl = build_chord_timeline(chords, beats_total=32.0, base_len_beats=2.0)
+    """
 
     key_ring = keys[:] if keys else [
         "C", "G", "D", "A", "E", "B", "Gb", "Db", "Ab", "Eb", "Bb", "F"
@@ -277,7 +306,7 @@ def build_progression(keys: list[str],
     else:
         count = len(key_ring) * 4
 
-    pick = next_mode_picker(chord_modes, order)
+    pick = next_mode_picker(chord_modes, order, rng=rng)
 
     seq: list[ChordDef] = []
     i = 0
@@ -295,34 +324,34 @@ def build_progression(keys: list[str],
 
         if mode == "chromatic-mediants":
             chord_root, chord_pcs = chromatic_mediant_from_key(
-                rkey, is_minor_key=is_minor_key)
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "extended-chords":
             chord_root, chord_pcs = rkey, make_extended_chord(
-                rkey, is_minor_key=is_minor_key)
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "triads":
-            chord_root, chord_pcs = rkey, make_triad(rkey,
-                                                     is_minor_key=is_minor_key)
+            chord_root, chord_pcs = rkey, make_triad(
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "sevenths":
             chord_root, chord_pcs = rkey, make_seventh(
-                rkey, is_minor_key=is_minor_key)
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "ninths":
-            chord_root, chord_pcs = rkey, make_ninth(rkey,
-                                                     is_minor_key=is_minor_key)
+            chord_root, chord_pcs = rkey, make_ninth(
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "quartal":
             chord_root, chord_pcs = rkey, make_quartal(
-                rkey, is_minor_key=is_minor_key)
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "sus":
-            chord_root, chord_pcs = rkey, make_sus(rkey,
-                                                   is_minor_key=is_minor_key)
+            chord_root, chord_pcs = rkey, make_sus(
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "add6":
-            chord_root, chord_pcs = rkey, make_add6(rkey,
-                                                    is_minor_key=is_minor_key)
+            chord_root, chord_pcs = rkey, make_add6(
+                rkey, is_minor_key=is_minor_key, rng=rng)
         elif mode == "lyd-dom":
             chord_root, chord_pcs = rkey, make_lyd_dom(
-                rkey, is_minor_key=is_minor_key)
+                rkey, is_minor_key=is_minor_key, rng=rng)
         else:
             chord_root, chord_pcs = rkey, make_extended_chord(
-                rkey, is_minor_key=is_minor_key)
+                rkey, is_minor_key=is_minor_key, rng=rng)
 
         pcs = tuple(sorted({n % 12 for n in chord_pcs}))
         seq.append(ChordDef(root_pc=chord_root, pcs=pcs, label=mode))
@@ -340,6 +369,7 @@ def build_chord_timeline(
         static: bool = False,
         prev_sop: int | None = None,
         bass_anchor: int = 43,
+        rng=None,
 ) -> list[tuple[float, float, tuple[int, int, int, int]]]:
     """
     Returns [(when_beats, dur_beats, (s,a,t,b))].
@@ -370,10 +400,10 @@ def build_chord_timeline(
         bass_pc = entry.bass_pc
         chord_key = (root_pc, tuple(sorted(pcs)), bass_pc)
 
+        r = rng or random
         use_intr = (interrupters and chord_fill_rate > 0.0 and
-                    random.random() < chord_fill_rate)
-        motif = random.choice(interrupters) if use_intr else [(base_len_beats,
-                                                               'c')]
+                    r.random() < chord_fill_rate)
+        motif = r.choice(interrupters) if use_intr else [(base_len_beats, 'c')]
 
         for beats, flag in motif:
             if pos >= beats_total:
@@ -447,6 +477,7 @@ def build_harmony_events(
         split_stems: bool = True,
         when_offset: float = 0.0,
         logger=None,
+        rng=None,
 ) -> tuple[list[tuple[str, float, float, object]], float]:
     """Turn a chord timeline into playable harmony + bass events.
 
@@ -474,7 +505,8 @@ def build_harmony_events(
     if satb_style == "counterpoint":
         voice_lines = build_counterpoint_lines(chord_tl, counterpoint_step,
                                                counterpoint_suspension_prob,
-                                               counterpoint_anticipation_prob)
+                                               counterpoint_anticipation_prob,
+                                               rng=rng)
         for voice, parts in voice_lines.items():
             for when, dur, note in parts:
                 if dur <= 0.0:
@@ -483,7 +515,7 @@ def build_harmony_events(
                 voice_max = max(voice_max, when + when_offset + dur)
     elif satb_style == "arpeggio":
         for voice, start, dur, note in build_arpeggio_events(
-                chord_tl, counterpoint_step):
+                chord_tl, counterpoint_step, rng=rng):
             if dur <= 0.0:
                 continue
             events.append(("voice", start + when_offset, dur, (voice, note)))
