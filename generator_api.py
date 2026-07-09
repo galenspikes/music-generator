@@ -33,12 +33,14 @@ import json
 import logging
 import random
 import re
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import mido
 import errors
 import music_generator as mg
+from progression_store import ProgressionStore
 
 
 
@@ -1228,42 +1230,45 @@ def has_home_preset() -> bool:
 # above — just a `keys` token string plus display metadata, for the standalone
 # chord-recipes instrument (webapp/chords-frontend). Deliberately not a `spec`
 # dict: this app never touches instrument/percussion/arrangement params.
+# Stored in SQLite (progression_store.ProgressionStore); legacy *.json files
+# in PROGRESSIONS_DIR are imported on first use.
 PROGRESSIONS_DIR = REPO_ROOT / "presets" / "progressions"
+
+_PROGRESSION_STORES: dict[Path, ProgressionStore] = {}
+_PROGRESSION_STORES_LOCK = threading.Lock()
+
+
+def _progression_store() -> ProgressionStore:
+    """The store for the *current* PROGRESSIONS_DIR, created on first use.
+
+    Resolved per call (not at import) so tests can repoint PROGRESSIONS_DIR
+    at a temp directory; one store instance is cached per directory."""
+    directory = PROGRESSIONS_DIR
+    with _PROGRESSION_STORES_LOCK:
+        store = _PROGRESSION_STORES.get(directory)
+        if store is None:
+            store = ProgressionStore(directory / "progressions.db",
+                                     legacy_dir=directory)
+            _PROGRESSION_STORES[directory] = store
+        return store
 
 
 def list_progressions() -> list[dict]:
     """List saved chord progressions with metadata."""
-    progressions = []
-    PROGRESSIONS_DIR.mkdir(parents=True, exist_ok=True)
-    for prog_file in sorted(PROGRESSIONS_DIR.glob("*.json")):
-        try:
-            import json
-            data = json.loads(prog_file.read_text())
-            progressions.append({
-                "name": prog_file.stem,
-                "title": data.get("title", prog_file.stem),
-                "tags": data.get("tags", []),
-                "keys": data.get("keys", ""),
-                "tempo": data.get("tempo"),
-                "saved": data.get("saved", ""),
-            })
-        except Exception:
-            pass
-    return progressions
+    return _progression_store().list()
+
+
+def search_progressions(query: str = "", tag: str | None = None) -> list[dict]:
+    """Search progressions by name/title/keys substring and/or exact tag."""
+    return _progression_store().search(query, tag)
 
 
 def load_progression(name: str) -> dict:
     """Load a saved chord progression."""
-    import json
-
-    prog_path = _safe_path_for(PROGRESSIONS_DIR, name, ".json")
-    if not prog_path.exists():
+    data = _progression_store().load(slugify(name))
+    if data is None:
         raise GenerationError(f"Progression '{name}' not found")
-
-    try:
-        return json.loads(prog_path.read_text())
-    except Exception as e:
-        raise GenerationError(f"Failed to load progression '{name}': {e}")
+    return data
 
 
 def save_progression(
@@ -1275,29 +1280,14 @@ def save_progression(
     voicing: str | None = None,
 ) -> dict:
     """Save a chord progression with metadata."""
-    import json
-    from datetime import datetime
-
-    PROGRESSIONS_DIR.mkdir(parents=True, exist_ok=True)
-    prog_path = _safe_path_for(PROGRESSIONS_DIR, name, ".json")
-
-    data = {
-        "title": title or name,
-        "tags": tags or [],
-        "keys": keys,
-        "tempo": tempo,
-        "voicing": voicing,
-        "saved": datetime.now().isoformat(),
-    }
-
     try:
-        prog_path.write_text(json.dumps(data, indent=2))
-        return data
+        return _progression_store().save(slugify(name), keys, title=title,
+                                         tags=tags, tempo=tempo,
+                                         voicing=voicing)
     except Exception as e:
         raise GenerationError(f"Failed to save progression '{name}': {e}")
 
 
 def delete_progression(name: str) -> None:
     """Delete a saved chord progression. No-op (not an error) if it doesn't exist."""
-    prog_path = _safe_path_for(PROGRESSIONS_DIR, name, ".json")
-    prog_path.unlink(missing_ok=True)
+    _progression_store().delete(slugify(name))
